@@ -1,0 +1,13 @@
+.env
+chromadb_store/
+data/exports/*.json
+logs/
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+*.log

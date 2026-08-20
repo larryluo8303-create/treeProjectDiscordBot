@@ -1,0 +1,34 @@
+# Version control
+.git/
+.gitignore
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Data & state (mounted as volumes instead)
+chromadb_store/
+logs/
+data/
+
+# Environment & secrets
+.env
+
+# Tests
+tests/
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+.windsurf/
+
+# OS
+.DS_Store
+Thumbs.db

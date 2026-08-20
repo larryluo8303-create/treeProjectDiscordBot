@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "BigTree Chat",
+    "slug": "bigtree-client",
+    "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
+    "scheme": "bigtree-client",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F1419"
+    },
+    "platforms": ["ios", "android"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bigtree.client",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Upload chart images for AI analysis",
+        "NSCameraUsageDescription": "Take photos of charts for AI analysis"
+      }
+    },
+    "android": {
+      "package": "com.bigtree.client",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F1419"
+      },
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Upload chart images for AI analysis",
+          "cameraPermission": "Take photos of charts for AI analysis"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

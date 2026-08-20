@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  bot:
+    build: .
+    env_file: .env
+    volumes:
+      - ./chromadb_store:/app/chromadb_store
+      - ./logs:/app/logs
+      - ./data:/app/data
+    restart: unless-stopped

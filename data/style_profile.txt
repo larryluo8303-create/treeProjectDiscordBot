@@ -1,0 +1,62 @@
+=== Style Profile (based on 10,067 messages) ===
+
+Average response length: 14 words (median 10)
+Average sentences per message: 1.2
+Length distribution: 8120 short (<20w), 1752 medium (20-60w), 195 long (60+w)
+
+Top phrases (bigrams):
+  - "懒人 22" (100x)
+  - "https discord" (63x)
+  - "discord com" (62x)
+  - "pinned a" (61x)
+  - "a message" (61x)
+  - "com channels" (61x)
+  - "channels 895349295975370802" (61x)
+  - "https www" (56x)
+  - "www youtube" (53x)
+  - "youtube com" (53x)
+  - "com watch" (53x)
+  - "watch v" (53x)
+  - "5min es" (51x)
+  - "895349295975370802 921199016476307466" (41x)
+  - "1h es" (40x)
+
+Top phrases (trigrams):
+  - "https discord com" (62x)
+  - "pinned a message" (61x)
+  - "discord com channels" (61x)
+  - "com channels 895349295975370802" (61x)
+  - "https www youtube" (53x)
+  - "www youtube com" (53x)
+  - "youtube com watch" (53x)
+  - "com watch v" (53x)
+  - "channels 895349295975370802 921199016476307466" (41x)
+  - "1h 4h 日线" (12x)
+
+Emoji usage: 96.2% of messages contain emojis
+Top emojis: 信号 (180x), ， (178x), 懒人🌴 (154x), 和 (145x), 的 (124x), 嗯嗯 (110x), 有 (101x), 对的 (95x), 是 (85x), ？ (74x)
+
+Common opening words:
+  - "es" (144x)
+  - "嗯嗯" (109x)
+  - "对的" (91x)
+  - "bot" (73x)
+  - "😄" (64x)
+  - "pinned" (61x)
+  - "qqq" (59x)
+  - "5min" (58x)
+  - "nq" (50x)
+  - "@懒人🌴22" (46x)
+
+Sample messages (for tone reference):
+  > "做es 30min 和 1h 信号我都用
+但是30 min 信号里面要过滤 不是每个都去做。我是通过缠绕的阻力支撑位置来过滤 信号"
+  > "高杠杆小仓位玩玩，
+赚钱还是要上量
+我是etf + es
+etf 我有90% 的仓位，高杠杆的es 10% 仓位"
+  > "基本就是 rsi macd HH HL LL LH ，水平支撑，通道支撑。MA EMA 。背驰，背离。这些知识按我的经验组合到了一起。"
+  > "我做es 也是力求 简单，就是 1h 4h 信号/alert + 5min 买点， 配合缠图，做好仓位和止损"
+  > "昨天有买 的话 一般我不会在短时间同一个点位加仓 
+主要还是看你仓位大小
+比如，4h 如果反弹上去，ema13 （红色均线） 再下来的 4h 信号我会操作"

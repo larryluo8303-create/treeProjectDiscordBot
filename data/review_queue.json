@@ -1,0 +1,739 @@
+[
+  {
+    "id": "74c4b516",
+    "channel_id": 991362564657266780,
+    "channel_name": "🔥与tianluo田螺并肩奋战🔥",
+    "message_id": 1536899952280866846,
+    "author_name": "tianluo1560",
+    "author_id": 735852668353904660,
+    "question": "",
+    "draft_answer": "这张图片显示的是S&P 500 VIX的1个月走势。当前VIX处于下降趋势，近期从高点持续回落，显示市场波动性降低，恐慌情绪减弱。图中没有明显的支撑或阻力线标记，但可以看到VIX在低位附近徘徊。若继续下行，可能会测试前期低点区域，若反弹则需关注上方前期高点附近的压力。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1786671317.762615,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1536899952280866846"
+  },
+  {
+    "id": "3e37aaf4",
+    "channel_id": 991362564657266780,
+    "channel_name": "🔥与tianluo田螺并肩奋战🔥",
+    "message_id": 1537163037750988902,
+    "author_name": "tianluo1560",
+    "author_id": 735852668353904660,
+    "question": "",
+    "draft_answer": "图中是SPX的15分钟K线图。当前价格在中轨附近，结合Keltner通道（KC），价格趋势在通道中间震荡。RSI指标在接近60，显示出市场略为偏多的情绪。图中标注“Put”可能暗示看空，但需要注意上方的阻力区。若价格无法突破中轨并出现回落，可能会形成短期卖出信号。",
+    "confidence": 7,
+    "context_snippets": [],
+    "created_at": 1786671320.4077764,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537163037750988902"
+  },
+  {
+    "id": "ca41da86",
+    "channel_id": 991362564657266780,
+    "channel_name": "🔥与tianluo田螺并肩奋战🔥",
+    "message_id": 1537213189723258961,
+    "author_name": "tianluo1560",
+    "author_id": 735852668353904660,
+    "question": "",
+    "draft_answer": "图中显示价格在上轨附近盘整，接近前期高点的压力区域。价格突破后有回调迹象，需要关注是否能企稳于上方压力区域。EMV指标显示买卖力量平衡略微偏多。RSI在高位，显示多头动能强，但需警惕超买风险。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1786671322.999239,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537213189723258961"
+  },
+  {
+    "id": "77814f6e",
+    "channel_id": 991362564657266780,
+    "channel_name": "🔥与tianluo田螺并肩奋战🔥",
+    "message_id": 1537472783922102384,
+    "author_name": "tianluo1560",
+    "author_id": 735852668353904660,
+    "question": "",
+    "draft_answer": "这张图是SPX指数的10分钟K线图，显示出连续的上涨趋势，但最近两根红色K线表明可能有短期回调压力。当前价格在前期高点附近遇阻，这是一个潜在的阻力区域。短期内需要观察能否企稳在前期高点上方，否则可能会回调至下方支撑位。关注成交量变化和关键均线支撑。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1786671326.0869832,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537472783922102384"
+  },
+  {
+    "id": "4243942d",
+    "channel_id": 991362564657266780,
+    "channel_name": "🔥与tianluo田螺并肩奋战🔥",
+    "message_id": 1537474786987352126,
+    "author_name": "tianluo1560",
+    "author_id": 735852668353904660,
+    "question": "",
+    "draft_answer": "当前SPX的15分钟K线图显示，价格在经历了一段上涨趋势后，目前出现回调迹象。上影线较长，表明上方存在一定压力。红色K线显示卖压增加，短期可能会测试下方支撑。注意前期低点区域的支撑力度，若能企稳或有反弹机会。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1786671328.459078,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537474786987352126"
+  },
+  {
+    "id": "1c04502f",
+    "channel_id": 991362564657266780,
+    "channel_name": "🔥与tianluo田螺并肩奋战🔥",
+    "message_id": 1537828736190382232,
+    "author_name": "tianluo1560",
+    "author_id": 735852668353904660,
+    "question": "",
+    "draft_answer": "从这张10分钟K线图来看，近期有明显的下跌趋势，表现在连续的红色K线。图中标注的箭头显示出下跌的动能增强，价格可能继续向下测试前期低点的支撑区域。上方的阴线也表明当前市场卖压较大。建议关注接下来是否有止跌信号或反弹迹象。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1786717346.49367,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537828736190382232"
+  },
+  {
+    "id": "4841c1a1",
+    "channel_id": 991362564657266780,
+    "channel_name": "🔥与tianluo田螺并肩奋战🔥",
+    "message_id": 1537855047826939965,
+    "author_name": "tianluo1560",
+    "author_id": 735852668353904660,
+    "question": "",
+    "draft_answer": "这张图显示了SPX在关键位分钟周期内的走势。可以看到在上方有明显的压力区域，价格在此遇阻回落。随后形成了一段较长的下跌趋势，直至下方支撑区域出现反弹迹象。当前价格在下方支撑区域附近徘徊，短期有可能继续反弹，但需要关注是否能突破前期高点压力区域。建议观察成交量变化和其他技术指标的配合。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1786723619.9884393,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537855047826939965"
+  },
+  {
+    "id": "4cb64392",
+    "channel_id": 951552694743605278,
+    "channel_name": "学习交流",
+    "message_id": 1537966652078030920,
+    "author_name": "sz_8",
+    "author_id": 847965349450088479,
+    "question": "",
+    "draft_answer": "这张图片是经济日历，显示了重要的经济事件和数据发布时间。以下是关键点：\n\n1. **美联储FOMC货币政策会议纪要**：通常对市场有较大影响，可能引发汇率和股市波动。\n\n2. **美国初请失业金人数**：是衡量就业市场健康的重要指标，数据变化可能影响市场预期。\n\n这些事件可能会导致市场短期波动。交易者应关注市场反应以调整策略。技术分析上，等待这些数据发布后的市场走势确认，避免因事件影响产生的噪音交易。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1786750229.8024552,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/951552694743605278/1537966652078030920"
+  },
+  {
+    "id": "5afbbdd3",
+    "channel_id": 1537662940440694786,
+    "channel_name": "1537662940440694786",
+    "message_id": 1538239997767979140,
+    "author_name": "miao6420",
+    "author_id": 767210890420027392,
+    "question": "怎么在5分钟图里找卖点",
+    "draft_answer": "在5min图里找卖点，可以等图上出现顶分型，或者在有4h或日线信号后，再去找5min的卖信号。保持对市场动态的关注，做好风险控制。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: es没有1h卖啊\nA: 用5min 图找 1h 的买卖点，会更快",
+        "score": 0.4083559513092041,
+        "distance": 0.5916440486907959,
+        "metadata": {
+          "type": "qa_pair",
+          "source_message_id": "1024776610580283402",
+          "channel_id": "912366231112282172",
+          "question": "es没有1h卖啊",
+          "total_chunks": 1,
+          "timestamp": "2022-09-28T16:16:23.391-04:00",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 周五买的DIA已经要看五分钟图准备卖了吗？\nA: 收到alert 后先提高止损，然后等图上卖信号出现然后再转5min 图 找5min 图卖信号或者顶分型",
+        "score": 0.3017154335975647,
+        "distance": 0.6982845664024353,
+        "metadata": {
+          "timestamp": "2026-01-05T12:32:35.487-05:00",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "source_message_id": "1457788888755081288",
+          "question": "周五买的DIA已经要看五分钟图准备卖了吗？"
+        }
+      },
+      {
+        "text": "Q: 谢谢。我是问如何从5min找买入点？\nA: 图上有 4h 或者日线信号 后 去看5min 图信号，或者5min 图回撤时候的底分型",
+        "score": 0.26048070192337036,
+        "distance": 0.7395192980766296,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "question": "谢谢。我是问如何从5min找买入点？",
+          "source_message_id": "1155221970170945626",
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "timestamp": "2023-09-23T15:19:40.675-04:00",
+          "total_chunks": 1
+        }
+      }
+    ],
+    "created_at": 1786815396.8966882,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538239997767979140"
+  },
+  {
+    "id": "8290826d",
+    "channel_id": 1537662940440694786,
+    "channel_name": "1537662940440694786",
+    "message_id": 1538240412240584877,
+    "author_name": "miao6420",
+    "author_id": 767210890420027392,
+    "question": "4小时卖信号是对应4小时买信号和日线买信号吗",
+    "draft_answer": "4小时卖信号通常对应着4小时买信号和日线买信号的关系。一般情况下，卖信号出现后，市场可能会出现回调，等待4小时或日线买信号再考虑入场。重要的是，要根据市场动态及时调整策略。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: 会是日线还是四小时线买信号？\nA: 日线买信号",
+        "score": 0.6194042861461639,
+        "distance": 0.38059571385383606,
+        "metadata": {
+          "chunk_index": 0,
+          "source_message_id": "1354589261751521321",
+          "question": "会是日线还是四小时线买信号？",
+          "total_chunks": 1,
+          "type": "qa_pair",
+          "timestamp": "2025-03-26T18:54:07.053-04:00",
+          "channel_id": "923449257711763466"
+        }
+      },
+      {
+        "text": "Q: 1小时买信号拿到现在\nA: 等图上出4h 或者日线出卖信号",
+        "score": 0.5439356863498688,
+        "distance": 0.4560643136501312,
+        "metadata": {
+          "type": "qa_pair",
+          "timestamp": "2025-10-28T16:51:07.281-04:00",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "source_message_id": "1432834087713898769",
+          "channel_id": "923449257711763466",
+          "question": "1小时买信号拿到现在"
+        }
+      },
+      {
+        "text": "Q: 一小时二小时四小时日线买信号几乎同时出现\nA: 周线，日线 小时 同时出买信号的时候也有",
+        "score": 0.527142733335495,
+        "distance": 0.472857266664505,
+        "metadata": {
+          "chunk_index": 0,
+          "question": "一小时二小时四小时日线买信号几乎同时出现",
+          "timestamp": "2026-02-06T13:28:50.27-05:00",
+          "source_message_id": "1469399455320113345",
+          "type": "qa_pair",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466"
+        }
+      }
+    ],
+    "created_at": 1786815496.8257334,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538240412240584877"
+  },
+  {
+    "id": "20757bf9",
+    "channel_id": 1537662940440694786,
+    "channel_name": "1537662940440694786",
+    "message_id": 1538240739627245568,
+    "author_name": "miao6420",
+    "author_id": 767210890420027392,
+    "question": "SPX240卖信号是对应4小时买信号和日线买信号吗",
+    "draft_answer": "SPX 240 卖信号并不直接对应4小时买信号和日线买信号。一般来说，4小时和日线买信号是基于市场趋势的反向信号，可能会在未来出现，但并不是直接的关联。要根据当前的市场动态和信号强度来判断下一步操作。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: spx出日线卖信号了\nA: 没有日线卖信号，有4h 卖信号",
+        "score": 0.5360913574695587,
+        "distance": 0.4639086425304413,
+        "metadata": {
+          "channel_id": "912366231112282172",
+          "total_chunks": 1,
+          "type": "qa_pair",
+          "question": "spx出日线卖信号了",
+          "timestamp": "2023-04-04T14:12:55.383-04:00",
+          "source_message_id": "1092874457875484824",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 树哥， 7月26号出的那个日线银色买点虽然是相当于4小时买信号的强度，但是您没有买，是不是代表它还是不如真正的4小时x0.25的买信号更强一点？这个牛头是否也是同理？\nA: spx 周线卖信号后大概率会有4h买信号。 \n这里4h 企稳后会有4h 0.25 买信号",
+        "score": 0.5186586380004883,
+        "distance": 0.4813413619995117,
+        "metadata": {
+          "source_message_id": "1269015664686010449",
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "question": "树哥， 7月26号出的那个日线银色买点虽然是相当于4小时买信号的强度，但是您没有买，是不是代表它还是不如真正的4小时x0.25的买信号更强一点？这个牛头是否也是同理？",
+          "timestamp": "2024-08-02T15:35:11.632-04:00",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: 会是日线还是四小时线买信号？\nA: 日线买信号",
+        "score": 0.5108776688575745,
+        "distance": 0.48912233114242554,
+        "metadata": {
+          "question": "会是日线还是四小时线买信号？",
+          "timestamp": "2025-03-26T18:54:07.053-04:00",
+          "source_message_id": "1354589261751521321",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1786815574.3051546,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538240739627245568"
+  },
+  {
+    "id": "00a7a1a4",
+    "channel_id": 1537662940440694786,
+    "channel_name": "1537662940440694786",
+    "message_id": 1538242446297923644,
+    "author_name": "miao6420",
+    "author_id": 767210890420027392,
+    "question": "NBIS这支股票走势如何",
+    "draft_answer": "对的，关于NBIS的走势，我没有具体的信息可以参考。不过一般来说，可以关注它的技术面，看看是否有明显的买卖信号，观察关键均线和支撑位的表现。结合市场情绪和成交量变化，可能会更有助于判断方向。",
+    "confidence": 4,
+    "context_snippets": [
+      {
+        "text": "理想论坛http://www. 55188. com 拈花微笑制作 \n指标剑法 \nNVI 指标位于其N 天移动平均线之上时，表示目前处于多头市场。 NVI 指标由下往上穿越其N 天移动平均线，代表长期买进讯号。 NVI 指标位于其N 天移动平均线之下时，表示目前处于空头市场。 NVI 指标由上往下穿越其N 天移动平均线时，代表长期卖出讯号。 NVI 指标与PVI 指标，分别向上穿越其N 天移动平均线时，视为大多头讯号。 深入讲解 \n由于散户扮演着行情追随者的角色，并且具有追涨杀跌的特证。 因此，当行情出现价涨量\n增的走势时，散户的信心增加，介入市场的动机转为积极。 此时，财力雄厚的“庄家”或者\n“大户”，正好趁行情活络的机会，顺势调节股票。 相反的，散户因为资金相对不足的原故，\n无法在股中行情不好的时候，逢低向下分批承接。 因此，当行情呈现价跌量缩的走势时，\n大部分散户会退场观望，此时，大户反而伺机吸纳股票。 因此理论上，NVI 指标将萎缩的\n成交量视为大户介入的资金。",
+        "score": 0.10780608654022217,
+        "distance": 0.8921939134597778,
+        "metadata": {
+          "chunk_index": 0,
+          "type": "book",
+          "page": 102,
+          "source": "技术分析基础大全",
+          "filename": "834043388-1-技术分析基础大全.pdf"
+        }
+      },
+      {
+        "text": "我是Ib 下单 ，tv 看图\n5min NQ 9月21到今天，总共交易41笔，收益214% 最大回撤 6.96 % VS buy and hold 7.8% 🤓🐮🐮😝\n明天我一个个检查下这41个 单子\n感觉我应该转战做nq去了🤪",
+        "score": 0.08187639713287354,
+        "distance": 0.9181236028671265,
+        "metadata": {
+          "total_chunks": 1,
+          "channel_id": "895384401809113108",
+          "chunk_index": 0,
+          "type": "grouped",
+          "timestamp": "2021-11-12T21:41:15.035-05:00",
+          "source_message_id": "908909346962960394"
+        }
+      },
+      {
+        "text": "13 了\n离max 不远了，20 max\n剩下的让他们去waiting list 了\n啥？\n哦哦\n😄\n没事，慢慢弄，我弄了一年\n😄\n今年基本就没给公司干活，全干私活了\n黑股？\n超跌股？\n那个也要小心，腰斩了还有腿斩，还有膝盖斩\n哦哦\n那么厉害？\n岂不是可以空？\npaper trade 试试先\nqqq？\nqqq 先不挂硬止损，不然开盘低开就打掉了。看看明天开盘25 中的情况\n是的\nxbi 我持有一点\n没有杠杆\n短线不一定，中长线感觉不错\nsean 看高盛研报\n我是看到有周线的 买信号，就买了一点拿着\n小生化有妖性，有杠杆拿不住\n所以我买的是xbi\n这个没有2倍杠杆对吧？\n我找了半天，没找到 2x\n3倍图不准，即使买3X 也是看1 X 的图\n3X有损耗，这种来回波动大的损耗更大\n还有就是 xbi 和labu 的成分股其实不是一模一样的",
+        "score": 0.0710635781288147,
+        "distance": 0.9289364218711853,
+        "metadata": {
+          "type": "grouped",
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "source_message_id": "922342868717297664",
+          "timestamp": "2021-12-19T23:21:16.204-05:00",
+          "channel_id": "912366231112282172"
+        }
+      }
+    ],
+    "created_at": 1786815980.7590566,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538242446297923644"
+  },
+  {
+    "id": "c9eee4ea",
+    "channel_id": 1537662940440694786,
+    "channel_name": "1537662940440694786",
+    "message_id": 1538242813651714168,
+    "author_name": "miao6420",
+    "author_id": 767210890420027392,
+    "question": "你看下你的信号系统里现在关键支撑位和均线在哪里",
+    "draft_answer": "信号系统里关键支撑位动态变化，目前在关键位附近是4h信号的位置。如果能在这个位置企稳，可以关注后续信号。均线方面，主要是根据当前行情判断，保持对关键均线的关注，比如EMA和MA的位置。具体的支撑位和均线需要实时分析，随时调整策略。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "信号不是到了点位出，逻辑是到了支撑位置然后看是否有企稳，如果没有企稳，或者跌破就会去找下一个支撑，或者上一个级别图的支撑。",
+        "score": 0.3376661539077759,
+        "distance": 0.6623338460922241,
+        "metadata": {
+          "total_chunks": 1,
+          "type": "standalone",
+          "chunk_index": 0,
+          "timestamp": "2025-09-05T15:13:06.504-04:00",
+          "channel_id": "912366231112282172",
+          "source_message_id": "1413602865070604368"
+        }
+      },
+      {
+        "text": "等信号，或者下个支撑位置，379观察下 5min K",
+        "score": 0.3048032522201538,
+        "distance": 0.6951967477798462,
+        "metadata": {
+          "type": "standalone",
+          "source_message_id": "931251486279737447",
+          "timestamp": "2022-01-13T13:20:56.145-05:00",
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 今天收在支撑位之下了，但是信号又固定了\nA: 收在之上会是红色信号，之下是黄色0.1 弱信号 （阳K",
+        "score": 0.2854917645454407,
+        "distance": 0.7145082354545593,
+        "metadata": {
+          "type": "qa_pair",
+          "timestamp": "2025-03-07T16:44:34.762-05:00",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "question": "今天收在支撑位之下了，但是信号又固定了",
+          "channel_id": "923449257711763466",
+          "source_message_id": "1347686392448421938"
+        }
+      }
+    ],
+    "created_at": 1786816068.0815268,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538242813651714168"
+  },
+  {
+    "id": "476d2b2c",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1539300419858210837,
+    "author_name": "wendyniannianyouyu",
+    "author_id": 908321344087818260,
+    "question": "这个1H小时买信号要买吗（之前有减仓）",
+    "draft_answer": "可以参考之前的策略，如果有创新高，且有踏空情绪的话，1h 买信号可以小仓位进场。如果没有踏空情绪，可以考虑等4h 买信号。注意仓位管理哦。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: qqq四小时现在有个买信号现在 那我是1h出卖信号减仓？\nA: 可以",
+        "score": 0.5630016922950745,
+        "distance": 0.43699830770492554,
+        "metadata": {
+          "question": "qqq四小时现在有个买信号现在 那我是1h出卖信号减仓？",
+          "source_message_id": "1142194800213381243",
+          "channel_id": "923449257711763466",
+          "timestamp": "2023-08-18T16:34:21.324-04:00",
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "Q: qqq有一小时买信号可以买吗？\nA: 1h 信号 ， 如果已有仓位很小 ，可以。",
+        "score": 0.5591288506984711,
+        "distance": 0.44087114930152893,
+        "metadata": {
+          "chunk_index": 0,
+          "timestamp": "2023-09-18T10:37:07.065-04:00",
+          "channel_id": "923449257711763466",
+          "source_message_id": "1153338922248716328",
+          "type": "qa_pair",
+          "question": "qqq有一小时买信号可以买吗？",
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "1h 买信号我应该会买，我的仓位不大了\n4h 信号会加",
+        "score": 0.5420655012130737,
+        "distance": 0.45793449878692627,
+        "metadata": {
+          "source_message_id": "1000092970818752522",
+          "total_chunks": 1,
+          "type": "grouped",
+          "channel_id": "923449257711763466",
+          "timestamp": "2022-07-22T13:32:25.072-04:00",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1787068225.674893,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1539300419858210837"
+  },
+  {
+    "id": "1c02fd76",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1539433784296873994,
+    "author_name": "bluepengli",
+    "author_id": 1066572366324441159,
+    "question": "大树，spx下一个support在哪里呢？",
+    "draft_answer": "最近一个支撑在spx 11.7号低点，收盘如果跌破可能会去测试下个支撑。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 大树 问一下spx支撑\nA: 最近一个支撑在spx7330",
+        "score": 0.48835909366607666,
+        "distance": 0.5116409063339233,
+        "metadata": {
+          "source": "discord_live",
+          "author_id": "747551330783985785",
+          "timestamp": "2026-05-18T02:05:20.168000+00:00",
+          "type": "qa_pair",
+          "channel_id": "923449257711763466",
+          "message_id": "1505753123438727330"
+        }
+      },
+      {
+        "text": "Q: 树哥，下一个支撑位置看哪里？5165？\nA: spx 5144 ，今天去不了",
+        "score": 0.4462883472442627,
+        "distance": 0.5537116527557373,
+        "metadata": {
+          "type": "qa_pair",
+          "question": "树哥，下一个支撑位置看哪里？5165？",
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "timestamp": "2024-05-31T10:41:29.42-04:00",
+          "chunk_index": 0,
+          "source_message_id": "1246111316238799031"
+        }
+      },
+      {
+        "text": "Q: @bigTreeSignal量化分析 树哥，哪里是支撑？谢谢\nA: spx 4070 和4101",
+        "score": 0.43728744983673096,
+        "distance": 0.562712550163269,
+        "metadata": {
+          "timestamp": "2023-04-27T14:46:03.813-04:00",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "source_message_id": "1101217718864187432",
+          "question": "@bigTreeSignal量化分析 树哥，哪里是支撑？谢谢",
+          "type": "qa_pair"
+        }
+      }
+    ],
+    "created_at": 1787100016.5913026,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1539433784296873994"
+  },
+  {
+    "id": "67d4e72b",
+    "channel_id": 1537662940440694786,
+    "channel_name": "1537662940440694786",
+    "message_id": 1539780211120545874,
+    "author_name": "miao6420",
+    "author_id": 767210890420027392,
+    "question": "",
+    "draft_answer": "这张图显示了一个可能处于下行趋势的市场。近期高点和低点逐步下降，形成了典型的下降趋势。观察到价格在短期均线下方，表明卖压较强。成交量在下跌过程中有增加的趋势，增加了下行压力的可信度。MACD指标显示出空头动能仍在延续。关注前期低点支撑区域以及均线附近的反弹可能性。",
+    "confidence": 9,
+    "context_snippets": [],
+    "created_at": 1787182612.9823425,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/@me/1537662940440694786/1539780211120545874"
+  },
+  {
+    "id": "fe54f8af",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1539813596974817310,
+    "author_name": "bluepengli",
+    "author_id": 1066572366324441159,
+    "question": "大树 请问dia出周线卖 是否很可怕",
+    "draft_answer": "看周线卖信号不一定可怕，得看后续反应。如果后面能企稳，可能还会有反弹。要注意市场走势。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 大树 unh出了周线买 能看一下吗\nA: 300附近",
+        "score": 0.3473937511444092,
+        "distance": 0.6526062488555908,
+        "metadata": {
+          "type": "qa_pair",
+          "question": "大树 unh出了周线买 能看一下吗",
+          "total_chunks": 1,
+          "timestamp": "2025-07-11T23:41:29.857-04:00",
+          "channel_id": "923449257711763466",
+          "chunk_index": 0,
+          "source_message_id": "1393437084932640798"
+        }
+      },
+      {
+        "text": "Q: 树哥下周看大盘还是下降通道？\nA: 短线是的",
+        "score": 0.22742313146591187,
+        "distance": 0.7725768685340881,
+        "metadata": {
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "timestamp": "2021-12-17T20:55:48.814-05:00",
+          "channel_id": "895384401809113108",
+          "question": "树哥下周看大盘还是下降通道？",
+          "source_message_id": "921581487659298836",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: 大树老师日线卖止损在哪？\nA: 4101，最差4050（至少 剩下的仓位不会亏）",
+        "score": 0.2118443250656128,
+        "distance": 0.7881556749343872,
+        "metadata": {
+          "total_chunks": 1,
+          "type": "qa_pair",
+          "timestamp": "2023-05-17T14:40:33.511-04:00",
+          "source_message_id": "1108464090789183558",
+          "channel_id": "923449257711763466",
+          "chunk_index": 0,
+          "question": "大树老师日线卖止损在哪？"
+        }
+      }
+    ],
+    "created_at": 1787190868.3609884,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1539813596974817310"
+  },
+  {
+    "id": "74449096",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1540059858156523621,
+    "author_name": "jingjingjing8753",
+    "author_id": 814903221054472203,
+    "question": "5min一般能出挺多信号的，有没有选择标准呀？",
+    "draft_answer": "选择5min信号时，可以关注底分型和重要阻力位置。没有大级别信号的话，尽量避免盲目操作。结合小时信号也会更有效。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "5min 信号，或者 5min 底分型",
+        "score": 0.4099733829498291,
+        "distance": 0.5900266170501709,
+        "metadata": {
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "source_message_id": "946082800916906044",
+          "channel_id": "923449257711763466",
+          "type": "standalone",
+          "timestamp": "2022-02-23T11:35:17.107-05:00"
+        }
+      },
+      {
+        "text": "5min 信号 和 底分型有了",
+        "score": 0.3238581418991089,
+        "distance": 0.6761418581008911,
+        "metadata": {
+          "source_message_id": "928671140489089024",
+          "type": "standalone",
+          "timestamp": "2022-01-06T10:27:33.768-05:00",
+          "total_chunks": 1,
+          "channel_id": "912366231112282172",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 主要是没有判断标准，看信号，5m，1m感觉配合不起来\nA: 之前说多，信号 不能用在1min 图",
+        "score": 0.3226218819618225,
+        "distance": 0.6773781180381775,
+        "metadata": {
+          "source_message_id": "948634551029207040",
+          "channel_id": "912366231112282172",
+          "question": "主要是没有判断标准，看信号，5m，1m感觉配合不起来",
+          "type": "qa_pair",
+          "total_chunks": 1,
+          "timestamp": "2022-03-02T12:35:01.743-05:00",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1787249286.1828446,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1540059858156523621"
+  },
+  {
+    "id": "003a0cd7",
+    "channel_id": 912366231112282172,
+    "channel_name": "🌴树懒🦥fullversion小队🐮",
+    "message_id": 1540100631723901078,
+    "author_name": "ally4712",
+    "author_id": 812842969538625538,
+    "question": "比特币这2天暴涨的逻辑是？",
+    "draft_answer": "比特币这两天的暴涨主要是由于市场对买入机会的重新评估。前期的震荡整理让买方和卖方达成了某种平衡，随后市场在关键支撑位反弹，吸引了更多买盘入场。 \n\n此外，市场消息的影响也不容忽视，一些利好信息可能推动了资金流入，造成了价格的快速上涨。投资者普遍对后市持乐观态度，进一步加剧了这种上涨趋势。\n\n保持关注市场的关键支撑和压力位，制定好交易计划。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "8. 4 AMERICAN DOLLAR/CANADIAN DOLLAR CURRENCY CROSS ($6C) 美\n元/加元 \n图表显示的是2020-07-22，区间背景是：在极限价格水平的交易。 在第二天的时候，价格在前一日的价值区域（value area）开盘。 一开始先横盘，暗示着买方和卖方之间的完全平衡。 我们估计代理人在此刻的操作会十分相似，这就导致了围绕着中心区域不断的震荡。 在这个基本背景下，假设市场继续这种平衡状态，没有新的信息导致参与者改变他们的评估， \n操作原则是：寻找在极端位置的反转。 也就是说，当价格和价值区域低点（Value Area Low）产生交互时，寻找\n买入机会。 并在高位卖出（Value Area High） \n \n因此，我们已经设置好了一个场景。 我们知道我们想要做的（买入或卖出），并且我们知道我们将要等待价格来到特定的位置，来触发我们的进场条\n件。 这意味着，拥有一个交易计划，而不是被动的跟随着价格和动量。 如你在图表所见，价格最终访问了价值区间的底部。",
+        "score": -0.013920068740844727,
+        "distance": 1.0139200687408447,
+        "metadata": {
+          "chunk_index": 0,
+          "page": 229,
+          "type": "book",
+          "source": "威科夫",
+          "filename": "766809205-威科夫2-0打印版-Wyckoff-2-0-Structures-Volume-Profile-and-Order-Flow.pdf"
+        }
+      },
+      {
+        "text": "市，从纯技术的角度，一旦明天不能马上从这里往上突破，就至少会出\n现盘整级别延伸。 也就是说，明天如果不能出现这两天震荡所形成中枢的第三类买点，则有下破5\n天线的可能就加大了。 当然，如果明天很快就站在今天盘整区间上震荡上行，那就继续观察下一个\n中枢的上移。 上面说的是纯短线技术方面的问题，基本面上，该出的消息被推迟，也是造成今天走势的直接原因，\n但这东西本周一定出来，但究竟有多大意义，估计只对基金等有影响，但这轮行情，基金丑态毕现。 今天最好玩的是事情就是那汉奸基金的破事被公开了，当然，这事情本ID 早知道，而且本ID 那\n14 只股票里有两只999、343，那汉奸都有，所以当时999 打回14 元下时，本ID 就说过，不想让\n汉奸以及老鼠仓出太高了。 本ID 以前说过，要实验一下阻击基金，探讨一下把基金给清盘的可能，\n本ID 的话不是白说的。 文章还在，有兴趣者可以去复习一下。 今天，本ID 有点想八卦一下，因为今天000416 第一个翻出两倍多，这是元旦后说的三只里的一只，\n调查一下，有谁能从3 元拿到现在？ 其他，000777 等很快也两倍了，还有人拿着吗？ 如果都没有，\n那么为什么？",
+        "score": -0.017964959144592285,
+        "distance": 1.0179649591445923,
+        "metadata": {
+          "source": "缠中说禅",
+          "chunk_index": 2,
+          "page": 115,
+          "type": "book",
+          "filename": "[缠中说禅：教你炒股票108课].李彪.文字插图版.pdf"
+        }
+      },
+      {
+        "text": "？ 背后的“原因”是什么\n买入突破，并让空头通过标记止损来平仓。 这费用\n简单的公式。 价格会累积，他们会操纵所有人退出市场，打破\n使用高点）并且他们想要更低的价格，他们会做的是诱导人们继续\n进入最后一个买入卖出蜡烛，那叫缓解。 所以我们通常会看到一个非常\n继续走高。 但是，根据更高的时间框架结构  (HTF)，它可以扫描\n当他们的意图太短时，他们利用资金将价格操纵在这些高点之上。 所以要\n是聪明的货币交易者根据一些入场技巧决定进入市场的地方。 钱，因为它要花钱，他们需要减轻这种损失。 那是什么意思？ 它的意思是\n价格水平被横扫和交易的概率非常高。 现在，价格总是可以\n某种重要的结构，然后回来减轻以平衡书籍。 最后一部分\n34\nMachine Translated by Google",
+        "score": -0.019238948822021484,
+        "distance": 1.0192389488220215,
+        "metadata": {
+          "source": "THE-MARKET",
+          "filename": "647251126-THE-MARKET.pdf",
+          "chunk_index": 1,
+          "type": "book",
+          "page": 37
+        }
+      }
+    ],
+    "created_at": 1787259007.8440266,
+    "status": "pending",
+    "final_answer": "",
+    "reviewed_at": 0.0,
+    "jump_url": "https://discord.com/channels/895349295975370802/912366231112282172/1540100631723901078"
+  }
+]

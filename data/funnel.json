@@ -1,0 +1,19 @@
+{
+  "joins": 2,
+  "welcome_dm_ok": 2,
+  "welcome_dm_blocked": 0,
+  "signal_cmd": 0,
+  "intent_hits": 0,
+  "cta_posts": 0,
+  "invite_joins": 0,
+  "daily": {
+    "2026-08-18": {
+      "joins": 1,
+      "welcome_dm_ok": 1
+    },
+    "2026-08-19": {
+      "joins": 1,
+      "welcome_dm_ok": 1
+    }
+  }
+}
