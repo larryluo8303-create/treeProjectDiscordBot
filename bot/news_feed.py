@@ -229,10 +229,7 @@ class NewsFeedCog(commands.Cog):
         if not NEWS_CHANNEL_IDS:
             logger.warning("News feed enabled but NEWS_CHANNEL_IDS is empty — skipping")
             return
-        if self._started:
-            return
-        self._started = True
-        # Backfill missed items before starting the poll loop
+        # Backfill missed items on every reconnect / startup (not only the first on_ready).
         if NEWS_BACKFILL_HOURS > 0 and self._last_id:
             logger.info("Jin10 backfill: starting with last_id=%s", self._last_id)
             try:
@@ -240,6 +237,9 @@ class NewsFeedCog(commands.Cog):
             except Exception as exc:
                 logger.warning("Jin10 news feed backfill failed: %s", exc)
             logger.info("Jin10 backfill: finished, last_id now=%s", self._last_id)
+        if self._started:
+            return
+        self._started = True
         if self._poll_task is None or self._poll_task.done():
             self._poll_task = asyncio.create_task(self._poll_loop())
             logger.info(
@@ -286,6 +286,16 @@ class NewsFeedCog(commands.Cog):
         except asyncio.CancelledError:
             pass
 
+    def _maybe_advance_last_id(self, candidate_ids: list[str]) -> None:
+        """Persist the highest seen Jin10 ID if it moves the cursor forward."""
+        valid = [i for i in candidate_ids if i]
+        if not valid:
+            return
+        new_last = max(valid)
+        if new_last > self._last_id:
+            self._last_id = new_last
+            _save_last_id(new_last)
+
     async def _fetch_and_post(self) -> None:
         """Fetch latest flash news from Jin10 and post new items to channels."""
         session = await self._get_session()
@@ -297,20 +307,14 @@ class NewsFeedCog(commands.Cog):
         items = _extract_items(payload)
 
         new_items = filter_items(items, self._last_id, NEWS_IMPORTANT_ONLY)
-
-        # Advance cursor to the max ID across ALL items (not just filtered)
-        # to prevent backfill from re-posting already-seen items on restart.
         all_ids = [it.get("id", "") for it in items if it.get("id")]
-        if all_ids:
-            max_id = max(all_ids)
-            if max_id > self._last_id:
-                self._last_id = max_id
-                _save_last_id(max_id)
 
         if not new_items:
+            # Advance past non-important / filtered items so they are not re-scanned.
+            self._maybe_advance_last_id(all_ids)
             return
 
-        # Post to all configured channels
+        posted_ids: list[str] = []
         for item in new_items:
             important = item.get("important")
             if important:
@@ -318,6 +322,7 @@ class NewsFeedCog(commands.Cog):
             else:
                 message = build_text(item)
 
+            posted_to_any = False
             for channel_id in NEWS_CHANNEL_IDS:
                 channel = self.bot.get_channel(channel_id)
                 if channel is None:
@@ -332,18 +337,33 @@ class NewsFeedCog(commands.Cog):
                         await channel.send(embed=message)
                     else:
                         await channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+                    posted_to_any = True
                 except (discord.Forbidden, discord.HTTPException) as exc:
                     logger.warning("News feed: failed to post to channel %d: %s", channel_id, exc)
 
+            if posted_to_any:
+                item_id = item.get("id", "")
+                if item_id:
+                    posted_ids.append(item_id)
+
+        if not posted_ids:
+            logger.warning("News feed: failed to post any items — not advancing last_id")
+            return
+
+        # Only advance after successful posts. If all items posted, also skip
+        # non-important items returned in the same API page.
+        if len(posted_ids) == len(new_items):
+            self._maybe_advance_last_id(all_ids)
+        else:
+            self._maybe_advance_last_id(posted_ids)
+
         logger.info("Jin10 news feed: posted %d item(s) to %d channel(s)",
-                     len(new_items), len(NEWS_CHANNEL_IDS))
+                     len(posted_ids), len(NEWS_CHANNEL_IDS))
 
     async def _backfill_on_startup(self) -> None:
-        """Fetch missed important items from the last N hours and post as a batch."""
+        """Fetch missed items from the last N hours and post as a batch."""
         cutoff = datetime.now(timezone.utc) - timedelta(hours=NEWS_BACKFILL_HOURS)
-        cutoff_naive = cutoff.replace(tzinfo=None)  # Jin10 times are in UTC+8
-        # Convert to Beijing time for comparison with item timestamps
-        cutoff_beijing = cutoff_naive + timedelta(hours=8)
+        cutoff_beijing = cutoff.astimezone(_TZ_BEIJING).replace(tzinfo=None)
 
         session = await self._get_session()
         all_missed: list[dict] = []
@@ -407,9 +427,20 @@ class NewsFeedCog(commands.Cog):
         if all_missed:
             ids = [it.get("id", "") for it in all_missed]
             logger.info("Jin10 backfill: collected IDs: %s", ids[:10])
-        backfill_items = filter_items(all_missed, self._last_id, important_only=True)
+        backfill_items = filter_items(all_missed, self._last_id, important_only=NEWS_IMPORTANT_ONLY)
+        all_collected_ids = [it.get("id", "") for it in all_missed if it.get("id")]
+
         if not backfill_items:
-            logger.info("Jin10 backfill: no missed important items found")
+            if all_collected_ids:
+                self._maybe_advance_last_id(all_collected_ids)
+            if all_missed:
+                logger.info(
+                    "Jin10 backfill: no missed %s items (%d raw item(s) filtered out)",
+                    "important" if NEWS_IMPORTANT_ONLY else "",
+                    len(all_missed),
+                )
+            else:
+                logger.info("Jin10 backfill: no missed important items found")
             return
 
         # Cap at a reasonable number to avoid flooding
@@ -455,15 +486,9 @@ class NewsFeedCog(commands.Cog):
                     logger.warning("News feed backfill: failed to post to channel %d: %s", channel_id, exc)
 
         # Update cursor to the max ID across ALL collected items (not just
-        # important ones) so subsequent backfills don't re-post the same items.
-        all_collected_ids = [it.get("id", "") for it in all_missed if it.get("id")]
-        if backfill_items:
-            all_collected_ids.append(backfill_items[-1].get("id", ""))
+        # posted ones) so subsequent backfills don't re-post the same items.
         if all_collected_ids:
-            newest_id = max(all_collected_ids)
-            if newest_id > self._last_id:
-                self._last_id = newest_id
-                _save_last_id(newest_id)
+            self._maybe_advance_last_id(all_collected_ids)
 
         logger.info(
             "Jin10 backfill: posted %d missed important item(s) to %d channel(s)",

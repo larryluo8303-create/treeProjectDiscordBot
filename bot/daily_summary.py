@@ -33,7 +33,7 @@ from bot.config import (
     LLM_MODEL,
     OWNER_USER_ID,
 )
-from bot.utils import save_summary
+from bot.utils import load_summaries, save_summary
 from bot.weekly_summary import collect_owner_messages, format_messages_for_gpt
 
 logger = logging.getLogger(__name__)
@@ -135,6 +135,22 @@ class DailySummaryCog(commands.Cog):
             self._task.cancel()
             self._task = None
 
+    def _already_posted_on_date(self, date_et) -> bool:
+        """True if a daily summary was already saved for this ET calendar date."""
+        for item in load_summaries(limit=10, summary_type="daily"):
+            ts = item.get("timestamp")
+            if not ts:
+                continue
+            try:
+                dt = datetime.fromisoformat(ts)
+            except ValueError:
+                continue
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            if dt.astimezone(_ET).date() == date_et:
+                return True
+        return False
+
     def _seconds_until_next(self) -> float:
         """Compute seconds until the next scheduled daily summary in ET."""
         now_et = datetime.now(_ET)
@@ -146,6 +162,8 @@ class DailySummaryCog(commands.Cog):
         for offset in range(8):
             candidate = now_et + timedelta(days=offset)
             if candidate.weekday() not in allowed_days:
+                continue
+            if self._already_posted_on_date(candidate.date()):
                 continue
             target = candidate.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
             if target > now_et:
@@ -177,19 +195,31 @@ class DailySummaryCog(commands.Cog):
         """Collect today's owner messages, summarise, and post."""
         try:
             now = datetime.now(timezone.utc)
-            # Collect messages from today only (since midnight ET)
             now_et = datetime.now(_ET)
+
+            if self._already_posted_on_date(now_et.date()):
+                logger.info("Daily summary: already posted today — skipping")
+                return
+
+            # Collect messages from today only (since midnight ET)
             midnight_et = now_et.replace(hour=0, minute=0, second=0, microsecond=0)
             since = midnight_et.astimezone(timezone.utc)
 
             logger.info("Daily summary: collecting owner messages since %s", since.isoformat())
 
-            messages = await collect_owner_messages(
+            messages, errors = await collect_owner_messages(
                 bot=self.bot,
                 channel_ids=DAILY_SUMMARY_CHANNELS,
                 owner_id=OWNER_USER_ID,
                 since=since,
             )
+
+            if errors and not messages:
+                logger.warning(
+                    "Daily summary: all channel reads failed (%d error(s)) — skipping",
+                    len(errors),
+                )
+                return
 
             if not messages:
                 logger.info("Daily summary: no owner messages found today — skipping")
@@ -220,16 +250,23 @@ class DailySummaryCog(commands.Cog):
             # Determine post channels
             post_channels = DAILY_SUMMARY_POST_CHANNELS if DAILY_SUMMARY_POST_CHANNELS else list(DAILY_SUMMARY_CHANNELS)
 
+            from bot.utils import resolve_channel
+
             sent = 0
             for cid in post_channels:
-                ch = self.bot.get_channel(cid)
-                if ch is None:
+                ch = await resolve_channel(self.bot, cid)
+                if ch is None or not hasattr(ch, "send"):
+                    logger.warning("Daily summary: channel %d not found or not messageable", cid)
                     continue
                 try:
                     await ch.send(content="@everyone", embed=embed)
                     sent += 1
                 except Exception as exc:
                     logger.warning("Daily summary: failed to post to channel %d: %s", cid, exc)
+
+            if sent <= 0:
+                logger.warning("Daily summary: failed to post to any channel — skipping save")
+                return
 
             logger.info("Daily summary: posted to %d channel(s)", sent)
 

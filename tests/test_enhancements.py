@@ -4,6 +4,8 @@ import tempfile
 import time
 from unittest.mock import patch
 
+import pytest
+
 from bot.clarification import (
     build_clarification_question,
     build_clarification_reply,
@@ -11,7 +13,7 @@ from bot.clarification import (
 )
 from bot.feature_flags import is_feature_enabled_for_channel
 from bot.guardrails import detect_high_risk_signals
-from bot.reliability import openai_error_rate, p95_latency_ms, record_openai_call
+from bot.reliability import openai_error_rate, p95_latency_ms, record_openai_call, sla_latencies
 from bot.session_summary import summarize_memory_entries
 
 
@@ -122,11 +124,187 @@ class TestReliabilityHelpers:
         result = p95_latency_ms(vals)
         assert result == 19 or result == 20  # 95th percentile of 1..20
 
+    def test_sla_latencies_drops_old_zero_and_hang_samples(self):
+        now = time.time()
+
+        class Rec:
+            def __init__(self, latency_ms, timestamp):
+                self.latency_ms = latency_ms
+                self.timestamp = timestamp
+
+        records = [
+            Rec(8833, now - 10 * 3600),       # too old
+            Rec(0, now - 10),                 # client_auto
+            Rec(8_187_336, now - 10),         # hang/restart outlier
+            Rec(3402, now - 10),              # valid
+            Rec(10160, now - 10),             # valid slow
+        ]
+        samples = sla_latencies(records, now=now, window_seconds=3600, max_sample_ms=60_000)
+        assert samples == [3402, 10160]
+
     def test_openai_error_rate(self):
+        from bot.reliability import reset_openai_calls
+
+        reset_openai_calls()
         record_openai_call(True)
         record_openai_call(False)
         rate = openai_error_rate(window_seconds=3600)
-        assert 0.0 <= rate <= 1.0
+        assert rate == 0.5
+
+    def test_openai_error_rate_empty(self):
+        from bot.reliability import reset_openai_calls
+
+        reset_openai_calls()
+        assert openai_error_rate() == 0.0
+
+    def test_openai_call_count(self):
+        from bot.reliability import openai_call_count, reset_openai_calls
+
+        reset_openai_calls()
+        record_openai_call(True)
+        record_openai_call(True)
+        record_openai_call(False)
+        assert openai_call_count() == 3
+
+
+class TestSlaEvaluate:
+    @pytest.mark.asyncio
+    async def test_small_sample_openai_errors_do_not_alert(self):
+        """3 calls with 1 failure is 33% but must not alert below min sample."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from bot.reliability import (
+            evaluate_and_alert,
+            mark_scheduler_tick,
+            record_openai_call,
+            reset_alert_state,
+            reset_openai_calls,
+        )
+
+        reset_openai_calls()
+        reset_alert_state()
+        mark_scheduler_tick()
+        record_openai_call(True)
+        record_openai_call(True)
+        record_openai_call(False)
+
+        mock_stats = MagicMock()
+        mock_stats.recent = []
+        mock_bot = MagicMock()
+        mock_bot.fetch_user = AsyncMock()
+
+        mock_queue = MagicMock()
+        mock_queue.expire_stale.return_value = 0
+        mock_queue.pending_count = 0
+
+        with patch("bot.review_queue.review_queue", mock_queue):
+            await evaluate_and_alert(mock_bot, mock_stats)
+
+        mock_bot.fetch_user.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_stale_backlog_is_expired_before_alert(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from bot.reliability import (
+            evaluate_and_alert,
+            mark_scheduler_tick,
+            reset_alert_state,
+            reset_openai_calls,
+        )
+
+        reset_openai_calls()
+        reset_alert_state()
+        mark_scheduler_tick()
+
+        mock_stats = MagicMock()
+        mock_stats.recent = []
+        mock_bot = MagicMock()
+        mock_bot.fetch_user = AsyncMock()
+
+        mock_queue = MagicMock()
+        mock_queue.expire_stale.return_value = 21
+        mock_queue.pending_count = 0
+
+        with patch("bot.review_queue.review_queue", mock_queue):
+            await evaluate_and_alert(mock_bot, mock_stats)
+
+        mock_queue.expire_stale.assert_called_once()
+        mock_bot.fetch_user.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_historical_p95_does_not_alert(self):
+        """A day-old 8833ms sample plus a hang outlier must not page."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from bot.reliability import (
+            evaluate_and_alert,
+            mark_scheduler_tick,
+            reset_alert_state,
+            reset_openai_calls,
+        )
+
+        reset_openai_calls()
+        reset_alert_state()
+        mark_scheduler_tick()
+
+        now = time.time()
+
+        class Rec:
+            def __init__(self, latency_ms, timestamp):
+                self.latency_ms = latency_ms
+                self.timestamp = timestamp
+
+        mock_stats = MagicMock()
+        mock_stats.recent = [
+            Rec(8833, now - 86400),
+            Rec(8_187_336, now - 100),
+            Rec(3402, now - 10),
+        ]
+        mock_bot = MagicMock()
+        mock_queue = MagicMock()
+        mock_queue.expire_stale.return_value = 0
+        mock_queue.pending_count = 0
+        webhook = MagicMock()
+        webhook.send_alert = AsyncMock()
+
+        with patch("bot.review_queue.review_queue", mock_queue):
+            await evaluate_and_alert(mock_bot, mock_stats, webhook_server=webhook)
+
+        webhook.send_alert.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_same_p95_alert_is_not_resent(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from bot.reliability import (
+            evaluate_and_alert,
+            mark_scheduler_tick,
+            reset_alert_state,
+            reset_openai_calls,
+        )
+
+        reset_openai_calls()
+        reset_alert_state()
+        mark_scheduler_tick()
+
+        now = time.time()
+
+        class Rec:
+            def __init__(self, latency_ms, timestamp):
+                self.latency_ms = latency_ms
+                self.timestamp = timestamp
+
+        mock_stats = MagicMock()
+        mock_stats.recent = [Rec(9000, now - 10) for _ in range(8)]
+        mock_bot = MagicMock()
+        mock_queue = MagicMock()
+        mock_queue.expire_stale.return_value = 0
+        mock_queue.pending_count = 0
+        webhook = MagicMock()
+        webhook.send_alert = AsyncMock()
+
+        with patch("bot.review_queue.review_queue", mock_queue):
+            await evaluate_and_alert(mock_bot, mock_stats, webhook_server=webhook)
+            await evaluate_and_alert(mock_bot, mock_stats, webhook_server=webhook)
+
+        assert webhook.send_alert.await_count == 1
 
 
 class TestSessionSummaryRecompression:

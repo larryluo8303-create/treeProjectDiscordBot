@@ -243,6 +243,57 @@ class TestReviewQueue:
 
         os.unlink(tmp_path)
 
+    def test_expire_stale_pending_items(self):
+        from bot.review_queue import ReviewQueue
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            json.dump([], f)
+            tmp_path = f.name
+
+        with patch("bot.review_queue.REVIEW_QUEUE_FILE", tmp_path):
+            q = ReviewQueue()
+            old = q.add(
+                channel_id=1, channel_name="ch", message_id=2,
+                author_name="u", author_id=3, question="old",
+                draft_answer="A", confidence=5,
+            )
+            fresh = q.add(
+                channel_id=1, channel_name="ch", message_id=3,
+                author_name="u", author_id=3, question="new",
+                draft_answer="B", confidence=5,
+            )
+            old.created_at = 1.0
+            n = q.expire_stale(max_age_seconds=60, now=1000.0)
+            assert n == 1
+            assert q.get(old.id).status == "expired"
+            assert q.get(fresh.id).status == "pending"
+            assert q.pending_count == 1
+
+        os.unlink(tmp_path)
+
+    def test_resolve_by_message_id(self):
+        from bot.review_queue import ReviewQueue
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            json.dump([], f)
+            tmp_path = f.name
+
+        with patch("bot.review_queue.REVIEW_QUEUE_FILE", tmp_path):
+            q = ReviewQueue()
+            item = q.add(
+                channel_id=1, channel_name="ch", message_id=42,
+                author_name="u", author_id=3, question="Q",
+                draft_answer="A", confidence=5,
+            )
+            resolved = q.resolve_by_message_id(42, "approved", "A")
+            assert resolved is not None
+            assert resolved.id == item.id
+            assert resolved.status == "approved"
+            assert q.pending_count == 0
+            assert q.resolve_by_message_id(42, "rejected") is None
+
+        os.unlink(tmp_path)
+
 
 class TestWSManager:
     """Test WebSocket connection manager."""

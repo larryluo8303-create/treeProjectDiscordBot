@@ -1,3 +1,5 @@
+> **归档文档**：历史设计/阶段指南，仅供参考。现行说明见上级目录的 PROJECT_GUIDE / FEATURE_LIST / SETUP_AND_TEST 等。
+
 # Phase 3: 新功能使用指南
 
 ---
@@ -36,7 +38,7 @@ Phase 3 新增 **8 个功能模块**，全部默认关闭（opt-in），按需�
 | Discord Bot | 已邀请到服务器且有权限 | Bot 在 Discord 服务器在线 |
 | FFmpeg | 语音转录需要 (F3) | `ffmpeg -version` |
 
-> **注意：** 如果你是从头开始部署，请先完成 [`PHASE1_2_GUIDE.md`](./PHASE1_2_GUIDE.md) 中的完整安装流程。
+> **注意：** 如果你是从头开始部署，请先完成 [`SETUP_AND_TEST.md`](../getting-started/SETUP_AND_TEST.md)（或本目录 [`PHASE1_2_GUIDE.md`](./PHASE1_2_GUIDE.md)）中的完整安装流程。
 
 ### 环境安装（如果尚未完成）
 

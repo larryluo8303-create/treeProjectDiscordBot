@@ -19,9 +19,11 @@ import argparse
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
+from functools import lru_cache
 
 import openai
 from tqdm import tqdm
@@ -50,7 +52,7 @@ WHISPER_MAX_BYTES = 24 * 1024 * 1024  # 24 MB — Whisper API hard limit is 25 M
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _extract_video_id(url: str) -> str | None:
+def extract_video_id(url: str) -> str | None:
     """Extract the YouTube video ID from various URL formats."""
     patterns = [
         r"(?:youtube\.com/watch\?.*v=)([A-Za-z0-9_-]{11})",
@@ -66,6 +68,10 @@ def _extract_video_id(url: str) -> str | None:
     if re.match(r"^[A-Za-z0-9_-]{11}$", url.strip()):
         return url.strip()
     return None
+
+
+# Backward-compatible alias
+_extract_video_id = extract_video_id
 
 
 def _merge_transcript_segments(segments, gap_seconds: float = 3.0) -> list[str]:
@@ -107,20 +113,69 @@ def _merge_transcript_segments(segments, gap_seconds: float = 3.0) -> list[str]:
     return paragraphs
 
 
+# ── Binary resolution helpers ─────────────────────────────────────────────────
+
+
+def _venv_bin_candidates(name: str) -> list[str]:
+    """Return possible binary paths inside the active interpreter's Scripts/bin dir."""
+    bindir = os.path.dirname(sys.executable)
+    names = [name]
+    if sys.platform == "win32":
+        names = [f"{name}.exe", name]
+    else:
+        names = [name, f"{name}.exe"]
+    return [os.path.join(bindir, n) for n in names]
+
+
+@lru_cache(maxsize=1)
+def _resolve_yt_dlp() -> str:
+    """Return the full path to yt-dlp, preferring the venv Scripts/bin directory."""
+    for path in _venv_bin_candidates("yt-dlp"):
+        if os.path.isfile(path):
+            return path
+    system_path = shutil.which("yt-dlp")
+    if system_path:
+        return system_path
+    raise RuntimeError(
+        "yt-dlp is not installed. Install it with: pip install 'yt-dlp[default]'"
+    )
+
+
+@lru_cache(maxsize=1)
+def _resolve_ffmpeg() -> str:
+    """Return the full path to ffmpeg (venv → imageio-ffmpeg → PATH)."""
+    for path in _venv_bin_candidates("ffmpeg"):
+        if os.path.isfile(path):
+            return path
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except (ImportError, FileNotFoundError, RuntimeError):
+        pass
+    system_path = shutil.which("ffmpeg")
+    if system_path:
+        return system_path
+    raise RuntimeError(
+        "ffmpeg is not installed. Place ffmpeg(+ffprobe) next to the Python "
+        "interpreter, install system ffmpeg, or: pip install imageio-ffmpeg"
+    )
+
+
 # ── Whisper transcription (audio fallback) ───────────────────────────────────
 
 
 def _check_yt_dlp() -> None:
-    """Raise a clear error if yt-dlp is not installed."""
+    """Raise a clear error if yt-dlp is not installed / not runnable."""
+    yt_dlp = _resolve_yt_dlp()
     result = subprocess.run(
-        ["yt-dlp", "--version"],
+        [yt_dlp, "--version"],
         capture_output=True,
         text=True,
     )
     if result.returncode != 0:
         raise RuntimeError(
-            "yt-dlp is not installed or not on PATH. "
-            "Install it with: pip install yt-dlp"
+            "yt-dlp is installed but failed to run. "
+            "Reinstall with: pip install -U 'yt-dlp[default]'"
         )
 
 
@@ -133,13 +188,16 @@ def _download_audio(video_id: str, output_dir: str) -> str:
     Returns the path to the downloaded .mp3 file.
     """
     _check_yt_dlp()
+    yt_dlp = _resolve_yt_dlp()
+    ffmpeg = _resolve_ffmpeg()
     output_template = os.path.join(output_dir, f"{video_id}.%(ext)s")
     cmd = [
-        "yt-dlp",
+        yt_dlp,
         "--extract-audio",
         "--audio-format", "mp3",
         "--audio-quality", "32K",          # low bitrate — ~14 MB/hr, good for Whisper
         "--postprocessor-args", "ffmpeg:-ac 1 -ar 16000",  # mono, 16kHz
+        "--ffmpeg-location", os.path.dirname(ffmpeg),
         "--no-playlist",
         "-o", output_template,
         f"https://www.youtube.com/watch?v={video_id}",
@@ -164,10 +222,11 @@ def _split_audio_ffmpeg(
 
     Returns a sorted list of chunk file paths.
     """
+    ffmpeg = _resolve_ffmpeg()
     base = os.path.splitext(os.path.basename(input_path))[0]
     pattern = os.path.join(output_dir, f"{base}_chunk_%03d.mp3")
     cmd = [
-        "ffmpeg", "-i", input_path,
+        ffmpeg, "-i", input_path,
         "-f", "segment",
         "-segment_time", str(chunk_seconds),
         "-c", "copy",
@@ -387,7 +446,7 @@ def run_youtube_ingestion(
     # Resolve video IDs
     video_ids: list[str] = []
     for url in urls:
-        vid = _extract_video_id(url)
+        vid = extract_video_id(url)
         if vid:
             video_ids.append(vid)
         else:

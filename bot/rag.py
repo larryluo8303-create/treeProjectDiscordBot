@@ -266,6 +266,15 @@ def _redact_price_levels(text: str) -> tuple[str, int]:
     return text, hits
 
 
+def _record_openai_call(success: bool) -> None:
+    """Record one logical OpenAI request (not each retry attempt)."""
+    try:
+        from bot.reliability import record_openai_call
+        record_openai_call(success)
+    except Exception:
+        pass
+
+
 async def _openai_chat_with_retry(
     openai_client: openai.AsyncOpenAI,
     *,
@@ -277,6 +286,8 @@ async def _openai_chat_with_retry(
     """Call OpenAI chat completions with a single retry on transient errors.
 
     Returns the raw response text, or ``None`` if both attempts fail.
+    Records SLA success/failure once per logical request, so a recovered
+    retry does not inflate the error rate.
     """
     try:
         response = await openai_client.chat.completions.create(
@@ -285,18 +296,9 @@ async def _openai_chat_with_retry(
             max_tokens=max_tokens,
             temperature=temperature,
         )
-        try:
-            from bot.reliability import record_openai_call
-            record_openai_call(True)
-        except Exception:
-            pass
+        _record_openai_call(True)
         return response.choices[0].message.content or ""
     except (openai.APITimeoutError, openai.APIConnectionError) as first_err:
-        try:
-            from bot.reliability import record_openai_call
-            record_openai_call(False)
-        except Exception:
-            pass
         logger.warning("OpenAI API error (%s) — retrying once", type(first_err).__name__)
         try:
             response = await openai_client.chat.completions.create(
@@ -305,18 +307,10 @@ async def _openai_chat_with_retry(
                 max_tokens=max_tokens,
                 temperature=temperature,
             )
-            try:
-                from bot.reliability import record_openai_call
-                record_openai_call(True)
-            except Exception:
-                pass
+            _record_openai_call(True)
             return response.choices[0].message.content or ""
         except Exception as retry_err:
-            try:
-                from bot.reliability import record_openai_call
-                record_openai_call(False)
-            except Exception:
-                pass
+            _record_openai_call(False)
             logger.error("OpenAI API retry also failed: %s", retry_err)
             return None
 

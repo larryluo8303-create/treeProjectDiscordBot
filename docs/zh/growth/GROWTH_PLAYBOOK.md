@@ -4,7 +4,7 @@
 > 成交产品：订阅介绍频道（BigTreeSignal）  
 > 介绍页：[订阅介绍频道](https://discordapp.com/channels/895349295975370802/923313988996051005)  
 > 成交方式：看完介绍后，**私信频道主**开通  
-> 配套功能清单：见 [`FEATURE_LIST.md`](./FEATURE_LIST.md) 第 57–62 条；推广命令见 [`PROMOTION_GUIDE.md`](./PROMOTION_GUIDE.md)
+> 配套功能清单：见 [`FEATURE_LIST.md`](../features/FEATURE_LIST.md) 第 57–62 条；推广命令见 [`PROMOTION_GUIDE.md`](../operations/PROMOTION_GUIDE.md)
 
 本文是给频道主的操作手册：你做什么、Bot/AI 做什么、按哪一周做、文案怎么发。不群发未同意成员的促销私信。
 
@@ -220,7 +220,7 @@ https://discordapp.com/channels/895349295975370802/923313988996051005
 
 ### P3 — 自愿名单上的回归私信
 
-代码已有（[`FEATURE_LIST.md`](./FEATURE_LIST.md) 第 62 条）。第 0 周配好「活动通知」并有人领取后即可用，不必等 P0 做完。
+代码已有（[`FEATURE_LIST.md`](../features/FEATURE_LIST.md) 第 62 条）。第 0 周配好「活动通知」并有人领取后即可用，不必等 P0 做完。
 
 **不做：** 自动代替你报价；对未领取通知的人群发促销私信。
 

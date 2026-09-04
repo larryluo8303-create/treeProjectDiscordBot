@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -348,7 +348,6 @@ class TestAutoIngest:
     @pytest.mark.asyncio
     async def test_post_summary_sends_embed(self):
         from bot.youtube_monitor import YouTubeMonitorCog
-        from unittest.mock import AsyncMock, MagicMock
 
         bot = MagicMock()
         mock_channel = AsyncMock()
@@ -358,17 +357,48 @@ class TestAutoIngest:
 
         with patch("bot.youtube_monitor.YOUTUBE_SUMMARY_CHANNELS", [12345]), \
              patch("bot.acquisition.record_funnel"):
-            await cog._post_summary("Test Video", "Summary text", "https://youtube.com/watch?v=abc")
+            posted = await cog._post_summary("Test Video", "Summary text", "https://youtube.com/watch?v=abc")
+            assert posted == 1
             mock_channel.send.assert_called_once()
             call_kwargs = mock_channel.send.call_args.kwargs
             embed = call_kwargs["embed"]
             assert "Test Video" in embed.title
             assert "Summary text" in embed.description
+            assert "内容摘要" in embed.footer.text
+
+    @pytest.mark.asyncio
+    async def test_post_summary_from_title_footer(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        bot = MagicMock()
+        mock_channel = AsyncMock()
+        bot.get_channel.return_value = mock_channel
+        cog = YouTubeMonitorCog(bot)
+
+        with patch("bot.youtube_monitor.YOUTUBE_SUMMARY_CHANNELS", [12345]), \
+             patch("bot.acquisition.record_funnel"):
+            posted = await cog._post_summary(
+                "Test", "Title-only summary", "https://youtube.com/watch?v=abc",
+                from_title=True,
+            )
+            assert posted == 1
+            embed = mock_channel.send.call_args.kwargs["embed"]
+            assert "标题" in embed.footer.text
+
+    @pytest.mark.asyncio
+    async def test_post_summary_returns_zero_when_no_channels(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        cog = YouTubeMonitorCog(MagicMock())
+        with patch("bot.youtube_monitor.YOUTUBE_SUMMARY_CHANNELS", []), \
+             patch("bot.youtube_monitor.YOUTUBE_LESSON_PUSH_CHANNELS", []), \
+             patch("bot.youtube_monitor.PROMO_CHANNEL_IDS", []):
+            posted = await cog._post_summary("T", "S", "https://youtube.com/watch?v=abc")
+            assert posted == 0
 
     @pytest.mark.asyncio
     async def test_post_summary_falls_back_to_lesson_channels(self):
         from bot.youtube_monitor import YouTubeMonitorCog
-        from unittest.mock import AsyncMock, MagicMock
 
         bot = MagicMock()
         mock_channel = AsyncMock()
@@ -379,7 +409,8 @@ class TestAutoIngest:
         with patch("bot.youtube_monitor.YOUTUBE_SUMMARY_CHANNELS", []), \
              patch("bot.youtube_monitor.YOUTUBE_LESSON_PUSH_CHANNELS", [67890]), \
              patch("bot.acquisition.record_funnel"):
-            await cog._post_summary("Test", "Summary", "https://youtube.com/watch?v=abc")
+            posted = await cog._post_summary("Test", "Summary", "https://youtube.com/watch?v=abc")
+            assert posted == 1
             bot.get_channel.assert_called_with(67890)
 
     @pytest.mark.asyncio
@@ -400,3 +431,245 @@ class TestAutoIngest:
             # The auto-ingest block should not execute
             assert not False  # YOUTUBE_AUTO_INGEST is False, so block is skipped
             cog._ingest_video.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_summary_posted_when_ingest_returns_zero(self):
+        """Summary should still be generated from ChromaDB when ingest returns 0 (already ingested)."""
+        from bot.youtube_monitor import YouTubeMonitorCog
+        from unittest.mock import AsyncMock, MagicMock
+
+        mock_openai = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.choices = [MagicMock()]
+        mock_resp.choices[0].message.content = "这是视频摘要。"
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+        bot = MagicMock()
+        mock_channel = AsyncMock()
+        bot.get_channel.return_value = mock_channel
+
+        cog = YouTubeMonitorCog(bot, mock_openai)
+
+        cog._ingest_video = AsyncMock(return_value=(0, ""))
+        cog._fetch_transcript_from_db = AsyncMock(return_value="DB transcript text here")
+
+        with patch("bot.youtube_monitor.YOUTUBE_AUTO_INGEST", True), \
+             patch("bot.youtube_monitor.YOUTUBE_SUMMARY_CHANNELS", [12345]), \
+             patch("bot.acquisition.record_funnel"):
+            await cog._generate_and_post_summary("Test", "https://youtube.com/watch?v=abc", "")
+            # No transcript → falls back, but we passed empty string
+            # So test the full flow with ChromaDB fallback
+            cog._fetch_transcript_from_db.assert_not_called()  # not called here, called in _check_for_new_video
+
+        # Test generate_and_post_summary with transcript from ChromaDB
+        with patch("bot.youtube_monitor.YOUTUBE_SUMMARY_CHANNELS", [12345]), \
+             patch("bot.acquisition.record_funnel"):
+            await cog._generate_and_post_summary("Test", "https://youtube.com/watch?v=abc", "DB transcript text here")
+            mock_openai.chat.completions.create.assert_called()
+            mock_channel.send.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_notification_posted_when_no_transcript(self):
+        """A fallback notification should be sent even without any transcript."""
+        from bot.youtube_monitor import YouTubeMonitorCog
+        from unittest.mock import AsyncMock, MagicMock
+
+        bot = MagicMock()
+        mock_channel = AsyncMock()
+        bot.get_channel.return_value = mock_channel
+        cog = YouTubeMonitorCog(bot, openai_client=None)
+
+        with patch("bot.youtube_monitor.YOUTUBE_SUMMARY_CHANNELS", [12345]):
+            await cog._generate_and_post_summary("Test Video", "https://youtube.com/watch?v=abc", "")
+            mock_channel.send.assert_called_once()
+            call_kwargs = mock_channel.send.call_args.kwargs
+            embed = call_kwargs["embed"]
+            assert "新视频" in embed.title
+
+
+class TestResendSummarySlashCommand:
+    """Tests for the /resend_summary slash command."""
+
+    def _interaction(self, user_id: int = 111111) -> AsyncMock:
+        interaction = AsyncMock()
+        interaction.user.id = user_id
+        interaction.edit_original_response = AsyncMock()
+        interaction.followup.send = AsyncMock()
+        return interaction
+
+    @pytest.mark.asyncio
+    async def test_non_owner_rejected(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        bot = MagicMock()
+        cog = YouTubeMonitorCog(bot)
+        interaction = self._interaction(999999)
+
+        with patch("bot.youtube_monitor.OWNER_USER_ID", 111111):
+            await cog.resend_summary_cmd.callback(cog, interaction)
+        interaction.response.send_message.assert_called_once()
+        args = interaction.response.send_message.call_args
+        assert "频道主" in args.args[0] or "频道主" in args.kwargs.get("content", args.args[0])
+
+    @pytest.mark.asyncio
+    async def test_uses_last_video_when_no_url(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        mock_openai = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.choices = [MagicMock()]
+        mock_resp.choices[0].message.content = "这是摘要。"
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+        cog = YouTubeMonitorCog(MagicMock(), mock_openai)
+        cog._fetch_transcript_from_db = AsyncMock(return_value="转录文本")
+        cog._post_summary = AsyncMock(return_value=1)
+
+        interaction = self._interaction()
+
+        with patch("bot.youtube_monitor.OWNER_USER_ID", 111111), \
+             patch("bot.youtube_monitor._load_last_video", return_value={"video_id": "abc12345678", "title": "Test"}):
+            await cog.resend_summary_cmd.callback(cog, interaction, video_url=None, title=None)
+
+        interaction.response.defer.assert_called_once()
+        cog._fetch_transcript_from_db.assert_called_once_with("abc12345678")
+        mock_openai.chat.completions.create.assert_called_once()
+        cog._post_summary.assert_called_once()
+        final = interaction.edit_original_response.call_args_list[-1]
+        content = final.kwargs.get("content") or (final.args[0] if final.args else "")
+        assert "发送到 1 个频道" in content
+
+    @pytest.mark.asyncio
+    async def test_auto_ingest_when_not_in_chromadb(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        mock_openai = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.choices = [MagicMock()]
+        mock_resp.choices[0].message.content = "摘要内容"
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+        cog = YouTubeMonitorCog(MagicMock(), mock_openai)
+        cog._fetch_transcript_from_db = AsyncMock(return_value="")
+        cog._ingest_video = AsyncMock(return_value=(5, "导入的转录文本"))
+        cog._post_summary = AsyncMock(return_value=1)
+
+        interaction = self._interaction()
+
+        with patch("bot.youtube_monitor.OWNER_USER_ID", 111111), \
+             patch("bot.youtube_monitor._load_last_video", return_value={"video_id": "xyz789ABCDE", "title": "Test Video"}):
+            await cog.resend_summary_cmd.callback(cog, interaction, video_url=None, title=None)
+
+        cog._fetch_transcript_from_db.assert_called_once_with("xyz789ABCDE")
+        cog._ingest_video.assert_called_once_with("xyz789ABCDE", "https://www.youtube.com/watch?v=xyz789ABCDE")
+        mock_openai.chat.completions.create.assert_called_once()
+        cog._post_summary.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_parses_video_url_param(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        mock_openai = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.choices = [MagicMock()]
+        mock_resp.choices[0].message.content = "摘要"
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+        cog = YouTubeMonitorCog(MagicMock(), mock_openai)
+        cog._fetch_transcript_from_db = AsyncMock(return_value="transcript")
+        cog._post_summary = AsyncMock(return_value=1)
+
+        interaction = self._interaction()
+
+        with patch("bot.youtube_monitor.OWNER_USER_ID", 111111):
+            await cog.resend_summary_cmd.callback(
+                cog, interaction,
+                video_url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                title="自定义标题",
+            )
+
+        cog._fetch_transcript_from_db.assert_called_once_with("dQw4w9WgXcQ")
+        cog._post_summary.assert_called_once_with(
+            "自定义标题", "摘要", "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            from_title=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_invalid_url_rejected(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        cog = YouTubeMonitorCog(MagicMock(), AsyncMock())
+        interaction = self._interaction()
+
+        with patch("bot.youtube_monitor.OWNER_USER_ID", 111111):
+            await cog.resend_summary_cmd.callback(
+                cog, interaction, video_url="https://example.com/not-youtube", title=None,
+            )
+
+        statuses = [str(c) for c in interaction.edit_original_response.call_args_list]
+        assert any("无法从链接" in s for s in statuses)
+
+    @pytest.mark.asyncio
+    async def test_ingest_failure_falls_back_to_title(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        mock_openai = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.choices = [MagicMock()]
+        mock_resp.choices[0].message.content = "标题摘要"
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+        cog = YouTubeMonitorCog(MagicMock(), mock_openai)
+        cog._fetch_transcript_from_db = AsyncMock(return_value="")
+        cog._ingest_video = AsyncMock(side_effect=RuntimeError("ffmpeg missing /tmp/secret"))
+        cog._post_summary = AsyncMock(return_value=1)
+
+        interaction = self._interaction()
+
+        with patch("bot.youtube_monitor.OWNER_USER_ID", 111111), \
+             patch("bot.youtube_monitor._load_last_video", return_value={"video_id": "abcdefghijk", "title": "T"}):
+            await cog.resend_summary_cmd.callback(cog, interaction, video_url=None, title=None)
+
+        # Must not leak exception details into Discord status
+        statuses = [str(c) for c in interaction.edit_original_response.call_args_list]
+        assert not any("ffmpeg missing" in s or "/tmp/secret" in s for s in statuses)
+        cog._post_summary.assert_called_once()
+        assert cog._post_summary.call_args.kwargs.get("from_title") is True
+
+    @pytest.mark.asyncio
+    async def test_post_failure_reports_error(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        mock_openai = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.choices = [MagicMock()]
+        mock_resp.choices[0].message.content = "摘要"
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+        cog = YouTubeMonitorCog(MagicMock(), mock_openai)
+        cog._fetch_transcript_from_db = AsyncMock(return_value="transcript")
+        cog._post_summary = AsyncMock(return_value=0)
+
+        interaction = self._interaction()
+
+        with patch("bot.youtube_monitor.OWNER_USER_ID", 111111), \
+             patch("bot.youtube_monitor._load_last_video", return_value={"video_id": "abcdefghijk", "title": "T"}):
+            await cog.resend_summary_cmd.callback(cog, interaction, video_url=None, title=None)
+
+        statuses = [str(c) for c in interaction.edit_original_response.call_args_list]
+        assert any("未能发送" in s for s in statuses)
+
+    @pytest.mark.asyncio
+    async def test_busy_lock_rejects_second_call(self):
+        from bot.youtube_monitor import YouTubeMonitorCog
+
+        cog = YouTubeMonitorCog(MagicMock(), AsyncMock())
+        await cog._resend_lock.acquire()
+        try:
+            interaction = self._interaction()
+            with patch("bot.youtube_monitor.OWNER_USER_ID", 111111):
+                await cog.resend_summary_cmd.callback(cog, interaction, video_url=None, title=None)
+            statuses = [str(c) for c in interaction.edit_original_response.call_args_list]
+            assert any("进行中" in s for s in statuses)
+        finally:
+            cog._resend_lock.release()

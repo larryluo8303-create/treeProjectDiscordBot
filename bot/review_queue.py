@@ -32,7 +32,7 @@ class ReviewItem:
     confidence: int
     context_snippets: list[dict]
     created_at: float
-    status: str = "pending"  # pending | approved | edited | rejected
+    status: str = "pending"  # pending | approved | edited | rejected | expired
     final_answer: str = ""
     reviewed_at: float = 0.0
     jump_url: str = ""
@@ -147,6 +147,43 @@ class ReviewQueue:
             self._save()
             return item
         return None
+
+    def resolve_by_message_id(
+        self,
+        message_id: int,
+        status: str,
+        final_answer: str = "",
+    ) -> ReviewItem | None:
+        """Mark the pending item for a Discord message as reviewed.
+
+        Used to keep the app queue in sync when the owner acts on the
+        Discord DM review buttons.
+        """
+        for item in self._items.values():
+            if item.message_id == message_id and item.status == "pending":
+                item.status = status
+                item.final_answer = final_answer
+                item.reviewed_at = time.time()
+                self._save()
+                return item
+        return None
+
+    def expire_stale(self, max_age_seconds: float, now: float | None = None) -> int:
+        """Mark pending items older than ``max_age_seconds`` as expired.
+
+        Returns the number of items expired.
+        """
+        now = now if now is not None else time.time()
+        n = 0
+        for item in self._items.values():
+            if item.status == "pending" and now - item.created_at > max_age_seconds:
+                item.status = "expired"
+                item.reviewed_at = now
+                n += 1
+        if n:
+            self._save()
+            logger.info("Expired %d stale review queue item(s)", n)
+        return n
 
     @property
     def pending_count(self) -> int:

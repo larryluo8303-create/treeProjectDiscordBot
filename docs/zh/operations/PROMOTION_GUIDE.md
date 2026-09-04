@@ -41,7 +41,7 @@
 | Discord Bot | 已邀请到服务器 | 需要 `bot` + `applications.commands` scope |
 | 知识库数据 | 已导入 ChromaDB | `python -m ingestion.ingest` 已运行 |
 
-> **注意：** 如果 Bot 尚未部署，请先完成 [`PHASE1_2_GUIDE.md`](./PHASE1_2_GUIDE.md) 中的完整安装流程，再回来开启推广功能。
+> **注意：** 如果 Bot 尚未部署，请先完成 [`SETUP_AND_TEST.md`](../getting-started/SETUP_AND_TEST.md)（或归档文档 [`PHASE1_2_GUIDE.md`](../archive/PHASE1_2_GUIDE.md)）中的完整安装流程，再回来开启推广功能。
 
 ### 环境安装（如果尚未完成）
 

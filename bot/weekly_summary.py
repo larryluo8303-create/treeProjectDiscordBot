@@ -8,12 +8,16 @@ Configurable via env:
 - WEEKLY_SUMMARY_CHANNELS      (comma-separated channel IDs to scan for owner messages)
 - WEEKLY_SUMMARY_DAY           (0=Mon … 5=Sat 6=Sun, default 5)
 - WEEKLY_SUMMARY_HOUR          (hour in ET / UTC-4, default 14)
+- WEEKLY_SUMMARY_MINUTE        (minute of hour, default 0)
 - WEEKLY_SUMMARY_POST_CHANNELS (where to post the summary; falls back to WEEKLY_SUMMARY_CHANNELS)
 """
+
+from __future__ import annotations
 
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 import discord
@@ -31,7 +35,7 @@ from bot.config import (
     WEEKLY_SUMMARY_MINUTE,
     WEEKLY_SUMMARY_POST_CHANNELS,
 )
-from bot.utils import save_summary
+from bot.utils import load_summaries, save_summary
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +57,11 @@ _SUMMARY_SYSTEM_PROMPT = (
 )
 
 _MAX_CONTENT_CHARS = 30000  # Limit total content sent to GPT
+_RETRY_SECONDS = 30 * 60  # retry after network / GPT failure
+_CATCHUP_GRACE_HOURS = 18  # still run if we wake within this window after target
+_SLEEP_CHUNK_SECONDS = 60  # re-check clock often (survives PC sleep better)
+
+RunStatus = Literal["posted", "empty", "failed"]
 
 
 # ── Message collection ─────────────────────────────────────────────────────
@@ -64,12 +73,15 @@ async def collect_owner_messages(
     since: datetime,
     limit: int = 5000,
     oldest_first: bool = True,
-) -> list[dict]:
+) -> tuple[list[dict], list[str]]:
     """Fetch owner messages and owner replies from the given channels since ``since``.
 
-    Returns a list of dicts: ``{"channel": str, "time": str, "content": str, "is_reply": bool}``.
+    Returns ``(messages, errors)`` where *errors* lists channel-level failures
+    (network / permission). An empty *messages* with non-empty *errors* means
+    the run should be retried — not treated as “no messages this week”.
     """
     messages: list[dict] = []
+    errors: list[str] = []
     per_channel = max(1, min(5000, limit))
 
     for cid in channel_ids:
@@ -77,12 +89,16 @@ async def collect_owner_messages(
         if channel is None:
             try:
                 channel = await bot.fetch_channel(cid)
-            except Exception:
-                logger.warning("Summary: cannot access channel %d", cid)
+            except Exception as exc:
+                msg = f"cannot access channel {cid}: {exc}"
+                logger.warning("Summary: %s", msg)
+                errors.append(msg)
                 continue
 
         if not hasattr(channel, "history"):
-            logger.warning("Summary: channel %d has no message history", cid)
+            msg = f"channel {cid} has no message history"
+            logger.warning("Summary: %s", msg)
+            errors.append(msg)
             continue
 
         channel_name = getattr(channel, "name", str(cid))
@@ -119,11 +135,15 @@ async def collect_owner_messages(
                     "is_reply": is_reply,
                 })
         except discord.Forbidden:
-            logger.warning("Summary: no permission to read channel %d", cid)
+            msg = f"no permission to read channel {cid}"
+            logger.warning("Summary: %s", msg)
+            errors.append(msg)
         except Exception as exc:
-            logger.warning("Summary: error reading channel %d: %s", cid, exc)
+            msg = f"error reading channel {cid}: {exc}"
+            logger.warning("Summary: %s", msg)
+            errors.append(msg)
 
-    return messages
+    return messages, errors
 
 
 def format_messages_for_gpt(messages: list[dict]) -> str:
@@ -210,11 +230,18 @@ class WeeklySummaryCog(commands.Cog):
             return
         await interaction.response.defer(ephemeral=True)
         try:
-            await self._run_summary()
-            await interaction.followup.send("✅ 本周总结已推送。", ephemeral=True)
+            status = await self._run_summary()
+            if status == "posted":
+                await interaction.followup.send("✅ 本周总结已推送。", ephemeral=True)
+            elif status == "empty":
+                await interaction.followup.send("⚠️ 本周未找到频道主消息，未推送。", ephemeral=True)
+            else:
+                await interaction.followup.send(
+                    "❌ 推送失败（网络或 GPT 错误），请查看日志后重试。", ephemeral=True,
+                )
         except Exception as exc:
             logger.exception("Manual weekly summary failed: %s", exc)
-            await interaction.followup.send(f"❌ 推送失败: {exc}", ephemeral=True)
+            await interaction.followup.send(f"❌ 推送失败: {type(exc).__name__}", ephemeral=True)
 
     @staticmethod
     def _task_done(task: asyncio.Task) -> None:
@@ -231,17 +258,55 @@ class WeeklySummaryCog(commands.Cog):
             self._task.cancel()
             self._task = None
 
+    async def _sleep_chunked(self, total_seconds: float) -> None:
+        """Sleep in short chunks so PC sleep / clock skew is re-checked often."""
+        remaining = max(0.0, total_seconds)
+        while remaining > 0:
+            chunk = min(_SLEEP_CHUNK_SECONDS, remaining)
+            await asyncio.sleep(chunk)
+            remaining -= chunk
+            # If we overslept into (or past) the target window, stop early.
+            if self._is_due(grace_hours=_CATCHUP_GRACE_HOURS):
+                logger.info("Weekly summary: target window reached during sleep — waking early")
+                return
+
     async def _loop(self) -> None:
-        """Sleep until the target day+hour, fire summary, repeat."""
+        """Sleep until the target day+hour, fire summary, repeat; retry on failure."""
         try:
             logger.info("Weekly summary: entering scheduling loop")
             while True:
                 try:
+                    if self._is_due(grace_hours=_CATCHUP_GRACE_HOURS):
+                        logger.info("Weekly summary: due (catch-up or on schedule) — starting run")
+                        status = await self._run_summary()
+                        if status == "failed":
+                            logger.warning(
+                                "Weekly summary: failed — retrying in %d seconds", _RETRY_SECONDS,
+                            )
+                            await asyncio.sleep(_RETRY_SECONDS)
+                            continue
+                        # posted / empty → wait for next weekly slot
+                        wait_seconds = self._seconds_until_next()
+                        logger.info(
+                            "Weekly summary: next run in %.0f seconds (%.1f hours)",
+                            wait_seconds, wait_seconds / 3600,
+                        )
+                        await self._sleep_chunked(wait_seconds)
+                        continue
+
                     wait_seconds = self._seconds_until_next()
-                    logger.info("Weekly summary: next run in %.0f seconds (%.1f hours)", wait_seconds, wait_seconds / 3600)
-                    await asyncio.sleep(wait_seconds)
+                    logger.info(
+                        "Weekly summary: next run in %.0f seconds (%.1f hours)",
+                        wait_seconds, wait_seconds / 3600,
+                    )
+                    await self._sleep_chunked(wait_seconds)
                     logger.info("Weekly summary: woke up, starting run")
-                    await self._run_summary()
+                    status = await self._run_summary()
+                    if status == "failed":
+                        logger.warning(
+                            "Weekly summary: failed — retrying in %d seconds", _RETRY_SECONDS,
+                        )
+                        await asyncio.sleep(_RETRY_SECONDS)
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
@@ -250,44 +315,88 @@ class WeeklySummaryCog(commands.Cog):
         except asyncio.CancelledError:
             logger.info("Weekly summary: loop cancelled")
 
+    def _target_for_week_containing(self, now_et: datetime) -> datetime:
+        """Return this calendar week's scheduled target (may be in the past)."""
+        target_day = max(0, min(6, WEEKLY_SUMMARY_DAY))
+        target_hour = max(0, min(23, WEEKLY_SUMMARY_HOUR))
+        target_minute = max(0, min(59, WEEKLY_SUMMARY_MINUTE))
+        days_offset = target_day - now_et.weekday()  # may be negative
+        return now_et.replace(
+            hour=target_hour, minute=target_minute, second=0, microsecond=0,
+        ) + timedelta(days=days_offset)
+
     def _seconds_until_next(self) -> float:
         """Compute seconds until the next occurrence of the target day+hour in ET."""
         now_et = datetime.now(_ET)
-        target_day = max(0, min(6, WEEKLY_SUMMARY_DAY))
-        target_hour = max(0, min(23, WEEKLY_SUMMARY_HOUR))
-
-        days_ahead = target_day - now_et.weekday()
-        if days_ahead < 0:
-            days_ahead += 7
-
-        target_minute = max(0, min(59, WEEKLY_SUMMARY_MINUTE))
-
-        target = now_et.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-        target += timedelta(days=days_ahead)
-
+        target = self._target_for_week_containing(now_et)
         if target <= now_et:
             target += timedelta(weeks=1)
+        return max(1.0, (target - now_et).total_seconds())
 
-        return (target - now_et).total_seconds()
+    def _already_posted_since(self, since_et: datetime) -> bool:
+        """True if a weekly summary was persisted at/after *since_et*."""
+        since_utc = since_et.astimezone(timezone.utc)
+        for item in load_summaries(limit=30, summary_type="weekly"):
+            ts = item.get("timestamp")
+            if not ts:
+                continue
+            try:
+                dt = datetime.fromisoformat(ts)
+            except ValueError:
+                continue
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            if dt >= since_utc:
+                return True
+        return False
 
-    async def _run_summary(self) -> None:
-        """Collect, summarise, and post the weekly summary."""
+    def _is_due(self, grace_hours: float = _CATCHUP_GRACE_HOURS) -> bool:
+        """True if we are within [target, target+grace] and have not posted yet."""
+        now_et = datetime.now(_ET)
+        target = self._target_for_week_containing(now_et)
+        if target > now_et:
+            return False
+        if now_et > target + timedelta(hours=grace_hours):
+            return False
+        if self._already_posted_since(target):
+            return False
+        return True
+
+    async def _run_summary(self) -> RunStatus:
+        """Collect, summarise, and post the weekly summary.
+
+        Returns ``posted``, ``empty`` (no owner messages after successful reads),
+        or ``failed`` (channel / GPT / post errors — caller should retry).
+        """
         try:
             now = datetime.now(timezone.utc)
             since = now - timedelta(days=7)
 
             logger.info("Weekly summary: collecting owner messages since %s", since.isoformat())
 
-            messages = await collect_owner_messages(
+            messages, errors = await collect_owner_messages(
                 bot=self.bot,
                 channel_ids=WEEKLY_SUMMARY_CHANNELS,
                 owner_id=OWNER_USER_ID,
                 since=since,
             )
 
+            if errors and not messages:
+                logger.warning(
+                    "Weekly summary: all channel reads failed (%d error(s)) — will retry",
+                    len(errors),
+                )
+                return "failed"
+
+            if errors:
+                logger.warning(
+                    "Weekly summary: %d channel(s) failed but got %d message(s) from others",
+                    len(errors), len(messages),
+                )
+
             if not messages:
                 logger.info("Weekly summary: no owner messages found this week — skipping")
-                return
+                return "empty"
 
             logger.info("Weekly summary: collected %d owner messages, generating summary", len(messages))
 
@@ -295,8 +404,8 @@ class WeeklySummaryCog(commands.Cog):
             summary = await generate_summary(self._openai_client, messages_text)
 
             if not summary:
-                logger.warning("Weekly summary: GPT returned empty summary — skipping")
-                return
+                logger.warning("Weekly summary: GPT returned empty summary — will retry")
+                return "failed"
 
             # Build embed
             now_et = datetime.now(_ET)
@@ -316,18 +425,29 @@ class WeeklySummaryCog(commands.Cog):
             embed.set_footer(text=f"基于频道主本周 {len(messages)} 条消息 • AI 自动生成")
 
             # Determine post channels
-            post_channels = WEEKLY_SUMMARY_POST_CHANNELS if WEEKLY_SUMMARY_POST_CHANNELS else list(WEEKLY_SUMMARY_CHANNELS)
+            post_channels = (
+                WEEKLY_SUMMARY_POST_CHANNELS
+                if WEEKLY_SUMMARY_POST_CHANNELS
+                else list(WEEKLY_SUMMARY_CHANNELS)
+            )
+
+            from bot.utils import resolve_channel
 
             sent = 0
             for cid in post_channels:
-                ch = self.bot.get_channel(cid)
-                if ch is None:
+                ch = await resolve_channel(self.bot, cid)
+                if ch is None or not hasattr(ch, "send"):
+                    logger.warning("Weekly summary: channel %d not found or not messageable", cid)
                     continue
                 try:
                     await ch.send(content="@everyone", embed=embed)
                     sent += 1
                 except Exception as exc:
                     logger.warning("Weekly summary: failed to post to channel %d: %s", cid, exc)
+
+            if sent <= 0:
+                logger.warning("Weekly summary: failed to post to any channel — will retry")
+                return "failed"
 
             logger.info("Weekly summary: posted to %d channel(s)", sent)
 
@@ -339,6 +459,8 @@ class WeeklySummaryCog(commands.Cog):
                 message_count=len(messages),
                 timestamp=now.isoformat(),
             )
+            return "posted"
 
         except Exception as exc:
             logger.exception("Weekly summary: error: %s", exc)
+            return "failed"

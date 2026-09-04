@@ -1184,6 +1184,14 @@ class MessageListener(commands.Cog):
                 routing["reason"] += " + clarification follow-up"
 
         elapsed_ms = int((time.time() - start) * 1000)
+        # Hang / reconnect can leave a request running for hours; don't persist
+        # that as query latency or SLA p95 stays broken until 200 new samples.
+        if elapsed_ms > 120_000:
+            logger.warning(
+                "Query latency %dms exceeds 120s (likely hang/reconnect); capping recorded value",
+                elapsed_ms,
+            )
+            elapsed_ms = 120_000
 
         # Record stats
         bot_stats.record_query(

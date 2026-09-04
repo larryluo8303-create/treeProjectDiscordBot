@@ -1,10 +1,10 @@
 {
-  "joins": 2,
-  "welcome_dm_ok": 2,
-  "welcome_dm_blocked": 0,
+  "joins": 7,
+  "welcome_dm_ok": 6,
+  "welcome_dm_blocked": 1,
   "signal_cmd": 0,
   "intent_hits": 0,
-  "cta_posts": 0,
+  "cta_posts": 1,
   "invite_joins": 0,
   "daily": {
     "2026-08-18": {
@@ -14,6 +14,21 @@
     "2026-08-19": {
       "joins": 1,
       "welcome_dm_ok": 1
+    },
+    "2026-08-24": {
+      "cta_posts": 1
+    },
+    "2026-08-25": {
+      "joins": 3,
+      "welcome_dm_ok": 3
+    },
+    "2026-08-27": {
+      "joins": 1,
+      "welcome_dm_ok": 1
+    },
+    "2026-09-01": {
+      "joins": 1,
+      "welcome_dm_blocked": 1
     }
   }
 }

@@ -77,7 +77,8 @@ class TestCollectOwnerMessages:
         bot = MagicMock()
         bot.get_channel.return_value = channel
 
-        messages = await collect_owner_messages(bot, [111], owner_id, since)
+        messages, errors = await collect_owner_messages(bot, [111], owner_id, since)
+        assert errors == []
         assert len(messages) == 1
         assert messages[0]["content"] == "Market analysis for today"
         assert messages[0]["channel"] == "trading"
@@ -116,7 +117,8 @@ class TestCollectOwnerMessages:
         bot = MagicMock()
         bot.get_channel.return_value = channel
 
-        messages = await collect_owner_messages(bot, [111], owner_id, since)
+        messages, errors = await collect_owner_messages(bot, [111], owner_id, since)
+        assert errors == []
         assert len(messages) == 1
         assert messages[0]["is_reply"] is True
         assert "TestUser" in messages[0]["content"]
@@ -130,9 +132,28 @@ class TestCollectOwnerMessages:
         bot.get_channel.return_value = None
         bot.fetch_channel = AsyncMock(side_effect=Exception("Not found"))
 
-        messages = await collect_owner_messages(bot, [999], 12345, datetime.now(timezone.utc))
+        messages, errors = await collect_owner_messages(bot, [999], 12345, datetime.now(timezone.utc))
         assert messages == []
+        assert len(errors) == 1
+        assert "999" in errors[0]
 
+    @pytest.mark.asyncio
+    async def test_history_network_error_is_reported(self):
+        from bot.weekly_summary import collect_owner_messages
+
+        channel = AsyncMock()
+        channel.name = "trading"
+        channel.history = MagicMock(side_effect=OSError("getaddrinfo failed"))
+
+        bot = MagicMock()
+        bot.get_channel.return_value = channel
+
+        messages, errors = await collect_owner_messages(
+            bot, [111], 12345, datetime.now(timezone.utc),
+        )
+        assert messages == []
+        assert len(errors) == 1
+        assert "getaddrinfo" in errors[0] or "111" in errors[0]
 
 # ── _seconds_until_next tests ────────────────────────────────────────────────
 
@@ -169,6 +190,64 @@ class TestSecondsUntilNext:
                 secs = cog._seconds_until_next()
                 # Should be ~6 days
                 assert 5 * 24 * 3600 < secs <= 7 * 24 * 3600
+
+
+class TestIsDue:
+    def test_due_within_grace_if_not_posted(self):
+        from bot.weekly_summary import WeeklySummaryCog, _ET
+
+        cog = WeeklySummaryCog.__new__(WeeklySummaryCog)
+        # Sunday 02:00 ET, target was Saturday 20:05 → within 18h grace
+        fake_now = datetime(2026, 8, 23, 2, 0, 0, tzinfo=_ET)
+        with patch("bot.weekly_summary.datetime") as mock_dt, \
+             patch("bot.weekly_summary.WEEKLY_SUMMARY_DAY", 5), \
+             patch("bot.weekly_summary.WEEKLY_SUMMARY_HOUR", 20), \
+             patch("bot.weekly_summary.WEEKLY_SUMMARY_MINUTE", 5), \
+             patch.object(cog, "_already_posted_since", return_value=False):
+            mock_dt.now.return_value = fake_now
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            assert cog._is_due(grace_hours=18) is True
+
+    def test_not_due_after_grace(self):
+        from bot.weekly_summary import WeeklySummaryCog, _ET
+
+        cog = WeeklySummaryCog.__new__(WeeklySummaryCog)
+        # Monday 16:00 ET — more than 18h after Sat 20:05
+        fake_now = datetime(2026, 8, 24, 16, 0, 0, tzinfo=_ET)
+        with patch("bot.weekly_summary.datetime") as mock_dt, \
+             patch("bot.weekly_summary.WEEKLY_SUMMARY_DAY", 5), \
+             patch("bot.weekly_summary.WEEKLY_SUMMARY_HOUR", 20), \
+             patch("bot.weekly_summary.WEEKLY_SUMMARY_MINUTE", 5), \
+             patch.object(cog, "_already_posted_since", return_value=False):
+            mock_dt.now.return_value = fake_now
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            assert cog._is_due(grace_hours=18) is False
+
+
+class TestRunSummaryStatus:
+    @pytest.mark.asyncio
+    async def test_channel_errors_return_failed_not_empty(self):
+        from bot.weekly_summary import WeeklySummaryCog
+
+        cog = WeeklySummaryCog(MagicMock(), AsyncMock())
+        with patch(
+            "bot.weekly_summary.collect_owner_messages",
+            new=AsyncMock(return_value=([], ["error reading channel 1: dns"])),
+        ), patch("bot.weekly_summary.WEEKLY_SUMMARY_CHANNELS", [1]):
+            status = await cog._run_summary()
+        assert status == "failed"
+
+    @pytest.mark.asyncio
+    async def test_no_messages_returns_empty(self):
+        from bot.weekly_summary import WeeklySummaryCog
+
+        cog = WeeklySummaryCog(MagicMock(), AsyncMock())
+        with patch(
+            "bot.weekly_summary.collect_owner_messages",
+            new=AsyncMock(return_value=([], [])),
+        ), patch("bot.weekly_summary.WEEKLY_SUMMARY_CHANNELS", [1]):
+            status = await cog._run_summary()
+        assert status == "empty"
 
 
 # ── generate_summary tests ──────────────────────────────────────────────────

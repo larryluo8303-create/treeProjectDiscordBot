@@ -4,7 +4,7 @@
 > **原则：** 站外获客 + 站内转化。Discord 是留存和成交场，不是发现场。  
 > **约束：** 遵守 Discord ToS 与金融内容合规；不群发陌生人私信、不刷服、不买成员。
 
-相关已有文档：[`PROMOTION_DESIGN.md`](./PROMOTION_DESIGN.md)（服内促销）、[`FEATURE_LIST.md`](./FEATURE_LIST.md)（功能 57–62 获客转化）。
+相关已有文档：[`PROMOTION_DESIGN.md`](../archive/PROMOTION_DESIGN.md)（服内促销）、[`FEATURE_LIST.md`](../features/FEATURE_LIST.md)（功能 57–62 获客转化）。
 
 ---
 

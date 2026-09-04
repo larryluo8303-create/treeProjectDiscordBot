@@ -30,9 +30,11 @@ from zoneinfo import ZoneInfo
 import aiohttp
 import discord
 import openai
+from discord import app_commands
 from discord.ext import commands, tasks
 
 from bot.config import (
+    OWNER_USER_ID,
     PROMO_CHANNEL_IDS,
     YOUTUBE_AUTO_INGEST,
     YOUTUBE_CHECK_HOUR,
@@ -203,6 +205,7 @@ class YouTubeMonitorCog(commands.Cog):
         self._last_video = _load_last_video()
         self._session: aiohttp.ClientSession | None = None
         self._last_check_date: str | None = None  # "YYYY-MM-DD" of last daily trigger
+        self._resend_lock = asyncio.Lock()
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -300,24 +303,104 @@ class YouTubeMonitorCog(commands.Cog):
         self._last_video = {"video_id": latest_id, "title": latest["title"]}
 
         # ── Auto-ingest + GPT summary ──────────────────────────────────
+        transcript_text = ""
         if YOUTUBE_AUTO_INGEST:
             try:
                 inserted, transcript_text = await self._ingest_video(latest_id, latest["link"])
                 logger.info("YouTube auto-ingest: %d documents added for %s", inserted, latest_id)
-
-                if inserted > 0 and self._openai and transcript_text:
-                    summary = await self._summarize_video(latest["title"], transcript_text)
-                    if summary:
-                        await self._post_summary(latest["title"], summary, latest["link"])
-                elif inserted > 0 and not transcript_text:
-                    logger.warning(
-                        "YouTube summary: skipped for %s — no transcript text available",
-                        latest_id,
-                    )
-                elif inserted > 0 and not self._openai:
-                    logger.warning("YouTube summary: skipped for %s — OpenAI client missing", latest_id)
             except Exception as exc:
-                logger.warning("YouTube auto-ingest/summary failed for %s: %s", latest_id, exc)
+                logger.warning("YouTube auto-ingest failed for %s: %s", latest_id, exc)
+
+        # Try to fetch transcript from ChromaDB if ingest didn't return one
+        if not transcript_text:
+            transcript_text = await self._fetch_transcript_from_db(latest_id)
+
+        # Always attempt to post a summary to YOUTUBE_SUMMARY_CHANNELS
+        await self._generate_and_post_summary(latest["title"], latest["link"], transcript_text)
+
+    async def _fetch_transcript_from_db(self, video_id: str) -> str:
+        """Try to load an already-ingested transcript from ChromaDB."""
+        try:
+            from ingestion.ingest import _get_chromadb_collection
+            from bot.config import CHROMADB_PATH, CHROMADB_COLLECTION
+
+            collection = await asyncio.to_thread(
+                _get_chromadb_collection, CHROMADB_PATH, CHROMADB_COLLECTION,
+            )
+            result = await asyncio.to_thread(
+                collection.get,
+                where={"video_id": video_id},
+                include=["documents", "metadatas"],
+            )
+            docs = result.get("documents") or []
+            metas = result.get("metadatas") or []
+            if not docs:
+                return ""
+
+            chunks: list[tuple[int, str]] = []
+            for doc, meta in zip(docs, metas):
+                meta = meta or {}
+                chunks.append((int(meta.get("chunk_index", 0)), doc))
+            chunks.sort(key=lambda item: item[0])
+            text = "\n\n".join(t for _, t in chunks)
+            logger.info("YouTube summary: loaded transcript from ChromaDB (%d chars) for %s", len(text), video_id)
+            return text
+        except Exception as exc:
+            logger.warning("YouTube summary: failed to fetch transcript from ChromaDB for %s: %s", video_id, exc)
+            return ""
+
+    async def _generate_and_post_summary(
+        self, title: str, video_url: str, transcript_text: str
+    ) -> None:
+        """Generate a GPT summary if transcript is available, then post to Discord.
+
+        Posts a fallback notification even when no transcript is available.
+        """
+        summary: str | None = None
+        if transcript_text and self._openai:
+            try:
+                summary = await self._summarize_video(title, transcript_text)
+            except Exception as exc:
+                logger.warning("YouTube summary GPT call failed for '%s': %s", title, exc)
+        elif not self._openai:
+            logger.warning("YouTube summary: OpenAI client missing — posting notification only")
+
+        if summary:
+            await self._post_summary(title, summary, video_url)
+        else:
+            await self._post_new_video_notification(title, video_url)
+
+    async def _post_new_video_notification(self, title: str, video_url: str) -> None:
+        """Post a simple 'new video' embed when no GPT summary is available."""
+        summary_channels = YOUTUBE_SUMMARY_CHANNELS
+        if not summary_channels:
+            summary_channels = YOUTUBE_LESSON_PUSH_CHANNELS if YOUTUBE_LESSON_PUSH_CHANNELS else list(PROMO_CHANNEL_IDS)
+        if not summary_channels:
+            logger.warning("YouTube notification: no channels configured — skipping")
+            return
+
+        embed = discord.Embed(
+            title=f"📺 新视频 — {title}",
+            description=(
+                f"频道主发布了新视频！点击观看：\n\n"
+                f"🔗 {video_url}\n\n"
+                f"AI 摘要暂时无法生成，请直接观看视频。"
+            ),
+            color=discord.Color.blue(),
+            url=video_url,
+        )
+
+        from bot.utils import resolve_channel
+        for cid in summary_channels:
+            ch = await resolve_channel(self.bot, cid)
+            if ch is None or not hasattr(ch, "send"):
+                logger.warning("YouTube notification: channel %d not found or not messageable", cid)
+                continue
+            try:
+                await ch.send(embed=embed)
+                logger.info("YouTube new-video notification posted to channel %d", cid)
+            except Exception as exc:
+                logger.warning("YouTube notification: failed to post to %d: %s", cid, exc)
 
     # ── Auto-ingest helpers ────────────────────────────────────────────────
 
@@ -362,34 +445,55 @@ class YouTubeMonitorCog(commands.Cog):
                 max_tokens=800,
                 temperature=0.5,
             )
-            summary = resp.choices[0].message.content.strip()
+            content = resp.choices[0].message.content
+            summary = (content or "").strip()
+            if not summary:
+                return None
             logger.info("YouTube summary generated (%d chars)", len(summary))
             return summary
         except Exception as exc:
             logger.warning("YouTube summary GPT call failed: %s", exc)
             return None
 
-    async def _post_summary(self, title: str, summary: str, video_url: str) -> None:
-        """Post the GPT summary as a Discord Embed to YOUTUBE_SUMMARY_CHANNELS."""
+    async def _post_summary(
+        self,
+        title: str,
+        summary: str,
+        video_url: str,
+        *,
+        from_title: bool = False,
+    ) -> int:
+        """Post the GPT summary as a Discord Embed to YOUTUBE_SUMMARY_CHANNELS.
+
+        Returns the number of channels successfully posted to.
+        """
         summary_channels = YOUTUBE_SUMMARY_CHANNELS
         if not summary_channels:
             summary_channels = YOUTUBE_LESSON_PUSH_CHANNELS if YOUTUBE_LESSON_PUSH_CHANNELS else list(PROMO_CHANNEL_IDS)
         if not summary_channels:
             logger.warning("YouTube summary: no channels configured — skipping post")
-            return
+            return 0
+
+        # Discord embed limits: title 256, description 4096
+        safe_title = (title or "未命名视频")[:250]
+        safe_summary = summary[:4096] if summary else ""
 
         embed = discord.Embed(
-            title=f"📺 视频摘要 — {title}",
-            description=summary,
-            color=discord.Color.green(),
+            title=f"📺 视频摘要 — {safe_title}",
+            description=safe_summary,
+            color=discord.Color.gold() if from_title else discord.Color.green(),
             url=video_url,
         )
-        embed.set_footer(text="由 AI 自动生成的视频内容摘要")
+        if from_title:
+            embed.set_footer(text="由 AI 根据视频标题生成的预告式摘要（完整字幕暂不可用）")
+        else:
+            embed.set_footer(text="由 AI 自动生成的视频内容摘要")
 
         from bot.acquisition import build_cta_view, record_funnel
         from bot.utils import resolve_channel
         view = build_cta_view()
 
+        posted = 0
         for cid in summary_channels:
             ch = await resolve_channel(self.bot, cid)
             if ch is None or not hasattr(ch, "send"):
@@ -398,6 +502,153 @@ class YouTubeMonitorCog(commands.Cog):
             try:
                 await ch.send(embed=embed, view=view)
                 record_funnel("cta_posts")
+                posted += 1
                 logger.info("YouTube summary posted to channel %d", cid)
             except Exception as exc:
                 logger.warning("YouTube summary: failed to post to %d: %s", cid, exc)
+        return posted
+
+    # ── Slash command ─────────────────────────────────────────────────────
+
+    @app_commands.command(
+        name="resend_summary",
+        description="[Owner] 补发 YouTube 视频摘要到指定频道",
+    )
+    @app_commands.describe(
+        video_url="YouTube 视频链接（留空则使用最近一次检测到的视频）",
+        title="视频标题（留空则自动获取）",
+    )
+    async def resend_summary_cmd(
+        self,
+        interaction: discord.Interaction,
+        video_url: str | None = None,
+        title: str | None = None,
+    ) -> None:
+        if interaction.user.id != OWNER_USER_ID:
+            await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        async def _set_status(msg: str) -> None:
+            try:
+                await interaction.edit_original_response(content=msg)
+            except Exception:
+                try:
+                    await interaction.followup.send(msg, ephemeral=True)
+                except Exception:
+                    logger.debug("resend_summary: failed to update status message")
+
+        try:
+            await asyncio.wait_for(self._resend_lock.acquire(), timeout=0.05)
+        except TimeoutError:
+            await _set_status("已有补发任务进行中，请稍后再试。")
+            return
+
+        try:
+            # Resolve video ID and title
+            from_title = False
+            if video_url:
+                from ingestion.ingest_youtube import extract_video_id
+                video_id = extract_video_id(video_url)
+                if not video_id:
+                    await _set_status("无法从链接中解析 video ID，请检查链接格式。")
+                    return
+                if not title:
+                    last = _load_last_video()
+                    if last.get("video_id") == video_id:
+                        title = last.get("title")
+            else:
+                last = _load_last_video()
+                video_id = last.get("video_id")
+                title = title or last.get("title")
+                if not video_id:
+                    await _set_status(
+                        "未指定视频链接且无最近检测记录。请使用 `video_url` 参数。"
+                    )
+                    return
+
+            resolved_url = f"https://www.youtube.com/watch?v={video_id}"
+            display_title = title or video_id
+
+            await _set_status(f"🔍 检查 ChromaDB 中是否已有视频 `{video_id}` 的转录...")
+            transcript_text = await self._fetch_transcript_from_db(video_id)
+
+            if not transcript_text:
+                await _set_status(
+                    "📥 ChromaDB 中未找到转录，正在自动导入（Whisper 可能需要 1-2 分钟）..."
+                )
+                try:
+                    inserted, transcript_text = await self._ingest_video(video_id, resolved_url)
+                    if transcript_text:
+                        await _set_status(
+                            f"✅ 导入完成（{inserted} 文档 / {len(transcript_text)} 字），正在生成摘要..."
+                        )
+                    else:
+                        from_title = True
+                        await _set_status("⚠️ 导入未获得转录，将基于标题生成摘要...")
+                except Exception as exc:
+                    logger.warning("resend_summary: ingest failed for %s: %s", video_id, exc)
+                    from_title = True
+                    await _set_status("⚠️ 自动导入失败，将基于标题生成摘要...")
+
+            if not self._openai:
+                await _set_status("❌ OpenAI 客户端未配置，无法生成摘要。")
+                return
+
+            if transcript_text and not from_title:
+                await _set_status("🤖 正在用 GPT 生成摘要...")
+                summary = await self._summarize_video(display_title, transcript_text)
+            else:
+                from_title = True
+                await _set_status("🤖 正在根据标题生成预告式摘要...")
+                summary = await self._summarize_from_title(display_title)
+
+            if not summary:
+                await _set_status("❌ GPT 摘要生成失败，请检查日志。")
+                return
+
+            posted = await self._post_summary(
+                display_title, summary, resolved_url, from_title=from_title,
+            )
+            if posted <= 0:
+                await _set_status(
+                    f"❌ 摘要已生成（{len(summary)} 字），但未能发送到任何频道。"
+                    f"请检查 `YOUTUBE_SUMMARY_CHANNELS` 配置与机器人权限。"
+                )
+                return
+
+            kind = "（基于标题）" if from_title else ""
+            await _set_status(
+                f"✅ 摘要已发送到 {posted} 个频道{kind}！\n"
+                f"📺 **{display_title}**\n字数: {len(summary)}"
+            )
+        finally:
+            self._resend_lock.release()
+
+    async def _summarize_from_title(self, title: str) -> str | None:
+        """Generate a preview-style summary based on the video title only."""
+        if not self._openai:
+            return None
+        prompt = (
+            f"根据以下 YouTube 视频标题，写一段 150-300 字的预告式摘要。"
+            f"标题中包含的关键词和交易信号信息要提取出来，帮助观众理解视频核心内容。"
+            f"要求简洁、专业、适合股市投资者阅读。\n\n"
+            f"视频标题：{title}"
+        )
+        try:
+            resp = await self._openai.chat.completions.create(
+                model=LLM_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=600,
+                temperature=0.5,
+            )
+            content = resp.choices[0].message.content
+            summary = (content or "").strip()
+            if not summary:
+                return None
+            logger.info("YouTube summary (from title) generated (%d chars)", len(summary))
+            return summary
+        except Exception as exc:
+            logger.warning("YouTube summary (from title) GPT call failed: %s", exc)
+            return None

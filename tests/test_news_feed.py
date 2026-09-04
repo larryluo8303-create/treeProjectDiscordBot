@@ -323,6 +323,9 @@ class TestBackfillFilterLogic:
 class TestBackfillIntegration:
     """Integration tests for _backfill_on_startup using mocked HTTP + Discord."""
 
+    # Test items use 2026-08-15 timestamps; use a wide window so tests stay stable.
+    _BACKFILL_HOURS = 8760
+
     @pytest.fixture
     def cog(self):
         bot = MagicMock()
@@ -374,7 +377,7 @@ class TestBackfillIntegration:
         cog._session = mock_session
 
         with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", 24):
+             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS):
             await cog._backfill_on_startup()
 
         # 1 header embed + 3 item embeds = 4 calls
@@ -418,7 +421,7 @@ class TestBackfillIntegration:
         cog._session = mock_session
 
         with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", 24):
+             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS):
             await cog._backfill_on_startup()
 
         # 1 header + 4 unique items (A, B, C, D) = 5 calls — NOT 6
@@ -448,7 +451,7 @@ class TestBackfillIntegration:
         cog._session = mock_session
 
         with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", 24):
+             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS):
             await cog._backfill_on_startup()
 
         # No items should be posted
@@ -475,7 +478,7 @@ class TestBackfillIntegration:
         cog._session = mock_session
 
         with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", 24), \
+             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS), \
              patch("bot.news_feed._save_last_id") as mock_save:
             await cog._backfill_on_startup()
 
@@ -498,7 +501,7 @@ class TestBackfillIntegration:
         cog._session = mock_session
 
         with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", 24):
+             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS):
             # Should not raise
             await cog._backfill_on_startup()
 
@@ -511,6 +514,72 @@ class TestBackfillIntegration:
             cog = NewsFeedCog(bot)
         # last_id is empty → backfill condition is False
         assert cog._last_id == ""
+
+    @pytest.mark.asyncio
+    async def test_backfill_advances_last_id_for_non_important_only(self, cog, mock_channel):
+        """Non-important items collected during backfill should still advance last_id."""
+        items = [
+            _make_item(item_id="20260815110000000005", important=0, time_str="2026-08-15 11:00:00"),
+        ]
+        page = _make_api_response(items)
+
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=page)
+
+        mock_session = AsyncMock()
+        mock_session.get = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=mock_resp),
+            __aexit__=AsyncMock(return_value=False),
+        ))
+        mock_session.closed = False
+        cog._session = mock_session
+
+        with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS), \
+             patch("bot.news_feed.NEWS_IMPORTANT_ONLY", True), \
+             patch("bot.news_feed._save_last_id") as mock_save:
+            await cog._backfill_on_startup()
+
+        mock_channel.send.assert_not_called()
+        mock_save.assert_called_once_with("20260815110000000005")
+        assert cog._last_id == "20260815110000000005"
+
+
+class TestFetchAndPost:
+    @pytest.mark.asyncio
+    async def test_does_not_advance_last_id_when_post_fails(self):
+        bot = MagicMock()
+        bot.get_channel.return_value = None
+        mock_channel = AsyncMock()
+        mock_channel.send = AsyncMock(side_effect=discord.HTTPException(MagicMock(), "fail"))
+        bot.fetch_channel = AsyncMock(return_value=mock_channel)
+
+        with patch("bot.news_feed._load_last_id", return_value="20260815060000000001"):
+            cog = NewsFeedCog(bot)
+
+        items = [_make_item(item_id="20260815110000000005")]
+        payload = _make_api_response(items)
+
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=payload)
+
+        mock_session = AsyncMock()
+        mock_session.get = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=mock_resp),
+            __aexit__=AsyncMock(return_value=False),
+        ))
+        mock_session.closed = False
+        cog._session = mock_session
+
+        with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+             patch("bot.news_feed.NEWS_IMPORTANT_ONLY", True), \
+             patch("bot.news_feed._save_last_id") as mock_save:
+            await cog._fetch_and_post()
+
+        mock_save.assert_not_called()
+        assert cog._last_id == "20260815060000000001"
 
 
 # ── Beijing to Toronto time conversion ───────────────────────────────────────

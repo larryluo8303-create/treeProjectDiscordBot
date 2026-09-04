@@ -65,6 +65,40 @@ class TestSecondsUntilNext:
         # 3 days minus 1 hour = 259200 - 3600 = 255600
         assert 255000 < secs < 256000
 
+    @patch("bot.daily_summary.DAILY_SUMMARY_DAYS", [0, 1, 2, 3, 4])
+    @patch("bot.daily_summary.DAILY_SUMMARY_HOUR", 16)
+    @patch("bot.daily_summary.DAILY_SUMMARY_MINUTE", 0)
+    def test_after_early_run_skips_todays_slot(self):
+        """If already posted today, next run must not be today's 16:00."""
+        cog = self._make_cog()
+        ET = timezone(timedelta(hours=-4))
+        today = datetime(2026, 8, 28, 15, 59, 54, tzinfo=ET).date()
+
+        def posted(date):
+            return date == today
+
+        fake_now = datetime(2026, 8, 28, 15, 59, 54, tzinfo=ET)
+        with patch("bot.daily_summary.datetime") as mock_dt, \
+             patch.object(cog, "_already_posted_on_date", side_effect=posted):
+            mock_dt.now.return_value = fake_now
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            secs = cog._seconds_until_next()
+        # Aug 28 2026 is Friday; next weekday is Monday ≈ 72h
+        assert 258000 < secs < 260000
+
+
+class TestDuplicatePrevention:
+    @pytest.mark.asyncio
+    async def test_run_summary_skips_if_already_posted_today(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from bot.daily_summary import DailySummaryCog
+
+        cog = DailySummaryCog(MagicMock(), AsyncMock())
+        with patch.object(cog, "_already_posted_on_date", return_value=True), \
+             patch("bot.daily_summary.collect_owner_messages", new=AsyncMock()) as mock_collect:
+            await cog._run_summary()
+            mock_collect.assert_not_called()
+
 
 # ── generate_daily_summary tests ──────────────────────────────────────────
 

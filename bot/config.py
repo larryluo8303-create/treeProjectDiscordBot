@@ -259,11 +259,16 @@ FEATURE_FEEDBACK_LEARNING_CANARY_CHANNEL_IDS: list[int] = [
 # ---------------------------------------------------------------------------
 FEATURE_SLA_MONITORING: bool = os.getenv("FEATURE_SLA_MONITORING", "true").lower() in ("1", "true", "yes")
 SLA_P95_LATENCY_MS_THRESHOLD: int = int(os.getenv("SLA_P95_LATENCY_MS_THRESHOLD", "8000"))
+SLA_P95_WINDOW_SECONDS: int = int(os.getenv("SLA_P95_WINDOW_SECONDS", "3600"))
+SLA_P95_MIN_SAMPLES: int = int(os.getenv("SLA_P95_MIN_SAMPLES", "5"))
+SLA_P95_MAX_SAMPLE_MS: int = int(os.getenv("SLA_P95_MAX_SAMPLE_MS", "60000"))
 SLA_OPENAI_ERROR_RATE_THRESHOLD: float = float(os.getenv("SLA_OPENAI_ERROR_RATE_THRESHOLD", "0.2"))
+SLA_OPENAI_MIN_CALLS: int = int(os.getenv("SLA_OPENAI_MIN_CALLS", "5"))
 SLA_REVIEW_QUEUE_BACKLOG_THRESHOLD: int = int(os.getenv("SLA_REVIEW_QUEUE_BACKLOG_THRESHOLD", "20"))
 SLA_SCHEDULER_MISS_SECONDS: int = int(os.getenv("SLA_SCHEDULER_MISS_SECONDS", "130"))
 SLA_ALERT_COOLDOWN_SECONDS: int = int(os.getenv("SLA_ALERT_COOLDOWN_SECONDS", "900"))
 SLA_ALERT_WEBHOOK_URL: str = os.getenv("SLA_ALERT_WEBHOOK_URL", "")
+REVIEW_QUEUE_EXPIRE_SECONDS: int = int(os.getenv("REVIEW_QUEUE_EXPIRE_SECONDS", "86400"))
 
 # ---------------------------------------------------------------------------
 # Digest

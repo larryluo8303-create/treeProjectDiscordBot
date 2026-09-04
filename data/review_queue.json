@@ -11,9 +11,9 @@
     "confidence": 8,
     "context_snippets": [],
     "created_at": 1786671317.762615,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1536899952280866846"
   },
   {
@@ -28,9 +28,9 @@
     "confidence": 7,
     "context_snippets": [],
     "created_at": 1786671320.4077764,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537163037750988902"
   },
   {
@@ -45,9 +45,9 @@
     "confidence": 8,
     "context_snippets": [],
     "created_at": 1786671322.999239,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537213189723258961"
   },
   {
@@ -62,9 +62,9 @@
     "confidence": 8,
     "context_snippets": [],
     "created_at": 1786671326.0869832,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537472783922102384"
   },
   {
@@ -79,9 +79,9 @@
     "confidence": 8,
     "context_snippets": [],
     "created_at": 1786671328.459078,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537474786987352126"
   },
   {
@@ -96,9 +96,9 @@
     "confidence": 8,
     "context_snippets": [],
     "created_at": 1786717346.49367,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537828736190382232"
   },
   {
@@ -113,9 +113,9 @@
     "confidence": 8,
     "context_snippets": [],
     "created_at": 1786723619.9884393,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/991362564657266780/1537855047826939965"
   },
   {
@@ -130,9 +130,9 @@
     "confidence": 8,
     "context_snippets": [],
     "created_at": 1786750229.8024552,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/951552694743605278/1537966652078030920"
   },
   {
@@ -190,9 +190,9 @@
       }
     ],
     "created_at": 1786815396.8966882,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538239997767979140"
   },
   {
@@ -250,9 +250,9 @@
       }
     ],
     "created_at": 1786815496.8257334,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538240412240584877"
   },
   {
@@ -310,9 +310,9 @@
       }
     ],
     "created_at": 1786815574.3051546,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538240739627245568"
   },
   {
@@ -366,9 +366,9 @@
       }
     ],
     "created_at": 1786815980.7590566,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538242446297923644"
   },
   {
@@ -424,9 +424,9 @@
       }
     ],
     "created_at": 1786816068.0815268,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/@me/1537662940440694786/1538242813651714168"
   },
   {
@@ -483,9 +483,9 @@
       }
     ],
     "created_at": 1787068225.674893,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1539300419858210837"
   },
   {
@@ -542,9 +542,9 @@
       }
     ],
     "created_at": 1787100016.5913026,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1539433784296873994"
   },
   {
@@ -559,9 +559,9 @@
     "confidence": 9,
     "context_snippets": [],
     "created_at": 1787182612.9823425,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/@me/1537662940440694786/1539780211120545874"
   },
   {
@@ -619,9 +619,9 @@
       }
     ],
     "created_at": 1787190868.3609884,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787323806.146246,
     "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1539813596974817310"
   },
   {
@@ -677,9 +677,9 @@
       }
     ],
     "created_at": 1787249286.1828446,
-    "status": "pending",
+    "status": "expired",
     "final_answer": "",
-    "reviewed_at": 0.0,
+    "reviewed_at": 1787335745.4102144,
     "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1540059858156523621"
   },
   {
@@ -731,9 +731,2154 @@
       }
     ],
     "created_at": 1787259007.8440266,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787349377.8428082,
+    "jump_url": "https://discord.com/channels/895349295975370802/912366231112282172/1540100631723901078"
+  },
+  {
+    "id": "03f6f5d9",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1540189826215575612,
+    "author_name": "jxiong0989",
+    "author_id": 727911280123576390,
+    "question": "刚才看到今天信号频道有DIA日线级别买信号的预警, 但是买信号没有得到确认. 我今天盘中没有时间关注, 请问你们有看到今天日线图上有出现过买信号吗? 请告知一下, 非常感谢🙏",
+    "draft_answer": "今天日线图上没有出现过买信号，之前提到的买信号已经过了。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: DIA的一天买入信号是消失 了么？我的没看到\nA: dia 不会日线有买信号",
+        "score": 0.4870431423187256,
+        "distance": 0.5129568576812744,
+        "metadata": {
+          "source_message_id": "1052962238874521600",
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "timestamp": "2022-12-15T09:56:00.84-05:00",
+          "question": "DIA的一天买入信号是消失 了么？我的没看到"
+        }
+      },
+      {
+        "text": "Q: 请大树老师confirm 今早日线买信号\nA: 图上没有日线信号，你说的是什么日线信号？",
+        "score": 0.4502880573272705,
+        "distance": 0.5497119426727295,
+        "metadata": {
+          "type": "qa_pair",
+          "question": "请大树老师confirm 今早日线买信号",
+          "timestamp": "2022-11-16T11:53:26.016-05:00",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "source_message_id": "1042482540382007318",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: Alert channel 没有买信号预警呀，你看到图上有了是今天的吗？ 是4h 还是日线？\nA: 还没有 4h 买信号",
+        "score": 0.4425837993621826,
+        "distance": 0.5574162006378174,
+        "metadata": {
+          "type": "qa_pair",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "question": "Alert channel 没有买信号预警呀，你看到图上有了是今天的吗？ 是4h 还是日线？",
+          "source_message_id": "1440379031806545961",
+          "timestamp": "2025-11-18T11:32:02.131-05:00",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1787286731.0168567,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787495360.638998,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1540189826215575612"
+  },
+  {
+    "id": "7ce8e0a9",
+    "channel_id": 951552694743605278,
+    "channel_name": "学习交流",
+    "message_id": 1540346595336388618,
+    "author_name": "sz_8",
+    "author_id": 847965349450088479,
+    "question": "",
+    "draft_answer": "这张图片是一个经济数据日历，显示即将发布的美国经济数据，包括消费者信心指数、新屋销售、PCE物价指数、GDP增长率和初请失业金人数。 \n\n从交易角度看：\n1. 核心PCE物价指数和GDP数据对市场影响较大，需密切关注。\n2. 数据高于预期可能利好美元，打压股市；低于预期则反之。\n3. 初请失业金人数也是市场关注的焦点，影响就业市场预期。\n\n这些数据将影响市场趋势和波动，投资者应做好风险管理和仓位调整。",
+    "confidence": 9,
+    "context_snippets": [],
+    "created_at": 1787319867.2799258,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787495360.638998,
+    "jump_url": "https://discord.com/channels/895349295975370802/951552694743605278/1540346595336388618"
+  },
+  {
+    "id": "94a16148",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1540391500528230432,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "QQQ 又行了？这样走好今天是不是会出1小时买信号？",
+    "draft_answer": "QQQ 目前走势还需要观察，今天如果能收阳K，有机会出1h 买信号。不过要注意前期的信号情况，谨慎对待。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: QQQ一小时买信号又出了。估计不太有人参与。。。\nA: 周线买信号后 有4h 买信号或者日线银色买信号）概率大一些。\n如果没有任何仓位，踏空情绪很严重的话还是可以关注1h 买信号",
+        "score": 0.524372786283493,
+        "distance": 0.47562721371650696,
+        "metadata": {
+          "message_id": "1519426041251237892",
+          "channel_id": "923449257711763466",
+          "timestamp": "2026-06-24T19:36:37.805000+00:00",
+          "author_id": "747551330783985785",
+          "source": "discord_live",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: QQQ一小时的买信号出了，可以买吗？\nA: 没仓位，或者短线可以做1h 买信号",
+        "score": 0.523825079202652,
+        "distance": 0.476174920797348,
+        "metadata": {
+          "question": "QQQ一小时的买信号出了，可以买吗？",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "timestamp": "2024-02-20T15:19:19.07-05:00",
+          "source_message_id": "1209595158887399496",
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "QQQ SPY 今天没有买信号，\nSMH 是有可能有个 4h 卖信号 （周1 早上有4h买信号）\nQQQ 1h 卖信号alert ，昨天有 \nQQQ 4h 卖信号 310 附近\n@Pt",
+        "score": 0.4812026023864746,
+        "distance": 0.5187973976135254,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "type": "grouped",
+          "source_message_id": "1086290529861500958",
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "timestamp": "2023-03-17T10:10:44.621-04:00"
+        }
+      }
+    ],
+    "created_at": 1787328360.9811034,
+    "status": "approved",
+    "final_answer": "QQQ 目前走势还需要观察，今天如果能收阳K，有机会出1h 买信号。不过要注意前期的信号情况，谨慎对待。",
+    "reviewed_at": 1787328416.0307803,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1540391500528230432"
+  },
+  {
+    "id": "cef1ec97",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1540426433338409000,
+    "author_name": "dawei_35425",
+    "author_id": 1186155087572238407,
+    "question": "",
+    "draft_answer": "这张图显示了过去十年每个月表现最佳的标普500板块。每个月的表现都有明显的板块轮动特征。\n\n- **一月和九月**：能源板块在一月表现突出，而九月表现较差。\n- **二月**：工业板块表现最佳。\n- **三月和十月**：公用事业板块在这两个月份表现较好。\n- **四月到八月和十二月**：科技板块在这些月份表现强劲，特别是在七月。\n- **十一月**：金融板块有最佳表现。\n\n这种板块轮动可以帮助投资者在不同月份中优化投资组合，利用历史趋势来制定策略。",
+    "confidence": 9,
+    "context_snippets": [],
+    "created_at": 1787336684.561317,
+    "status": "approved",
+    "final_answer": "这张图显示了过去十年每个月表现最佳的标普500板块。每个月的表现都有明显的板块轮动特征。\n\n- **一月和九月**：能源板块在一月表现突出，而九月表现较差。\n- **二月**：工业板块表现最佳。\n- **三月和十月**：公用事业板块在这两个月份表现较好。\n- **四月到八月和十二月**：科技板块在这些月份表现强劲，特别是在七月。\n- **十一月**：金融板块有最佳表现。\n\n这种板块轮动可以帮助投资者在不同月份中优化投资组合，利用历史趋势来制定策略。",
+    "reviewed_at": 1787336808.8898952,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1540426433338409000"
+  },
+  {
+    "id": "aeab5884",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1540451614387732566,
+    "author_name": "yz60151",
+    "author_id": 1104940268723114086,
+    "question": "寻找进 or 出?",
+    "draft_answer": "卖信号确认了，主要是注意小级别信号寻找进出点。😄",
+    "confidence": 9,
+    "context_snippets": [
+      {
+        "text": "我就是 search  mes\n就出来了",
+        "score": 0.043740034103393555,
+        "distance": 0.9562599658966064,
+        "metadata": {
+          "type": "grouped",
+          "channel_id": "912366231112282172",
+          "source_message_id": "949160785140137984",
+          "timestamp": "2022-03-03T23:26:05.732-05:00",
+          "chunk_index": 0,
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "用用 search 功能",
+        "score": -0.0404210090637207,
+        "distance": 1.0404210090637207,
+        "metadata": {
+          "source_message_id": "915787251991080980",
+          "type": "standalone",
+          "timestamp": "2021-12-01T21:11:35.379-05:00",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "channel_id": "895384401809113108"
+        }
+      },
+      {
+        "text": "qqq 吗？我觉得不用出\n拿一拿\n那问题不大的",
+        "score": -0.10260367393493652,
+        "distance": 1.1026036739349365,
+        "metadata": {
+          "total_chunks": 1,
+          "type": "grouped",
+          "timestamp": "2022-01-10T14:18:05.904-05:00",
+          "channel_id": "912366231112282172",
+          "source_message_id": "930178708134850640",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1787342684.821789,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787495360.638998,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1540451614387732566"
+  },
+  {
+    "id": "eb93cc7c",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1540522624067702844,
+    "author_name": "day1230706",
+    "author_id": 760242911866257489,
+    "question": "低位买的TSLA是不是该止盈了？",
+    "draft_answer": "低位买的TSLA，当前市场情况不太明朗，之前提到的关键位附近是大阻力，若突破可以考虑继续持有。若反弹至关键压力位，适当止盈是可以的。整体上要看市场动向，谨慎操作。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 幸亏没买TSLA啊\nA: 交付差于预期，要去摸低点了",
+        "score": 0.3580583333969116,
+        "distance": 0.6419416666030884,
+        "metadata": {
+          "question": "幸亏没买TSLA啊",
+          "timestamp": "2023-01-03T10:32:50.834-05:00",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "total_chunks": 1,
+          "source_message_id": "1059856877707595786",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: tsla 这个是短期高点了吧\nA: 波段操作400附近买信号买入 是可以走。\n不可能赚尽所有的利润，是要去追求赚安全的钱",
+        "score": 0.26316767930984497,
+        "distance": 0.736832320690155,
+        "metadata": {
+          "timestamp": "2025-12-19T09:56:19.69-05:00",
+          "type": "qa_pair",
+          "source_message_id": "1451588970097152162",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "question": "tsla 这个是短期高点了吧",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "123 tsla\n止损 121\n今天tsla 很活跃\n大盘没给机会 ，我来点 tsla",
+        "score": 0.2197156548500061,
+        "distance": 0.7802843451499939,
+        "metadata": {
+          "channel_id": "912366231112282172",
+          "source_message_id": "1055883749197361192",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "type": "grouped",
+          "timestamp": "2022-12-23T11:25:03.18-05:00"
+        }
+      }
+    ],
+    "created_at": 1787367784.0261822,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787495360.638998,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1540522624067702844"
+  },
+  {
+    "id": "b9577285",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1541413396233195540,
+    "author_name": "dawei_35425",
+    "author_id": 1186155087572238407,
+    "question": "比特币真的要印证横有多长竖有多高啊",
+    "draft_answer": "嗯嗯，这个横有多长竖有多高的理论确实有其道理。比特币目前的阻力区间效果明显，关键位置还是要多关注7.3w和7.1w的情况。需要耐心观察后续走势，企稳的话可能会有新的机会。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: 比特币是不是要启动了\nA: 确认图片7.3w之后就已启动",
+        "score": -0.02282118797302246,
+        "distance": 1.0228211879730225,
+        "metadata": {
+          "source": "discord_live",
+          "author_id": "747551330783985785",
+          "channel_id": "923449257711763466",
+          "message_id": "1503749762627670108",
+          "type": "qa_pair",
+          "timestamp": "2026-05-12T13:24:41.730000+00:00"
+        }
+      },
+      {
+        "text": "Q: 树大，怎么看比特币呀\nA: 11100 有4h 买信号 ，10970支撑是防守位置",
+        "score": -0.051133036613464355,
+        "distance": 1.0511330366134644,
+        "metadata": {
+          "chunk_index": 0,
+          "question": "树大，怎么看比特币呀",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "source_message_id": "1427784051992957078",
+          "timestamp": "2025-10-14T18:24:04.94-04:00"
+        }
+      },
+      {
+        "text": "Q: 树哥怎么看比特币, 73,000阻力没过去，是不是长期不太看好？:blobcry:\nA: 还要磨",
+        "score": -0.05873119831085205,
+        "distance": 1.058731198310852,
+        "metadata": {
+          "type": "qa_pair",
+          "timestamp": "2026-02-11T14:07:46.026-05:00",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "question": "树哥怎么看比特币, 73,000阻力没过去，是不是长期不太看好？:blobcry:",
+          "source_message_id": "1471221191518982154"
+        }
+      }
+    ],
+    "created_at": 1787576236.34197,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787667379.331822,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1541413396233195540"
+  },
+  {
+    "id": "596744e3",
+    "channel_id": 1503405382624612624,
+    "channel_name": "1503405382624612624",
+    "message_id": 1541513408984121445,
+    "author_name": "ak477342",
+    "author_id": 678507753630859271,
+    "question": "AI你好, TSLA 日線出了leverage down訊號, 跟據圖表, 應該把止損設在 351.26 前HH 還是設在前HL331.15 比較好?",
+    "draft_answer": "对于TSLA日线出现的leverage down信号，建议将止损设在前一个低点（前HL）附近，保护利润的同时降低风险。观察接下来的K线形态，确认趋势方向，做好仓位管理。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: 低位买的TSLA是不是该止盈了？\nA: 等走弱会有日线和4h leverage down信号，不会有卖信号",
+        "score": 0.32491040229797363,
+        "distance": 0.6750895977020264,
+        "metadata": {
+          "message_id": "1540709689195630712",
+          "author_id": "747551330783985785",
+          "timestamp": "2026-08-22T13:10:14.906000+00:00",
+          "source": "discord_live",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: ai你好, 日線買訊號 彩虹圖向下, 請問出4小時leverge down 應該把止損后上移到前一個嗎LL嗎?\nA: 从图中看，价格在接近重要均线时出现了4小时的“leverage down”信号，可能预示着短期内有回调压力。建议将止损上移至前一个低点（LL）附近，以保护利润并降低风险。注意观察接下来的K线形态确认趋势方向。",
+        "score": 0.2644009590148926,
+        "distance": 0.7355990409851074,
+        "metadata": {
+          "message_id": "1508826584503681095",
+          "channel_id": "1503405382624612624",
+          "source": "owner_review",
+          "timestamp": "2026-05-26T13:38:10.388000+00:00",
+          "type": "qa_pair",
+          "author_id": "678507753630859271"
+        }
+      },
+      {
+        "text": "Q: TSLA好弱啊😂\nA: tsla 跌破 205 就彻底走坏了，只能抢下反弹。\n现在要等跌够",
+        "score": 0.24738812446594238,
+        "distance": 0.7526118755340576,
+        "metadata": {
+          "total_chunks": 1,
+          "question": "TSLA好弱啊😂",
+          "chunk_index": 0,
+          "source_message_id": "1057395078982799380",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "timestamp": "2022-12-27T15:30:32.28-05:00"
+        }
+      }
+    ],
+    "created_at": 1787595840.3671317,
+    "status": "approved",
+    "final_answer": "对于TSLA日线出现的leverage down信号，建议将止损设在前一个低点（前HL）附近，保护利润的同时降低风险。观察接下来的K线形态，确认趋势方向，做好仓位管理。",
+    "reviewed_at": 1787595982.8540921,
+    "jump_url": "https://discord.com/channels/@me/1503405382624612624/1541513408984121445"
+  },
+  {
+    "id": "ff40268e",
+    "channel_id": 1503405382624612624,
+    "channel_name": "1503405382624612624",
+    "message_id": 1541513498515873936,
+    "author_name": "ak477342",
+    "author_id": 678507753630859271,
+    "question": "",
+    "draft_answer": "从图表上看，TSLA在日线和4小时图上分别出现了“leverage down”信号，表明可能的下行压力。价格在接近之前的高点区域出现回调。\n\n日线图显示价格在均线上方，但目前下跌，可能会测试下方的支撑区域。4小时图上，价格在突破前高后回落，结合信号，可能会进一步下探。\n\n止损设置可以考虑前高点和前低点的关键支撑区域。设在前高点上方可能更保守，而设在前低点下方则风险较大，但留有更多下行空间。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1787595863.0477154,
+    "status": "approved",
+    "final_answer": "从图表上看，TSLA在日线和4小时图上分别出现了“leverage down”信号，表明可能的下行压力。价格在接近之前的高点区域出现回调。\n\n日线图显示价格在均线上方，但目前下跌，可能会测试下方的支撑区域。4小时图上，价格在突破前高后回落，结合信号，可能会进一步下探。\n\n止损设置可以考虑前高点和前低点的关键支撑区域。设在前高点上方可能更保守，而设在前低点下方则风险较大，但留有更多下行空间。",
+    "reviewed_at": 1787595973.160587,
+    "jump_url": "https://discord.com/channels/@me/1503405382624612624/1541513498515873936"
+  },
+  {
+    "id": "4f132231",
+    "channel_id": 1503405382624612624,
+    "channel_name": "1503405382624612624",
+    "message_id": 1541513925009612892,
+    "author_name": "ak477342",
+    "author_id": 678507753630859271,
+    "question": "<@1501627865987285083> AI你好, TSLA 日線出了leverage down訊號, 跟據圖表, 應該把止損設在 351.26 前HH 還是設在前HL331.15 比較好?",
+    "draft_answer": "根据目前的日线leverage down信号，建议将止损设在前HL331.关键位附近，这样可以更好地保护利润。如果价格反弹到关键位前HH附近，可以再观察后续走势来决定是否调整止损。注意关注K线形态，保持灵活应变的策略。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: 低位买的TSLA是不是该止盈了？\nA: 等走弱会有日线和4h leverage down信号，不会有卖信号",
+        "score": 0.32258713245391846,
+        "distance": 0.6774128675460815,
+        "metadata": {
+          "message_id": "1540709689195630712",
+          "type": "qa_pair",
+          "source": "discord_live",
+          "channel_id": "923449257711763466",
+          "timestamp": "2026-08-22T13:10:14.906000+00:00",
+          "author_id": "747551330783985785"
+        }
+      },
+      {
+        "text": "Q: ai你好, 日線買訊號 彩虹圖向下, 請問出4小時leverge down 應該把止損后上移到前一個嗎LL嗎?\nA: 从图中看，价格在接近重要均线时出现了4小时的“leverage down”信号，可能预示着短期内有回调压力。建议将止损上移至前一个低点（LL）附近，以保护利润并降低风险。注意观察接下来的K线形态确认趋势方向。",
+        "score": 0.28165584802627563,
+        "distance": 0.7183441519737244,
+        "metadata": {
+          "author_id": "678507753630859271",
+          "message_id": "1508826584503681095",
+          "source": "owner_review",
+          "type": "qa_pair",
+          "channel_id": "1503405382624612624",
+          "timestamp": "2026-05-26T13:38:10.388000+00:00"
+        }
+      },
+      {
+        "text": "Q: TSLA好弱啊😂\nA: tsla 跌破 205 就彻底走坏了，只能抢下反弹。\n现在要等跌够",
+        "score": 0.24492919445037842,
+        "distance": 0.7550708055496216,
+        "metadata": {
+          "source_message_id": "1057395078982799380",
+          "total_chunks": 1,
+          "question": "TSLA好弱啊😂",
+          "channel_id": "923449257711763466",
+          "chunk_index": 0,
+          "type": "qa_pair",
+          "timestamp": "2022-12-27T15:30:32.28-05:00"
+        }
+      }
+    ],
+    "created_at": 1787595962.2157238,
+    "status": "edited",
+    "final_answer": "根据目前的日线leverage down信号，建议将止损设在前HL331或者341关键位附近，这样可以更好地保护利润。如果价格反弹到关键位前HH附近，可以再观察后续走势来决定是否调整止损。注意关注K线形态，保持灵活应变的策略。",
+    "reviewed_at": 1787596055.9165804,
+    "jump_url": "https://discord.com/channels/@me/1503405382624612624/1541513925009612892"
+  },
+  {
+    "id": "647ebd70",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1541542190579191921,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "<@747551330783985785> BTC怎么看？在周五收盘买入的IBIT ETF；需要短期先卖掉吗 （看来79000没有能过去）",
+    "draft_answer": "btc 走势目前比较弱，79000 压力未能突破，建议先观察一下市场反应。如果短期有卖信号出现，考虑减仓保护利润是个不错的选择。关注支撑位的表现，保持灵活应对。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 还以为是大跌赶快一看原来是大涨 这是一步反弹到通道的上沿压力？\nA: ITB 是你要求我加入etf 信号的，你买了没？🤭",
+        "score": 0.21838515996932983,
+        "distance": 0.7816148400306702,
+        "metadata": {
+          "source_message_id": "1441476819743281223",
+          "channel_id": "923449257711763466",
+          "timestamp": "2025-11-21T12:14:15.171-05:00",
+          "question": "还以为是大跌赶快一看原来是大涨 这是一步反弹到通道的上沿压力？",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "大盘本周 突破并 站上es 4212 ，标准的 突破走法 （突破后回踩 es4212 不跌破， 确认站上）。\n波段做多，不建议追高，最好耐心等待回踩的机会，耐心等待也是交易的一个部分。已有仓位，盈利部分可以止盈，特别是如果跌破4212 注意保护利润。仓位如果还是大的要减减仓。若有之前被套的仓位，如果 接近成本了，也可分批离场，等下个好的波段 setup 位置再次入场。\n大盘保持在4212 之上均属于强势，不跌破 4212 ，不会大跌的可能，上涨下跌都需要从小级别一级级 开始。之前和视频多次有讲解4212 -4101 是筹码密集区域，多空争夺激烈，需要在 4101 之下 空头才会开始占有优势。\n波段下周有可能会出现spy 日线级别 卖信号/alert。如果有我会把 我剩下的12.5% 底仓出去，然后在 1h spy 买信号再开始建立仓位。\n除了大盘下周可能会有更多的板块 etf 出现日线卖信号，市场在超买区域，\nbtc 和 eth 这些高风险标的也可能会有 日线级别卖信号出现\n大家注意风险，多仓做好保护和修建仓位。",
+        "score": 0.21115857362747192,
+        "distance": 0.7888414263725281,
+        "metadata": {
+          "source_message_id": "1008486532912525312",
+          "channel_id": "921199016476307466",
+          "total_chunks": 2,
+          "timestamp": "2022-08-14T17:25:26.22-04:00",
+          "type": "grouped",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "收盘 低于 es 4310 不是很好，如果仓位杠杆大了，可以把上周抄底的的获利一些。\n如果仓位杠杆合适，就观察 4281\n波段是否买卖最关键的是 取决于 你的仓位（杠杆）的大小\n@懒人🌴22 @懒人etf🌲22",
+        "score": 0.2101573944091797,
+        "distance": 0.7898426055908203,
+        "metadata": {
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "channel_id": "921199016476307466",
+          "timestamp": "2022-02-28T14:26:34.343-05:00",
+          "source_message_id": "947937846096957460",
+          "type": "grouped"
+        }
+      }
+    ],
+    "created_at": 1787602703.8267298,
+    "status": "approved",
+    "final_answer": "btc 走势目前比较弱，79000 压力未能突破，建议先观察一下市场反应。如果短期有卖信号出现，考虑减仓保护利润是个不错的选择。关注支撑位的表现，保持灵活应对。",
+    "reviewed_at": 1787602967.3073552,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1541542190579191921"
+  },
+  {
+    "id": "68c3748c",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1541543729439973456,
+    "author_name": "ally4712",
+    "author_id": 812842969538625538,
+    "question": "后面会再出买信号加回吗？",
+    "draft_answer": "下个买信号有可能会出现，加回要看后续信号。如果周线信号出来，小时信号可以考虑加仓。保持关注哦。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 会不会后面没有日线买信号呢？\nA: 有可能的",
+        "score": 0.36205774545669556,
+        "distance": 0.6379422545433044,
+        "metadata": {
+          "question": "会不会后面没有日线买信号呢？",
+          "timestamp": "2025-03-27T10:23:25.707-04:00",
+          "type": "qa_pair",
+          "total_chunks": 1,
+          "source_message_id": "1354823130496893038",
+          "chunk_index": 0,
+          "channel_id": "923449257711763466"
+        }
+      },
+      {
+        "text": "周线信号已出，回撤的小时级别买信号可以加仓",
+        "score": 0.32499146461486816,
+        "distance": 0.6750085353851318,
+        "metadata": {
+          "total_chunks": 1,
+          "source_message_id": "1359601571620716625",
+          "timestamp": "2025-04-09T14:51:14.85-04:00",
+          "channel_id": "1357813233960095978",
+          "type": "standalone",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "日线卖信号卖出的部分回踩4h 买信号可以买回来",
+        "score": 0.3235912322998047,
+        "distance": 0.6764087677001953,
+        "metadata": {
+          "timestamp": "2024-10-07T14:13:36.076-04:00",
+          "type": "standalone",
+          "total_chunks": 1,
+          "source_message_id": "1292912730365235372",
+          "channel_id": "923449257711763466",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1787603068.100613,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787689483.8775923,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1541543729439973456"
+  },
+  {
+    "id": "c2a61648",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1541635695322333295,
+    "author_name": "dawei_35425",
+    "author_id": 1186155087572238407,
+    "question": "刚看了一下比特币，上80千了，到底这个横有多长竖有多高是要到哪里才是顶啊，86千还是88千？拿手在图上比了一下，86千应该是有的",
+    "draft_answer": "目前的阻力区间确实比较明显，价格在关键位千附近反复震荡。关于顶点，还是要看后续的反应，如果突破关键位千，就可以考虑上方压力区间了。建议关注反弹力度和市场情绪，等信号出来再决定。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 老师 比特币目前看9 万合理吗？我从11万开始空的SBIT单准备等9 万收 这两天过山车一样 吓死 但是跟着川普小儿子坚持拿着 因为目前机构暂时短趋势不看好比特币\nA: 图上要 103500， 98100，91000 一个个支撑看 ，10350 不不有效跌破前看不到9万",
+        "score": 0.13079476356506348,
+        "distance": 0.8692052364349365,
+        "metadata": {
+          "total_chunks": 1,
+          "source_message_id": "1430603543236051117",
+          "chunk_index": 0,
+          "question": "老师 比特币目前看9 万合理吗？我从11万开始空的SBIT单准备等9 万收 这两天过山车一样 吓死 但是跟着川普小儿子坚持拿着 因为目前机构暂时短趋势不看好比特币",
+          "type": "qa_pair",
+          "timestamp": "2025-10-22T13:07:44.036-04:00",
+          "channel_id": "923449257711763466"
+        }
+      },
+      {
+        "text": "Q: 树哥怎么看比特币, 73,000阻力没过去，是不是长期不太看好？:blobcry:\nA: 还要磨",
+        "score": 0.08221650123596191,
+        "distance": 0.9177834987640381,
+        "metadata": {
+          "total_chunks": 1,
+          "source_message_id": "1471221191518982154",
+          "channel_id": "923449257711763466",
+          "timestamp": "2026-02-11T14:07:46.026-05:00",
+          "question": "树哥怎么看比特币, 73,000阻力没过去，是不是长期不太看好？:blobcry:",
+          "chunk_index": 0,
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: 比特币怎么看？前天买的被套了\nA: 周末视频有分析，7.3w-7.1w 这个阻力区间左侧交易",
+        "score": 0.07754719257354736,
+        "distance": 0.9224528074264526,
+        "metadata": {
+          "type": "qa_pair",
+          "source_message_id": "1468699716920545475",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "question": "比特币怎么看？前天买的被套了",
+          "timestamp": "2026-02-04T15:08:19.635-05:00",
+          "channel_id": "923449257711763466"
+        }
+      }
+    ],
+    "created_at": 1787626926.0185952,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787743698.543725,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1541635695322333295"
+  },
+  {
+    "id": "641df21a",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1541839498571284540,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "为啥不是前高",
+    "draft_answer": "因为前高被突破了，现在在关注的是新高的形成。小幅回撤后出新高的概率大，所以不再提前高了。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "☝️ @ally\n因为有新高",
+        "score": -0.005056858062744141,
+        "distance": 1.0050568580627441,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "timestamp": "2025-10-30T15:55:09.284-04:00",
+          "source_message_id": "1433544778984980615",
+          "total_chunks": 1,
+          "type": "grouped",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 新高？\nA: 新高符合预期",
+        "score": -0.04848027229309082,
+        "distance": 1.0484802722930908,
+        "metadata": {
+          "total_chunks": 1,
+          "question": "新高？",
+          "chunk_index": 0,
+          "timestamp": "2025-01-23T13:22:11.675-05:00",
+          "source_message_id": "1332052782429241404",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: 没有前低了\nA: 今天的低点或者日图上前一个HH",
+        "score": -0.07973229885101318,
+        "distance": 1.0797322988510132,
+        "metadata": {
+          "message_id": "1531735819419779245",
+          "type": "qa_pair",
+          "author_id": "747551330783985785",
+          "source": "discord_live",
+          "timestamp": "2026-07-28T18:51:17.625000+00:00",
+          "channel_id": "923449257711763466"
+        }
+      }
+    ],
+    "created_at": 1787673587.9448297,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787760043.8896565,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1541839498571284540"
+  },
+  {
+    "id": "95cc08f2",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1542179785038631024,
+    "author_name": "yej002",
+    "author_id": 266748349158391808,
+    "question": "但是能不能指望得上不好说hhh",
+    "draft_answer": "嗯嗯，这个确实不好说，关键还是看后续走势和信号了。😂",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "上面有说，可以等个HL",
+        "score": -0.07887721061706543,
+        "distance": 1.0788772106170654,
+        "metadata": {
+          "type": "standalone",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "timestamp": "2022-01-10T20:19:42.818-05:00",
+          "source_message_id": "930269711588016158",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "你说的对，spy 估计出不来。qqq 有希望。 googl等走好 应该会有",
+        "score": -0.07916402816772461,
+        "distance": 1.0791640281677246,
+        "metadata": {
+          "total_chunks": 1,
+          "timestamp": "2022-01-06T08:25:52.784-05:00",
+          "type": "standalone",
+          "channel_id": "912366231112282172",
+          "source_message_id": "928640517942702090",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 可上可下，还不能确定吧\nA: 嗯嗯，",
+        "score": -0.0846095085144043,
+        "distance": 1.0846095085144043,
+        "metadata": {
+          "type": "qa_pair",
+          "question": "可上可下，还不能确定吧",
+          "timestamp": "2024-01-18T20:43:31.581-05:00",
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "source_message_id": "1197717949067296860",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1787754716.1627302,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787841163.877465,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1542179785038631024"
+  },
+  {
+    "id": "ca3c33b4",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1542181382032457748,
+    "author_name": "dawei_35425",
+    "author_id": 1186155087572238407,
+    "question": "哪天黄爸能造个机器人可以原地跳三米高，跳远超八米，打街霸电玩干翻中国小孩，那就爆了",
+    "draft_answer": "哈哈，这个机器人确实有点夸张😄，不过能长期赚钱才是关键目标！也许未来会有更强大的机器人出现，期待一下吧！",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "😆\n封杀小广告的机器人🤖️",
+        "score": 0.03061068058013916,
+        "distance": 0.9693893194198608,
+        "metadata": {
+          "timestamp": "2021-12-24T10:49:44.328-05:00",
+          "type": "grouped",
+          "source_message_id": "923965679009423380",
+          "total_chunks": 1,
+          "channel_id": "895384401809113108",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 今天机器人厉害啊 又抄在了底部\nA: 等下个es 短线卖信号出去就行",
+        "score": -0.01959395408630371,
+        "distance": 1.0195939540863037,
+        "metadata": {
+          "type": "qa_pair",
+          "source_message_id": "1105939014894231572",
+          "channel_id": "912366231112282172",
+          "question": "今天机器人厉害啊 又抄在了底部",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "timestamp": "2023-05-10T15:26:48.504-04:00"
+        }
+      },
+      {
+        "text": "这单nq 捞大\n了\n我刚差点跑了，就想着测试下机器人",
+        "score": -0.04498422145843506,
+        "distance": 1.044984221458435,
+        "metadata": {
+          "channel_id": "912366231112282172",
+          "total_chunks": 1,
+          "timestamp": "2022-01-24T15:33:36.831-05:00",
+          "source_message_id": "935271142338469958",
+          "type": "grouped",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1787755095.78758,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787841523.8886428,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1542181382032457748"
+  },
+  {
+    "id": "c9cefc75",
+    "channel_id": 951552694743605278,
+    "channel_name": "学习交流",
+    "message_id": 1542184090999193620,
+    "author_name": "sz_8",
+    "author_id": 847965349450088479,
+    "question": "元宝说…",
+    "draft_answer": "Jackson Hole会议将于关键位年8月27日至关键位日举行。Kevin Warsh的演讲安排在8月28日，美东时间上午10点，北京时间晚上22点。",
+    "confidence": 3,
+    "context_snippets": [
+      {
+        "text": "😅\n还有这说法？\n会减仓的",
+        "score": -0.01813530921936035,
+        "distance": 1.0181353092193604,
+        "metadata": {
+          "channel_id": "912366231112282172",
+          "source_message_id": "948769665197436938",
+          "type": "grouped",
+          "chunk_index": 0,
+          "timestamp": "2022-03-02T21:31:55.471-05:00",
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "你意思是金 和银吧？",
+        "score": -0.045178890228271484,
+        "distance": 1.0451788902282715,
+        "metadata": {
+          "type": "owner_post",
+          "source": "discord_live",
+          "author_id": "747551330783985785",
+          "message_id": "1509938575100215296",
+          "timestamp": "2026-05-29T15:16:49.606000+00:00",
+          "channel_id": "923449257711763466"
+        }
+      },
+      {
+        "text": "Q: 老师看看黄金是不是可以买\nA: 金日线是盘整， 我觉得中枢下沿买比较安全些",
+        "score": -0.07918953895568848,
+        "distance": 1.0791895389556885,
+        "metadata": {
+          "total_chunks": 1,
+          "timestamp": "2021-12-17T12:02:18.96-05:00",
+          "type": "qa_pair",
+          "source_message_id": "921447228600647720",
+          "chunk_index": 0,
+          "channel_id": "912366231112282172",
+          "question": "老师看看黄金是不是可以买"
+        }
+      }
+    ],
+    "created_at": 1787755742.2845829,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787842183.8825183,
+    "jump_url": "https://discord.com/channels/895349295975370802/951552694743605278/1542184090999193620"
+  },
+  {
+    "id": "8beb5ea8",
+    "channel_id": 1539140161491832842,
+    "channel_name": "bigtreesignal_ai",
+    "message_id": 1542286897714434078,
+    "author_name": "daxiaopan",
+    "author_id": 804189670732726292,
+    "question": "Qqq出了4小时买信号么？",
+    "draft_answer": "QQQ 目前没有4h 买信号，图上还没有信号。可以关注5min 图看看买点。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: 四小时qqq买信号出了，可以抄底了吗？\nA: 4h 有alert ，图上还没有信号。\n没有仓位或者仓位太小的可以看5min 图买。\n加仓的话等图上有0.25 强度买信号后再看5min 图买",
+        "score": 0.561988353729248,
+        "distance": 0.43801164627075195,
+        "metadata": {
+          "total_chunks": 1,
+          "timestamp": "2025-02-25T13:35:42.591-05:00",
+          "chunk_index": 0,
+          "source_message_id": "1344014983222132777",
+          "question": "四小时qqq买信号出了，可以抄底了吗？",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: QQQ一小时买信号又出了。估计不太有人参与。。。\nA: 周线买信号后 有4h 买信号或者日线银色买信号）概率大一些。\n如果没有任何仓位，踏空情绪很严重的话还是可以关注1h 买信号",
+        "score": 0.5418498814105988,
+        "distance": 0.45815011858940125,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "timestamp": "2026-06-24T19:36:37.805000+00:00",
+          "author_id": "747551330783985785",
+          "message_id": "1519426041251237892",
+          "source": "discord_live"
+        }
+      },
+      {
+        "text": "Q: 今天又出qqq 4小时卖信号\nA: 多个信号出现 取级别大的那个，比如日线卖减仓离场了 ，4h 卖信号就不需要有操作",
+        "score": 0.5415391325950623,
+        "distance": 0.45846086740493774,
+        "metadata": {
+          "total_chunks": 1,
+          "timestamp": "2023-01-30T13:12:33.765-05:00",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "source_message_id": "1069681543804616704",
+          "chunk_index": 0,
+          "question": "今天又出qqq 4小时卖信号"
+        }
+      }
+    ],
+    "created_at": 1787780254.4900146,
+    "status": "edited",
+    "final_answer": "QQQ 目前没有4h 买信号，图上还没有信号。",
+    "reviewed_at": 1787780932.1224077,
+    "jump_url": "https://discord.com/channels/895349295975370802/1539140161491832842/1542286897714434078"
+  },
+  {
+    "id": "7bad8640",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1542398654239735899,
+    "author_name": "yej002",
+    "author_id": 266748349158391808,
+    "question": "<@747551330783985785> 树哥！请教个问题： 之前spx在出了卖信号之后减仓了，剩余的仓位这一波回调里没有被止损，继续拿着的话 什么时候再去主动止盈呢？应该在之前出过信号的位置再次减仓吗？还是等待下一个卖信号出现后减仓呢？",
+    "draft_answer": "如果之前已经减仓，剩余仓位拿着的话，建议等下一个卖信号出现再减仓。这样能更好地把握时机，避免在波动中频繁操作。如果没有止损，那当前的仓位也要关注市场走势，保持警惕。记得要提高止损保护利润，确保不会错失机会。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: 请教树哥，上一次反弹存在侥幸心理，以为会拉上去，所以没有减仓。现在仓位50%，现在是拿着好，还是等反弹再减仓。有些被动，担心大盘会再大跌，心态不稳定。\nA: 正确的应该是在1h 卖信号减仓或者4h leverage 把部分仓位提高止损做保护，这样手里就会有很多主动权和筹码，心态自然也就会稳定不少。\n周5大跌后里前低 5500 附近较近，已经错过了减仓卖信号和提高止损位置，之后操作（止损或者拿着不动）都伴随着风险的提高。",
+        "score": 0.5247409343719482,
+        "distance": 0.47525906562805176,
+        "metadata": {
+          "question": "请教树哥，上一次反弹存在侥幸心理，以为会拉上去，所以没有减仓。现在仓位50%，现在是拿着好，还是等反弹再减仓。有些被动，担心大盘会再大跌，心态不稳定。",
+          "timestamp": "2025-03-30T11:05:49.891-04:00",
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "type": "qa_pair",
+          "source_message_id": "1355920965174952227",
+          "channel_id": "923449257711763466"
+        }
+      },
+      {
+        "text": "Q: @bigTreeSignal量化分析 树哥，现在手上应该是剩下八月初买入仓位的一半，本来要等4小时卖信号再出，现在4小时出了leverage down，是否应该提高止盈点（spy 549？qqq 465？）\nA: 嗯嗯，8月初买入仓位剩一半，如果之前减多了，仓位少的话可以在提示的银色弱强度买信号加。日线图走出HL （4h 图LL） 止损放这里，如果跌破了这个HL，大概率会有下个买信号。",
+        "score": 0.5007307231426239,
+        "distance": 0.4992692768573761,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "timestamp": "2024-09-12T13:48:21.601-04:00",
+          "total_chunks": 1,
+          "source_message_id": "1283846681556684860",
+          "question": "@bigTreeSignal量化分析 树哥，现在手上应该是剩下八月初买入仓位的一半，本来要等4小时卖信号再出，现在4小时出了leverage down，是否应该提高止盈点（spy 549？qqq 465？）",
+          "type": "qa_pair",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 树哥，现在应该什么操作啊？等日线卖信号么？\nA: 这个波段你还有仓位的话日卖信号可以出去，\n我没有仓位了，就等下个spx 1h 信号建仓",
+        "score": 0.49827444553375244,
+        "distance": 0.5017255544662476,
+        "metadata": {
+          "chunk_index": 0,
+          "timestamp": "2023-06-03T19:04:53.816-04:00",
+          "total_chunks": 1,
+          "type": "qa_pair",
+          "source_message_id": "1114691207445086259",
+          "channel_id": "923449257711763466",
+          "question": "树哥，现在应该什么操作啊？等日线卖信号么？"
+        }
+      }
+    ],
+    "created_at": 1787830141.5965793,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787916583.8994577,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1542398654239735899"
+  },
+  {
+    "id": "2e6563a9",
+    "channel_id": 1537662940440694786,
+    "channel_name": "1537662940440694786",
+    "message_id": 1542330435986530305,
+    "author_name": "miao6420",
+    "author_id": 767210890420027392,
+    "question": "NVDA的支撑位在哪里",
+    "draft_answer": "支撑位在前期低点附近，关注价格能否稳住。如果有回调，留意这个位置的有效性。中枢结构也是重要参考，切记关注背驰现象。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: Nvda 目前的價位可買嗎？\nA: 130 支撑附近可以小仓位买，确认跌破 130 止损",
+        "score": 0.17241394519805908,
+        "distance": 0.8275860548019409,
+        "metadata": {
+          "source_message_id": "1328850855243419678",
+          "question": "Nvda 目前的價位可買嗎？",
+          "type": "qa_pair",
+          "timestamp": "2025-01-14T17:18:52.745-05:00",
+          "channel_id": "912366231112282172",
+          "chunk_index": 0,
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "Q: <@1501627865987285083>\nA: 图中显示了NVDA的缠论笔与中枢分析。从图中可以看出，价格经历了一系列的上涨和回调，形成多个高低点。注意到两个中枢区域，分别在较低和较高的位置。\n\n1. **中枢1**：价格在中枢1横盘震荡，形成了支撑和阻力区域。\n2. **中枢2**：价格突破中枢2上方，显示出强势的上涨趋势。\n\n目前价格处于前期高点附近，可能面临压力。关注后续能否有效突破或回调至支撑区域。",
+        "score": 0.1451331377029419,
+        "distance": 0.8548668622970581,
+        "metadata": {
+          "author_id": "1186155087572238407",
+          "source": "owner_review",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "timestamp": "2026-06-02T21:34:15.164000+00:00",
+          "message_id": "1511483108916986017"
+        }
+      },
+      {
+        "text": "tsla nvda 领📉",
+        "score": 0.1315516233444214,
+        "distance": 0.8684483766555786,
+        "metadata": {
+          "channel_id": "895384401809113108",
+          "timestamp": "2022-04-11T15:41:04.65-04:00",
+          "type": "standalone",
+          "total_chunks": 1,
+          "source_message_id": "963161786784313434",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1787830144.6321118,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787916583.8994577,
+    "jump_url": "https://discord.com/channels/@me/1537662940440694786/1542330435986530305"
+  },
+  {
+    "id": "2699ed04",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1542597709389758466,
+    "author_name": "dawei_35425",
+    "author_id": 1186155087572238407,
+    "question": "",
+    "draft_answer": "这张图显示了一个初始投资为10,000美元的增长情况，并且股息进行了再投资。可以看到，蓝线代表包含股息再投资的投资组合，其总体呈现上升趋势，并在关键位年8月达到最高点。相较之下，灰线显示了不含股息再投资的情况，涨幅较小。\n\n技术上，蓝线的走势在中途经历了几次回调，但整体趋势向上，说明股息再投资的策略在长期内有助于提高整体收益。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1787854358.4682949,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1787940763.879694,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1542597709389758466"
+  },
+  {
+    "id": "3c2b067e",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1542597902814290041,
+    "author_name": "dawei_35425",
+    "author_id": 1186155087572238407,
+    "question": "",
+    "draft_answer": "这张图显示了TLT和SPY的投资表现对比。从图中可以看到，SPY明显优于TLT，在一段时间内获得了更高的回报。TLT的增长较为平稳，而SPY则表现出强劲的上升趋势，特别是在中后期加速上涨。SPY的股息再投资也显著高于TLT，进一步推动了其总回报。总体来看，SPY在这段时间内的收益表现更佳。",
+    "confidence": 9,
+    "context_snippets": [],
+    "created_at": 1787854401.7968361,
+    "status": "approved",
+    "final_answer": "这张图显示了TLT和SPY的投资表现对比。从图中可以看到，SPY明显优于TLT，在一段时间内获得了更高的回报。TLT的增长较为平稳，而SPY则表现出强劲的上升趋势，特别是在中后期加速上涨。SPY的股息再投资也显著高于TLT，进一步推动了其总回报。总体来看，SPY在这段时间内的收益表现更佳。",
+    "reviewed_at": 1787854422.9683127,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1542597902814290041"
+  },
+  {
+    "id": "5d7a89f0",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1542886967921090560,
+    "author_name": "jingjingjing8753",
+    "author_id": 814903221054472203,
+    "question": "Tlt 是不是又出现一个周买信号呀？日线leverage down,周线买，这种一般怎么操作呢",
+    "draft_answer": "tlt现在确实有周线买信号，日线如果出现leverage down，操作上可以先保持观察，等日线有买信号再考虑入场。关注周线的走势，做好仓位管理。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "tlt 到了周线级别反弹阻力位置，从周线K上看，底部形态已经确认，趋势开始转多头，卖出之后再有的4h 日线 买信号都可以再买",
+        "score": 0.5382537543773651,
+        "distance": 0.4617462456226349,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "type": "standalone",
+          "source_message_id": "1285681102606041230",
+          "chunk_index": 0,
+          "timestamp": "2024-09-17T15:17:41.661-04:00"
+        }
+      },
+      {
+        "text": "Q: Tlt 机会来啦\nA: tlt周线买信号买入后，日线卖信号卖，这里可以买回",
+        "score": 0.5183404088020325,
+        "distance": 0.48165959119796753,
+        "metadata": {
+          "question": "Tlt 机会来啦",
+          "timestamp": "2025-04-11T13:13:34.61-04:00",
+          "channel_id": "923449257711763466",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "source_message_id": "1360301767723716791",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: TLT 有日买了\nA: 在买信号买，卖信号卖的仓位，可以再次关注着这个买信号",
+        "score": 0.460243284702301,
+        "distance": 0.539756715297699,
+        "metadata": {
+          "author_id": "747551330783985785",
+          "channel_id": "912366231112282172",
+          "source": "discord_live",
+          "message_id": "1529849710687289424",
+          "timestamp": "2026-07-23T13:56:34.261000+00:00",
+          "type": "qa_pair"
+        }
+      }
+    ],
+    "created_at": 1787926277.8749604,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788017774.5876086,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1542886967921090560"
+  },
+  {
+    "id": "10de1fae",
+    "channel_id": 951552694743605278,
+    "channel_name": "学习交流",
+    "message_id": 1542907524788002847,
+    "author_name": "sz_8",
+    "author_id": 847965349450088479,
+    "question": "",
+    "draft_answer": "这张图片展示了经济数据发布时间表，主要包括中国和美国的制造业PMI、失业率、ADP就业人数等。虽然这些数据对市场趋势有重要影响，但仅凭此信息无法进行直接的技术分析。\n\n建议关注这些数据发布后的市场反应，尤其是关键数据如美国初请失业金人数和非农就业数据，因为它们可能导致市场波动。结合技术指标和价格走势，观察是否出现趋势变化或突破信号。",
+    "confidence": 7,
+    "context_snippets": [],
+    "created_at": 1787928226.3877912,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788017774.5876086,
+    "jump_url": "https://discord.com/channels/895349295975370802/951552694743605278/1542907524788002847"
+  },
+  {
+    "id": "507d9397",
+    "channel_id": 951552694743605278,
+    "channel_name": "学习交流",
+    "message_id": 1542908638748741723,
+    "author_name": "sz_8",
+    "author_id": 847965349450088479,
+    "question": "",
+    "draft_answer": "这张图片显示的是2026年纽约证券交易所的假期安排，与技术分析无关。没有K线图或技术指标可以分析。",
+    "confidence": 10,
+    "context_snippets": [],
+    "created_at": 1787928489.535969,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788017774.5876086,
+    "jump_url": "https://discord.com/channels/895349295975370802/951552694743605278/1542908638748741723"
+  },
+  {
+    "id": "484ef1b9",
+    "channel_id": 918521732334227536,
+    "channel_name": "晒骗子截图",
+    "message_id": 1543319296451805325,
+    "author_name": "wangwang188",
+    "author_id": 1370526000873738312,
+    "question": "",
+    "draft_answer": "这张图片不是股票或技术分析相关的图表，因此无法提供技术分析观点。请提供股票或市场相关的图表以便分析。",
+    "confidence": 10,
+    "context_snippets": [],
+    "created_at": 1788026398.3106658,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788152290.5979967,
+    "jump_url": "https://discord.com/channels/895349295975370802/918521732334227536/1543319296451805325"
+  },
+  {
+    "id": "2561dc1e",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544076109010698362,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "黄金有没有短线的买信号，类似一小时啥的？：）",
+    "draft_answer": "短线的话，个股不会出1h 买信号，只有4h 日线。黄金的买信号需要关注更高时间周期的图形。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: QQQ一小时的买信号出了，可以买吗？\nA: 没仓位，或者短线可以做1h 买信号",
+        "score": 0.4442664384841919,
+        "distance": 0.5557335615158081,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "source_message_id": "1209595158887399496",
+          "timestamp": "2024-02-20T15:19:19.07-05:00",
+          "question": "QQQ一小时的买信号出了，可以买吗？",
+          "chunk_index": 0,
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "Q: 请问树哥 黄金有没有出1小时卖信号？也已经长了五六十个点了\nA: 日K 什么时候收阴K 就会有日线 leverage down",
+        "score": 0.43002545833587646,
+        "distance": 0.5699745416641235,
+        "metadata": {
+          "source_message_id": "1146479750911635488",
+          "timestamp": "2023-08-30T12:21:13.181-04:00",
+          "channel_id": "923449257711763466",
+          "question": "请问树哥 黄金有没有出1小时卖信号？也已经长了五六十个点了",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: 有没有关注黄金的？  现在黄金的趋势这么好\nA: Gold 彩虹图向上发散，4小时买信号可以买",
+        "score": 0.4267885684967041,
+        "distance": 0.5732114315032959,
+        "metadata": {
+          "source_message_id": "1384169453616500777",
+          "type": "qa_pair",
+          "question": "有没有关注黄金的？  现在黄金的趋势这么好",
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "timestamp": "2025-06-16T09:55:14.367-04:00"
+        }
+      }
+    ],
+    "created_at": 1788206838.5310426,
+    "status": "edited",
+    "final_answer": "彩虹图走的不好，不会出1h 买信号，等4h 日线。",
+    "reviewed_at": 1788206931.933683,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544076109010698362"
+  },
+  {
+    "id": "944e7bf7",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544393557132185610,
+    "author_name": "jianghawk",
+    "author_id": 754937888982040615,
+    "question": "哦 0波段仓位吗？spx今天图上有日线银色买信号 树哥不参与吗？🤔",
+    "draft_answer": "目前我没有波段仓位，日线银色买信号也在观察中，等后续走势再决定。🤔",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: 树哥，现在应该什么操作啊？等日线卖信号么？\nA: 这个波段你还有仓位的话日卖信号可以出去，\n我没有仓位了，就等下个spx 1h 信号建仓",
+        "score": 0.5541690289974213,
+        "distance": 0.44583097100257874,
+        "metadata": {
+          "question": "树哥，现在应该什么操作啊？等日线卖信号么？",
+          "type": "qa_pair",
+          "source_message_id": "1114691207445086259",
+          "timestamp": "2023-06-03T19:04:53.816-04:00",
+          "chunk_index": 0,
+          "channel_id": "923449257711763466",
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "Q: 树哥 大盘到什么位置会出买信号啊 你现在波段有仓位吗？\nA: es 1h 短线 买信号 在 spx 4100 附近 spx 1h 小波段信号在 spx 4030 附近",
+        "score": 0.5008354485034943,
+        "distance": 0.49916455149650574,
+        "metadata": {
+          "timestamp": "2023-02-07T20:52:16.053-05:00",
+          "total_chunks": 1,
+          "source_message_id": "1072696335230312538",
+          "chunk_index": 0,
+          "type": "qa_pair",
+          "channel_id": "923449257711763466",
+          "question": "树哥 大盘到什么位置会出买信号啊 你现在波段有仓位吗？"
+        }
+      },
+      {
+        "text": "Q: 现在是等下一个低点买信号吗 树哥\nA: 是，spx 下面我画的那个蓝色框里会有买信号。\ndia qqq 小时，日线买信号也行，其他大盘个股日线买信号也可以再买回",
+        "score": 0.49733150005340576,
+        "distance": 0.5026684999465942,
+        "metadata": {
+          "source_message_id": "1364650915771977932",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "question": "现在是等下一个低点买信号吗 树哥",
+          "total_chunks": 1,
+          "timestamp": "2025-04-23T13:15:32.308-04:00",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1788282520.9841886,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788368936.1383948,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544393557132185610"
+  },
+  {
+    "id": "b2f29a09",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544402756155080804,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "黄金离开4h买信号可能出现的位置远吗？看它现在正好在前期一个平台的下缘。。",
+    "draft_answer": "看上去黄金的4h买信号目前还不太清晰，可能离开买信号位置还有一段距离。前期平台的下缘确实是个关注点，但得等到彩虹图的表现好转，才能更准确判断。继续关注信号和支撑情况。🤔",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 有没有关注黄金的？  现在黄金的趋势这么好\nA: Gold 彩虹图向上发散，4小时买信号可以买",
+        "score": 0.4135652184486389,
+        "distance": 0.5864347815513611,
+        "metadata": {
+          "timestamp": "2025-06-16T09:55:14.367-04:00",
+          "type": "qa_pair",
+          "total_chunks": 1,
+          "source_message_id": "1384169453616500777",
+          "channel_id": "923449257711763466",
+          "chunk_index": 0,
+          "question": "有没有关注黄金的？  现在黄金的趋势这么好"
+        }
+      },
+      {
+        "text": "Q: 黄金有没有短线的买信号，类似一小时啥的？：）\nA: 彩虹图走的不好，不会出1h 买信号，等4h 日线。",
+        "score": 0.3872950077056885,
+        "distance": 0.6127049922943115,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "timestamp": "2026-08-31T20:07:11.935000+00:00",
+          "source": "owner_review",
+          "type": "qa_pair",
+          "message_id": "1544076109010698362",
+          "author_id": "1028766136906555455"
+        }
+      },
+      {
+        "text": "Q: 下个 4h 卖信号和日线卖信号大概在什么位置？大盘现在这个位置很垃圾\nA: 4h@卖信号在5783 之上，日线卖信号目前还看不到，提高止损保护利润后带着止损等",
+        "score": 0.35422980785369873,
+        "distance": 0.6457701921463013,
+        "metadata": {
+          "chunk_index": 0,
+          "source_message_id": "1370442614037549127",
+          "question": "下个 4h 卖信号和日线卖信号大概在什么位置？大盘现在这个位置很垃圾",
+          "channel_id": "923449257711763466",
+          "timestamp": "2025-05-09T12:49:40.779-04:00",
+          "type": "qa_pair",
+          "total_chunks": 1
+        }
+      }
+    ],
+    "created_at": 1788284715.2152622,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788371156.1374557,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544402756155080804"
+  },
+  {
+    "id": "b20afb18",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544479386147758100,
+    "author_name": "yej002",
+    "author_id": 266748349158391808,
+    "question": "树哥这轮中选前下跌能看到大盘的4h或者日线买信号 或者大点的支撑在哪里嘛",
+    "draft_answer": "需要一步步来看，先关注4h的买信号。如果支撑位置能企稳，就有可能出现日线的买信号。具体支撑还要看图表情况，注意观察近期的波动。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 有点大。树哥smh跌破支撑，下个买点在哪里啊@bigTreeSignal量化分析\nA: smh盘整了几个月的下沿支撑破，先等企稳，看能不能在218 之上企稳，如果不能还需要等",
+        "score": 0.42391663789749146,
+        "distance": 0.5760833621025085,
+        "metadata": {
+          "question": "有点大。树哥smh跌破支撑，下个买点在哪里啊@bigTreeSignal量化分析",
+          "source_message_id": "1344796746626236506",
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "total_chunks": 1,
+          "timestamp": "2025-02-27T17:22:09.511-05:00",
+          "channel_id": "923449257711763466"
+        }
+      },
+      {
+        "text": "Q: 大树 spx有日线的support信号了\nA: support 今天开始有反应，在上升途中是关注，买点多出在support 走平或者往下回撤的时候，或者下面数字大的时候",
+        "score": 0.41752564907073975,
+        "distance": 0.5824743509292603,
+        "metadata": {
+          "question": "大树 spx有日线的support信号了",
+          "type": "qa_pair",
+          "source_message_id": "1441187651888611471",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "timestamp": "2025-11-20T17:05:12.182-05:00",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: @bigTreeSignal量化分析 树哥觉得这一波有可能有日线买信号吗？\nA: 需要一步步来看，先看4h 买信号。过度预测对操作无意义。",
+        "score": 0.41649913787841797,
+        "distance": 0.583500862121582,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "source_message_id": "1426317375384584214",
+          "timestamp": "2025-10-10T17:16:01.987-04:00",
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "type": "qa_pair",
+          "question": "@bigTreeSignal量化分析 树哥觉得这一波有可能有日线买信号吗？"
+        }
+      }
+    ],
+    "created_at": 1788302984.147031,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788396294.8272583,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544479386147758100"
+  },
+  {
+    "id": "e86eb736",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544499783190978601,
+    "author_name": "wendyniannianyouyu",
+    "author_id": 908321344087818260,
+    "question": "QQQ 1H买信号是不是在比较早之前给的点位695 附近？",
+    "draft_answer": "QQQ 1H买信号是动态计算的，具体要看信号图。之前提到的关键位附近可以做参考，但要结合实时情况判断。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "QQQ 1h 卖信号 trigger 点在 322 附近",
+        "score": 0.51604825258255,
+        "distance": 0.48395174741744995,
+        "metadata": {
+          "type": "standalone",
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "timestamp": "2023-04-27T16:24:41.264-04:00",
+          "source_message_id": "1101242538452590592",
+          "channel_id": "923449257711763466"
+        }
+      },
+      {
+        "text": "Q: <@1501627865987285083> qqq4H买信号潜在位置在哪里？\nA: 之前有说spx7220 附近",
+        "score": 0.4814389944076538,
+        "distance": 0.5185610055923462,
+        "metadata": {
+          "source": "discord_live",
+          "type": "qa_pair",
+          "channel_id": "923449257711763466",
+          "message_id": "1519346846647058502",
+          "timestamp": "2026-06-24T14:21:56.340000+00:00",
+          "author_id": "747551330783985785"
+        }
+      },
+      {
+        "text": "Q: 那下一个qqq 1h卖信号在哪里\nA: QQQ 1h 卖信号目前在图，和昨天 1h 卖点位差不多 305",
+        "score": 0.46756160259246826,
+        "distance": 0.5324383974075317,
+        "metadata": {
+          "source_message_id": "1086301204696547348",
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "question": "那下一个qqq 1h卖信号在哪里",
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "timestamp": "2023-03-17T10:53:09.7-04:00"
+        }
+      }
+    ],
+    "created_at": 1788307847.7565203,
+    "status": "approved",
+    "final_answer": "QQQ 1H买信号是动态计算的，具体要看信号图。之前提到的关键位附近可以做参考，但要结合实时情况判断。",
+    "reviewed_at": 1788307999.4637558,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544499783190978601"
+  },
+  {
+    "id": "ea90ceb4",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544529399553200218,
+    "author_name": "ally4712",
+    "author_id": 812842969538625538,
+    "question": "黄金会出买信号吗",
+    "draft_answer": "黄金的买信号要看信号图，目前需要确认信号图的情况。👀",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "金 银 有4h 买信号 @ gold 4505",
+        "score": 0.39645951986312866,
+        "distance": 0.6035404801368713,
+        "metadata": {
+          "total_chunks": 1,
+          "timestamp": "2026-02-02T15:25:21.409-05:00",
+          "chunk_index": 0,
+          "source_message_id": "1467979226820116667",
+          "channel_id": "923449257711763466",
+          "type": "standalone"
+        }
+      },
+      {
+        "text": "Q: 黄金有没有短线的买信号，类似一小时啥的？：）\nA: 一般是看比信号图大一个级别的彩虹图",
+        "score": 0.39421170949935913,
+        "distance": 0.6057882905006409,
+        "metadata": {
+          "source": "discord_live",
+          "author_id": "747551330783985785",
+          "type": "qa_pair",
+          "message_id": "1544095279266005036",
+          "channel_id": "923449257711763466",
+          "timestamp": "2026-08-31T21:23:22.480000+00:00"
+        }
+      },
+      {
+        "text": "Q: 有没有关注黄金的？  现在黄金的趋势这么好\nA: Gold 彩虹图向上发散，4小时买信号可以买",
+        "score": 0.3835005760192871,
+        "distance": 0.6164994239807129,
+        "metadata": {
+          "timestamp": "2025-06-16T09:55:14.367-04:00",
+          "total_chunks": 1,
+          "type": "qa_pair",
+          "question": "有没有关注黄金的？  现在黄金的趋势这么好",
+          "chunk_index": 0,
+          "channel_id": "923449257711763466",
+          "source_message_id": "1384169453616500777"
+        }
+      }
+    ],
+    "created_at": 1788314908.6286144,
+    "status": "edited",
+    "final_answer": "会，黄金的买信号要看信号图，目前需要确认信号图的情况。👀",
+    "reviewed_at": 1788315912.409319,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544529399553200218"
+  },
+  {
+    "id": "a364db01",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544597750119792711,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "QQQ 1H 买信号已经在8月24日出过了啊。现在是针对这个买信号做止损与否的决定吧。还是说，到了700还会出一次同样的1H买信号吗？",
+    "draft_answer": "如果1H买信号已经出过，那现在主要是看止损策略。如果已经上升到关键位附近，可能会有再次出现1H买信号的机会，但这要结合当前的市场情况和其他时间周期的信号来判断。可以关注4H和日线的表现，保持灵活应对。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: @bigTreeSignal量化分析 老师昨天跟着1H买信号买的QQQ短线仓位，在什么情况出来？是有1H卖信号出吗\nA: 4h/日/周卖信号或者是跌破上周5低点止损",
+        "score": 0.38469982147216797,
+        "distance": 0.615300178527832,
+        "metadata": {
+          "question": "@bigTreeSignal量化分析 老师昨天跟着1H买信号买的QQQ短线仓位，在什么情况出来？是有1H卖信号出吗",
+          "chunk_index": 0,
+          "channel_id": "923449257711763466",
+          "total_chunks": 1,
+          "source_message_id": "1402296818246615212",
+          "type": "qa_pair",
+          "timestamp": "2025-08-05T10:26:54.885-04:00"
+        }
+      },
+      {
+        "text": "Q: <@747551330783985785> 周买信号消失也是等于出过信号，该买还是得买，对吗？（当然，在仓位允许的时候）\nA: 你说qqq？周线银色弱0.2 强度信号 强度小于 日线 BX2 0.25强度 买信号，操作选最强的信号操作一次，按照信号步骤操作下单点在 7月28，7月29 的5min 买信号或者日5min 底分型，操作过了就不用再加",
+        "score": 0.3839113712310791,
+        "distance": 0.6160886287689209,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "source": "discord_live",
+          "author_id": "747551330783985785",
+          "message_id": "1532800897363607584",
+          "timestamp": "2026-07-31T17:23:31.995000+00:00",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: QQQ前天其实出现过日线买信号，虽然是0.15级别的，但是收盘没有固定下来\nA: 如果上周买信号没有买或者仓位偏少，或者🈶减仓，可以再 买，如果是提高止损，没有被打出去就不买，保持止损拿着",
+        "score": 0.3624565601348877,
+        "distance": 0.6375434398651123,
+        "metadata": {
+          "question": "QQQ前天其实出现过日线买信号，虽然是0.15级别的，但是收盘没有固定下来",
+          "chunk_index": 0,
+          "timestamp": "2024-05-03T10:20:12.326-04:00",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "source_message_id": "1235959099481522176"
+        }
+      }
+    ],
+    "created_at": 1788348576.3121808,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788445191.8917236,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544597750119792711"
+  },
+  {
+    "id": "16331c1b",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544745556335788152,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "我的留言怎么消失了",
+    "draft_answer": "留言消失可能是因为bot的设置，或者被删掉了。你可以刷新一下看看，确保没有其他问题。😄",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "能看到full message吗？",
+        "score": 0.04842329025268555,
+        "distance": 0.9515767097473145,
+        "metadata": {
+          "type": "standalone",
+          "chunk_index": 0,
+          "channel_id": "912366231112282172",
+          "timestamp": "2021-11-23T09:55:44.584-05:00",
+          "total_chunks": 1,
+          "source_message_id": "912718066704588851"
+        }
+      },
+      {
+        "text": "下面说话的等等再聊，让我上面的 message 保持一会别被冲掉，让更多人看到\n我设置了 bot， 以后骂人的消息会尽可能的被bot 删除",
+        "score": 0.03756171464920044,
+        "distance": 0.9624382853507996,
+        "metadata": {
+          "channel_id": "895384401809113108",
+          "source_message_id": "1080249673274638336",
+          "timestamp": "2023-02-28T17:06:32.177-05:00",
+          "total_chunks": 1,
+          "chunk_index": 0,
+          "type": "grouped"
+        }
+      },
+      {
+        "text": "https://discord.com/channels/895349295975370802/912507230232936479/960554096354525274\n应该可以留言了",
+        "score": 0.021801352500915527,
+        "distance": 0.9781986474990845,
+        "metadata": {
+          "source_message_id": "1022968102562041957",
+          "type": "standalone",
+          "total_chunks": 1,
+          "timestamp": "2022-09-23T16:30:01.479-04:00",
+          "channel_id": "895384401809113108",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1788366443.4011903,
+    "status": "edited",
+    "final_answer": "留言消失可能是因为bot的设置，或者被删掉了。个人操作不要发到答疑频道里，确保没有其他问题。😄",
+    "reviewed_at": 1788366491.6652637,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544745556335788152"
+  },
+  {
+    "id": "208bf974",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1544747793099264030,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "这么强的依然没有五分钟买信号吗？",
+    "draft_answer": "目前看还是没有5min买信号，强度虽然不错，但需要确认信号出现才行。观察一下关键位，等有信号再进场更稳妥哦。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "Q: 图上还没有5分钟的买信号，对吗\nA: 5min 图？有",
+        "score": 0.3959883451461792,
+        "distance": 0.6040116548538208,
+        "metadata": {
+          "timestamp": "2025-12-15T11:28:47.29-05:00",
+          "source_message_id": "1450162686955356181",
+          "total_chunks": 1,
+          "question": "图上还没有5分钟的买信号，对吗",
+          "type": "qa_pair",
+          "channel_id": "923449257711763466",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "Q: 是在等5min买信号吗？\nA: 对的",
+        "score": 0.34701287746429443,
+        "distance": 0.6529871225357056,
+        "metadata": {
+          "total_chunks": 1,
+          "source_message_id": "1441080198459031584",
+          "type": "qa_pair",
+          "timestamp": "2025-11-20T09:58:13.288-05:00",
+          "question": "是在等5min买信号吗？",
+          "chunk_index": 0,
+          "channel_id": "912366231112282172"
+        }
+      },
+      {
+        "text": "是昨天/上周5买信号，强度升级上来的。再买需要等5min 买信号或者底分型",
+        "score": 0.328602135181427,
+        "distance": 0.671397864818573,
+        "metadata": {
+          "chunk_index": 0,
+          "timestamp": "2024-04-23T16:43:27.326-04:00",
+          "source_message_id": "1232431668846006393",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "type": "standalone"
+        }
+      }
+    ],
+    "created_at": 1788366976.5877273,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788453416.1601796,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1544747793099264030"
+  },
+  {
+    "id": "de0188cb",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1545109548669472848,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "不知道黄金是不是出了买信号了？",
+    "draft_answer": "目前黄金的信号图还需要确认，建议关注大级别的彩虹图，可能会有更好的信号。👀",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 黄金会出买信号吗\nA: 会，黄金的买信号要看信号图，目前需要确认信号图的情况。👀",
+        "score": 0.5881427824497223,
+        "distance": 0.4118572175502777,
+        "metadata": {
+          "source": "owner_review",
+          "author_id": "812842969538625538",
+          "type": "qa_pair",
+          "channel_id": "923449257711763466",
+          "message_id": "1544529399553200218",
+          "timestamp": "2026-09-02T02:08:24.822000+00:00"
+        }
+      },
+      {
+        "text": "Q: 没有，昨天黄金没有日线买信号。之前的信号在几天前出现了。\nA: ai 看不到信号图，以信号图上信号为准",
+        "score": 0.4470229148864746,
+        "distance": 0.5529770851135254,
+        "metadata": {
+          "author_id": "747551330783985785",
+          "timestamp": "2026-06-12T16:27:16.142000+00:00",
+          "source": "discord_live",
+          "message_id": "1515029732595335228",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: 有没有关注黄金的？  现在黄金的趋势这么好\nA: Gold 彩虹图向上发散，4小时买信号可以买",
+        "score": 0.419222891330719,
+        "distance": 0.580777108669281,
+        "metadata": {
+          "total_chunks": 1,
+          "timestamp": "2025-06-16T09:55:14.367-04:00",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "source_message_id": "1384169453616500777",
+          "chunk_index": 0,
+          "question": "有没有关注黄金的？  现在黄金的趋势这么好"
+        }
+      }
+    ],
+    "created_at": 1788453225.4607067,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788539636.1431956,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1545109548669472848"
+  },
+  {
+    "id": "9c30e959",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1545110264263868569,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "是什么级别的呀？",
+    "draft_answer": "这个要看具体的图形和级别，黄金的买信号可能是短线或中线级别，得具体分析。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 这是相当于日买级别\nA: 对",
+        "score": 0.18582689762115479,
+        "distance": 0.8141731023788452,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "chunk_index": 0,
+          "timestamp": "2026-03-03T13:37:03.426-05:00",
+          "type": "qa_pair",
+          "question": "这是相当于日买级别",
+          "total_chunks": 1,
+          "source_message_id": "1478461220406169754"
+        }
+      },
+      {
+        "text": "Q: Lower high的时候对吗。什么级别呢？4h还是日线级别。\nA: 他问的是日线图，所以是线级别",
+        "score": 0.11950302124023438,
+        "distance": 0.8804969787597656,
+        "metadata": {
+          "question": "Lower high的时候对吗。什么级别呢？4h还是日线级别。",
+          "total_chunks": 1,
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "timestamp": "2023-03-31T13:49:54.124-04:00",
+          "channel_id": "923449257711763466",
+          "source_message_id": "1091419112992948355"
+        }
+      },
+      {
+        "text": "Q: 蓝色上线段没有破环吧\nA: 这个按级别的，每个人的级别不一样",
+        "score": 0.05185985565185547,
+        "distance": 0.9481401443481445,
+        "metadata": {
+          "chunk_index": 0,
+          "type": "qa_pair",
+          "total_chunks": 1,
+          "question": "蓝色上线段没有破环吧",
+          "timestamp": "2022-03-10T14:52:53.013-05:00",
+          "channel_id": "912366231112282172",
+          "source_message_id": "951568346174877816"
+        }
+      }
+    ],
+    "created_at": 1788453395.2876544,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788539816.136857,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1545110264263868569"
+  },
+  {
+    "id": "4bd66c35",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1545111063920517160,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "是9/2早上2点出的吗？",
+    "draft_answer": "是的，早上可能有信号，不过具体情况得再确认一下。",
+    "confidence": 6,
+    "context_snippets": [
+      {
+        "text": "有\n早上我有提醒可能有1h es 信号\n11点多出现",
+        "score": 0.20878887176513672,
+        "distance": 0.7912111282348633,
+        "metadata": {
+          "timestamp": "2022-11-17T19:14:15.223-05:00",
+          "total_chunks": 1,
+          "source_message_id": "1042955864262332416",
+          "channel_id": "912366231112282172",
+          "type": "grouped",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "早上没有，中午出的 0.15 强度的 @Jin369",
+        "score": 0.12937450408935547,
+        "distance": 0.8706254959106445,
+        "metadata": {
+          "source_message_id": "1250200465941987470",
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "type": "standalone",
+          "timestamp": "2024-06-11T17:30:18.682-04:00",
+          "chunk_index": 0
+        }
+      },
+      {
+        "text": "9点半多一点",
+        "score": 0.11719328165054321,
+        "distance": 0.8828067183494568,
+        "metadata": {
+          "source_message_id": "927971171771748362",
+          "total_chunks": 1,
+          "type": "standalone",
+          "timestamp": "2022-01-04T12:06:08.221-05:00",
+          "channel_id": "923449257711763466",
+          "chunk_index": 0
+        }
+      }
+    ],
+    "created_at": 1788453584.8879783,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788539996.141084,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1545111063920517160"
+  },
+  {
+    "id": "43c7e006",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1545111474286891168,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "这个时间估计没有几个人看到了",
+    "draft_answer": "目前还没有看到信号，时间上应该也没几个人关注到。再等等吧，明早再看看。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "再看几分钟",
+        "score": 0.030426979064941406,
+        "distance": 0.9695730209350586,
+        "metadata": {
+          "source_message_id": "1014179393448444025",
+          "chunk_index": 0,
+          "channel_id": "923449257711763466",
+          "timestamp": "2022-08-30T10:26:49.94-04:00",
+          "total_chunks": 1,
+          "type": "standalone"
+        }
+      },
+      {
+        "text": "只有你自己neng看到\n别人看不到",
+        "score": 0.011304676532745361,
+        "distance": 0.9886953234672546,
+        "metadata": {
+          "chunk_index": 0,
+          "timestamp": "2022-03-29T21:50:53.297-04:00",
+          "channel_id": "895384401809113108",
+          "source_message_id": "958543810462363668",
+          "total_chunks": 1,
+          "type": "grouped"
+        }
+      },
+      {
+        "text": "应该不是，只会发生在5min 图，而且是少部分人\n嗯嗯\n对，\n找到那人了，etf群对\n奇怪的是少部分人这个问题，大部分人没有",
+        "score": -0.0055389404296875,
+        "distance": 1.0055389404296875,
+        "metadata": {
+          "source_message_id": "948038045406494790",
+          "channel_id": "912366231112282172",
+          "total_chunks": 1,
+          "timestamp": "2022-02-28T21:04:43.72-05:00",
+          "chunk_index": 0,
+          "type": "grouped"
+        }
+      }
+    ],
+    "created_at": 1788453682.3995175,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788540116.1353092,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1545111474286891168"
+  },
+  {
+    "id": "e6527ca5",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1545128599546368113,
+    "author_name": "longxiao1267",
+    "author_id": 802998031896805446,
+    "question": "大树老师，spx的支撑是7610，阻力位在哪里？",
+    "draft_answer": "先看一下最近的支撑位，7610是支撑，阻力位可以关注一下前期高点的区域，具体要看反弹力度和走势。我的建议是密切关注关键的回踩情况。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 老师下个低点是哪一个 @bigTreeSignal量化分析 😂\nA: spx 4446 阻力回撤力度不小，回踩短线别支撑 spx 4387 （es 4399），大级别支撑还是周末视频里说的 4325。",
+        "score": 0.4733903408050537,
+        "distance": 0.5266096591949463,
+        "metadata": {
+          "source_message_id": "1144315333918859366",
+          "question": "老师下个低点是哪一个 @bigTreeSignal量化分析 😂",
+          "channel_id": "923449257711763466",
+          "type": "qa_pair",
+          "timestamp": "2023-08-24T13:00:35.957-04:00",
+          "chunk_index": 0,
+          "total_chunks": 1
+        }
+      },
+      {
+        "text": "Q: @bigTreeSignal量化分析 树哥，哪里是支撑？谢谢\nA: spx 4070 和4101",
+        "score": 0.4574928879737854,
+        "distance": 0.5425071120262146,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "source_message_id": "1101217718864187432",
+          "total_chunks": 1,
+          "timestamp": "2023-04-27T14:46:03.813-04:00",
+          "question": "@bigTreeSignal量化分析 树哥，哪里是支撑？谢谢",
+          "chunk_index": 0,
+          "type": "qa_pair"
+        }
+      },
+      {
+        "text": "Q: @bigTreeSignal量化分析树老师，重要支撑SPX还是6023吗？视频讲趋势线回踩6070左右是不是破了？\nA: 支撑 spx 6050 和6023",
+        "score": 0.4510803818702698,
+        "distance": 0.5489196181297302,
+        "metadata": {
+          "channel_id": "923449257711763466",
+          "timestamp": "2025-02-21T12:47:54.832-05:00",
+          "chunk_index": 0,
+          "type": "qa_pair",
+          "total_chunks": 1,
+          "source_message_id": "1342553403506823168",
+          "question": "@bigTreeSignal量化分析树老师，重要支撑SPX还是6023吗？视频讲趋势线回踩6070左右是不是破了？"
+        }
+      }
+    ],
+    "created_at": 1788457767.3031936,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788544196.1286826,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1545128599546368113"
+  },
+  {
+    "id": "a1d34f00",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1545137421690208387,
+    "author_name": "helenas4870",
+    "author_id": 1028766136906555455,
+    "question": "比特币和黄金看来都调整完毕了；比特币这一天回到调整之前，能不能过看看了。",
+    "draft_answer": "比特币和黄金的调整情况，确实要看图形。比特币如果能突破前期高点，可能会有更好的表现。黄金这边，短期看调整幅度不大，等买信号确认再操作。",
+    "confidence": 7,
+    "context_snippets": [
+      {
+        "text": "Q: 黄金也站稳了看样子🤭\nA: 金的话目前看4.4那里是个波段底。银暂时还不能确认",
+        "score": 0.14164012670516968,
+        "distance": 0.8583598732948303,
+        "metadata": {
+          "total_chunks": 1,
+          "type": "qa_pair",
+          "question": "黄金也站稳了看样子🤭",
+          "chunk_index": 0,
+          "channel_id": "923449257711763466",
+          "source_message_id": "1469401054901829702",
+          "timestamp": "2026-02-06T13:35:11.64-05:00"
+        }
+      },
+      {
+        "text": "Q: 比特币怎么看？前天买的被套了\nA: 周末视频有分析，7.3w-7.1w 这个阻力区间左侧交易",
+        "score": 0.11656081676483154,
+        "distance": 0.8834391832351685,
+        "metadata": {
+          "chunk_index": 0,
+          "type": "qa_pair",
+          "channel_id": "923449257711763466",
+          "question": "比特币怎么看？前天买的被套了",
+          "total_chunks": 1,
+          "source_message_id": "1468699716920545475",
+          "timestamp": "2026-02-04T15:08:19.635-05:00"
+        }
+      },
+      {
+        "text": "Q: 喔，黄金今天也是量更大\nA: 金是昨天高位巨量",
+        "score": 0.09724587202072144,
+        "distance": 0.9027541279792786,
+        "metadata": {
+          "total_chunks": 1,
+          "channel_id": "923449257711763466",
+          "timestamp": "2026-01-30T17:17:05.147-05:00",
+          "chunk_index": 0,
+          "question": "喔，黄金今天也是量更大",
+          "type": "qa_pair",
+          "source_message_id": "1466920180738424916"
+        }
+      }
+    ],
+    "created_at": 1788459871.7394254,
+    "status": "expired",
+    "final_answer": "",
+    "reviewed_at": 1788546296.1300218,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1545137421690208387"
+  },
+  {
+    "id": "0390569c",
+    "channel_id": 923449257711763466,
+    "channel_name": "🌲树懒🦥etf小队🐮",
+    "message_id": 1545260003592638474,
+    "author_name": "day1230706",
+    "author_id": 760242911866257489,
+    "question": "你说的是日线卖信号吗？",
+    "draft_answer": "这里没有明确的日线卖信号，主要是关注日线确认信号。保持耐心，观察后续走势。",
+    "confidence": 8,
+    "context_snippets": [
+      {
+        "text": "dia 日线卖信号",
+        "score": 0.5200343430042267,
+        "distance": 0.4799656569957733,
+        "metadata": {
+          "total_chunks": 1,
+          "type": "standalone",
+          "timestamp": "2022-11-14T16:44:51.895-05:00",
+          "chunk_index": 0,
+          "source_message_id": "1041831105743040522",
+          "channel_id": "921199016476307466"
+        }
+      },
+      {
+        "text": "你看哪个卖信号卖？",
+        "score": 0.40708017349243164,
+        "distance": 0.5929198265075684,
+        "metadata": {
+          "chunk_index": 0,
+          "channel_id": "912366231112282172",
+          "type": "standalone",
+          "source_message_id": "1450183045855314114",
+          "total_chunks": 1,
+          "timestamp": "2025-12-15T12:49:41.23-05:00"
+        }
+      },
+      {
+        "text": "Q: 请问这个是买信号 还是卖信号？这俩字分不清。\nA: 这里不会出日线卖信号的，",
+        "score": 0.40250980854034424,
+        "distance": 0.5974901914596558,
+        "metadata": {
+          "total_chunks": 1,
+          "type": "qa_pair",
+          "chunk_index": 0,
+          "question": "请问这个是买信号 还是卖信号？这俩字分不清。",
+          "source_message_id": "1058456425275338882",
+          "timestamp": "2022-12-30T13:47:56.955-05:00",
+          "channel_id": "923449257711763466"
+        }
+      }
+    ],
+    "created_at": 1788489096.4476936,
+    "status": "approved",
+    "final_answer": "这里没有明确的日线卖信号，主要是关注日线确认信号。保持耐心，观察后续走势。",
+    "reviewed_at": 1788489131.6596484,
+    "jump_url": "https://discord.com/channels/895349295975370802/923449257711763466/1545260003592638474"
+  },
+  {
+    "id": "c874da92",
+    "channel_id": 951552694743605278,
+    "channel_name": "学习交流",
+    "message_id": 1545415817267642429,
+    "author_name": "sz_8",
+    "author_id": 847965349450088479,
+    "question": "",
+    "draft_answer": "这张图片展示了未来几天的重要经济数据发布日程。需要特别关注的是美国的PPI和CPI数据，这些数据可能影响市场的波动。PPI和CPI的数据通常会影响市场对通胀的预期，从而影响货币政策。\n\n- **PPI数据（9月10日）**：PPI月率预期为0.3%。如果实际值高于预期，可能表明生产者价格上升，增加市场对通胀的担忧。\n  \n- **CPI数据（9月11日）**：包括未季调CPI年率和核心CPI月率。这些数据对于判断消费者物价的变动非常重要，可能直接影响股市和汇率的短期走势。\n\n这些数据的发布可能导致市场短期内出现剧烈波动，投资者可以根据数据结果调整交易策略。",
+    "confidence": 8,
+    "context_snippets": [],
+    "created_at": 1788534319.3979409,
     "status": "pending",
     "final_answer": "",
     "reviewed_at": 0.0,
-    "jump_url": "https://discord.com/channels/895349295975370802/912366231112282172/1540100631723901078"
+    "jump_url": "https://discord.com/channels/895349295975370802/951552694743605278/1545415817267642429"
   }
 ]

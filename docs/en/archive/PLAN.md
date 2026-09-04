@@ -1,3 +1,5 @@
+> **Archived**: Historical design/phase guide for reference only. See living docs under architecture/features/getting-started for current guidance.
+
 # Discord Auto-Reply RAG Bot — Full Implementation Plan
 
 ---

@@ -3,11 +3,17 @@
 from ingestion.ingest_youtube import (
     _extract_video_id,
     _merge_transcript_segments,
+    _venv_bin_candidates,
+    extract_video_id,
     transcript_to_documents,
 )
 
 
 class TestExtractVideoId:
+    def test_public_alias(self):
+        assert extract_video_id is _extract_video_id
+        assert extract_video_id("dQw4w9WgXcQ") == "dQw4w9WgXcQ"
+
     def test_standard_url(self):
         assert _extract_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ") == "dQw4w9WgXcQ"
 
@@ -34,6 +40,12 @@ class TestExtractVideoId:
 
     def test_too_short_id(self):
         assert _extract_video_id("abc") is None
+
+
+class TestVenvBinCandidates:
+    def test_includes_plain_name(self):
+        paths = _venv_bin_candidates("ffmpeg")
+        assert any(p.endswith("ffmpeg") or p.endswith("ffmpeg.exe") for p in paths)
 
 
 class TestMergeTranscriptSegments:

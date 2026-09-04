@@ -167,8 +167,9 @@
 ### 25. YouTube 导入
 
 - **文件：** `ingestion/ingest_youtube.py`
-- **说明：** 导入 YouTube 视频字幕（字幕优先，Whisper 回退）
+- **说明：** 导入 YouTube 视频字幕到 ChromaDB（字幕 API 优先；无字幕时 Whisper 回退：yt-dlp 下载音频 → ffmpeg 转码 → OpenAI Whisper）
 - **使用：** `python -m ingestion.ingest_youtube --urls "URL"`
+- **依赖：** `pip install 'yt-dlp[default]' imageio-ffmpeg`；无系统 ffmpeg 时可将 `ffmpeg`/`ffprobe`（及新版 yt-dlp 所需的 `deno`）放到 venv 的 `Scripts/` 或 `bin/` 目录。代码通过完整路径解析二进制，不依赖系统 PATH
 
 ### 26. PDF 导入
 
@@ -236,6 +237,7 @@
 | `/schedule_lesson` | 排程教学推送（支持重复） | `/schedule_lesson title:标题 content:内容 time:时间 repeat:重复模式` |
 | `/list_lessons` | 列出所有排程教学 | `/list_lessons` |
 | `/cancel_lesson` | 取消排程教学 | `/cancel_lesson lesson_id:ID` |
+| `/resend_summary` | 补发 YouTube 视频 GPT 摘要（缺转录时自动入库） | `/resend_summary` 或 `/resend_summary video_url:链接` |
 
 **开发/运维：**
 
@@ -371,6 +373,7 @@
 | `/promo_notify` | 领取或取消活动私信通知 | `/promo_notify action:领取` |
 | `/promo_notify_panel` | [Owner] 发布活动私信订阅面板 | `/promo_notify_panel` |
 | `/dm_role` | [Owner] 向自愿通知身份组发送促销私信 | `/dm_role role:@活动通知 title:标题 description:内容` |
+| `/resend_summary` | [Owner] 补发 YouTube 视频摘要（自动查库/入库） | `/resend_summary` 或 `video_url:https://youtu.be/xxx` |
 
 ---
 
@@ -421,15 +424,15 @@
 ### 49. 金十市場快訊推送（Jin10 News Feed）
 
 - **文件：** `bot/news_feed.py`, `bot/config.py`
-- **说明：** 每 30 秒轮询金十数据 Flash API，将重要市场快讯（如央行决议、非农数据、突发事件）自动推送到指定 Discord 频道。重要快讯以 Embed 富文本格式展示，普通快讯以纯文本发送。支持去重、广告过滤、多频道推送。Bot 重新上线时自动回填离线期间（默认 24 小时内）错过的重要快讯
-- **配置：** `NEWS_FEED_ENABLED=true`, `NEWS_CHANNEL_IDS=频道ID1,频道ID2`, `NEWS_POLL_INTERVAL_SECONDS=30`, `NEWS_IMPORTANT_ONLY=true`, `NEWS_BACKFILL_HOURS=24`
+- **说明：** 每 30 秒轮询金十数据 Flash API，将重要市场快讯（如央行决议、非农数据、突发事件）自动推送到指定 Discord 频道。重要快讯以 Embed 富文本格式展示，普通快讯以纯文本发送。支持去重、广告过滤、多频道推送。Bot 重新上线或 Discord 重连时自动回填离线期间（默认 24 小时内，最多 50 条）错过的重要快讯；发帖成功后才推进 `last_id`，避免漏发
+- **配置：** `NEWS_FEED_ENABLED=true`, `NEWS_CHANNEL_IDS=频道ID1,频道ID2`, `NEWS_POLL_INTERVAL_SECONDS=30`, `NEWS_IMPORTANT_ONLY=true`, `NEWS_BACKFILL_HOURS=24`（离线超过 24 小时或单次超过 50 条重要快讯时，更早的不会补发）
 
 ### 50. 每周重點總結（Weekly Summary）
 
 - **文件：** `bot/weekly_summary.py`, `bot/config.py`
-- **说明：** 每周六下午 2 點（ET，可配置）自動收集指定頻道內本周所有群主消息和群主回復，使用 GPT 生成重點總結，以 Embed 格式發送到指定頻道。總結包括群主分享的觀點、對成員問題的關鍵回復、重要市場動態提及。回復消息會自動抓取原始問題作為上下文。支持多頻道掃描和多頻道發佈
-- **配置：** `WEEKLY_SUMMARY_ENABLED=true`, `WEEKLY_SUMMARY_CHANNELS=頻道ID1,頻道ID2`（掃描來源）, `WEEKLY_SUMMARY_DAY=5`（0=Mon, 5=Sat）, `WEEKLY_SUMMARY_HOUR=14`（ET）, `WEEKLY_SUMMARY_MINUTE=0`, `WEEKLY_SUMMARY_POST_CHANNELS=頻道ID`（發佈目標，留空則用 SUMMARY_CHANNELS）
-- **命令：** `/weekly_summary`（Owner 手動觸發）
+- **说明：** 每周六（可配置）在指定 ET 时间自动收集指定频道内本周所有群主消息和群主回复，使用 GPT 生成重点总结，以 Embed 格式发送到指定频道并 @everyone。回复消息会自动抓取原始问题作为上下文。支持多频道扫描和多频道发布。**可靠性：** 频道读取/网络失败不会再被误判为「本周无消息」；失败后每 30 分钟重试；错过预定时间后 18 小时内仍会补跑；睡眠采用分片计时，减轻电脑休眠导致的睡过点
+- **配置：** `WEEKLY_SUMMARY_ENABLED=true`, `WEEKLY_SUMMARY_CHANNELS=频道ID1,频道ID2`（扫描来源）, `WEEKLY_SUMMARY_DAY=5`（0=Mon, 5=Sat）, `WEEKLY_SUMMARY_HOUR=20`（ET）, `WEEKLY_SUMMARY_MINUTE=5`, `WEEKLY_SUMMARY_POST_CHANNELS=频道ID`（发布目标，留空则用 SUMMARY_CHANNELS）
+- **命令：** `/weekly_summary`（Owner 手动触发；可立即补发上周未发出的总结）
 
 ### 51. 活動推廣自動排程（Promo Monitor）
 
@@ -440,13 +443,13 @@
 ### 52. YouTube 新影片自動推送（YouTube Monitor）
 
 - **文件：** `bot/youtube_monitor.py`, `bot/config.py`
-- **说明：** 每天在指定时间轮询 YouTube 频道 RSS feed，检测到新影片时自动取消旧的 YouTube 教学排程，并创建新的每日重复 `schedule_lesson`，在指定时间（默认下午 4 点 ET）推送到 Discord 频道。推送内容包含影片标题和观看链接。若开启自动导入，会将字幕/Whisper 转录写入知识库，并用 GPT 生成摘要推送到 `YOUTUBE_SUMMARY_CHANNELS`
+- **说明：** 每天在指定时间轮询 YouTube 频道 RSS feed，检测到新影片时自动取消旧的 YouTube 教学排程，并创建新的每日重复 `schedule_lesson`，在指定时间（默认下午 4 点 ET）推送到 Discord 频道。推送内容包含影片标题和观看链接。若开启自动导入，会将字幕/Whisper 转录写入知识库，并用 GPT 生成摘要推送到 `YOUTUBE_SUMMARY_CHANNELS`。若转录失败仍会发送「新视频通知」Embed；已记录过的视频需用 `/resend_summary` 补发摘要（见第 56 项）
 - **配置：** `YOUTUBE_MONITOR_ENABLED=true`, `YOUTUBE_CHANNEL_ID=UCxxxxxxxxxx`, `YOUTUBE_CHECK_HOUR=11`, `YOUTUBE_CHECK_MINUTE=05`, `YOUTUBE_LESSON_PUSH_HOUR=16`, `YOUTUBE_LESSON_PUSH_CHANNELS=频道ID1,频道ID2`, `YOUTUBE_AUTO_INGEST=true`, `YOUTUBE_SUMMARY_CHANNELS=频道ID`
 
 ### 53. 每日重點總結（Daily Summary）
 
 - **文件：** `bot/daily_summary.py`, `bot/config.py`
-- **说明：** 每個工作日（週一至週五，可配置）在指定時間自動收集當天群主消息和回復，使用 GPT 生成今日重點總結，以 Embed 格式發送到指定頻道並 @everyone。與 Weekly Summary 完全獨立，可同時啟用。收集範圍為當天午夜（ET）起的所有消息
+- **说明：** 每个工作日（周一至周五，可配置）在指定时间自动收集当天群主消息和回复，使用 GPT 生成今日重点总结，以 Embed 格式发送到指定频道并 @everyone。与 Weekly Summary 完全独立。每天只推送一次：若定时器提前触发（如 15:59）后已发送，不会在同一分钟再次发送
 - **配置：** `DAILY_SUMMARY_ENABLED=true`, `DAILY_SUMMARY_CHANNELS=頻道ID1,頻道ID2`（掃描來源）, `DAILY_SUMMARY_DAYS=0,1,2,3,4`（0=Mon..6=Sun，默認週一到週五）, `DAILY_SUMMARY_HOUR=16`（ET）, `DAILY_SUMMARY_MINUTE=0`, `DAILY_SUMMARY_POST_CHANNELS=頻道ID`（發佈目標，留空則用 DAILY_SUMMARY_CHANNELS）
 - **命令：** `/daily_summary`（Owner 手動觸發）
 
@@ -482,26 +485,26 @@
 - **配置：** `TOPIC_RESTRICTED_CHANNEL_IDS=頻道ID1,頻道ID2`（留空則不啟用）
 - **與 Auto Mod 的關係：** Topic Guard 作為 Auto Moderation 的最後一層檢測，先經過全站垃圾/禁止詞過濾後，再對受限頻道進行主題檢查
 
-### 56. YouTube 摘要補發（Resend YouTube Summary）
+### 56. YouTube 摘要补发（Resend YouTube Summary）
 
-- **文件：** `scripts/resend_youtube_summary.py`
-- **说明：** 针对已经入库但未推送 GPT 摘要的 YouTube 视频，从 ChromaDB 读取转录文本，生成摘要并发送到 `YOUTUBE_SUMMARY_CHANNELS`。Monitor 只在检测到**新视频**时自动生成摘要；已记录过的视频需要用此脚本补发。不写 `--video-id` 时，会默认使用 `data/youtube_last_video.json` 里记录的最新视频
-- **配置：** `YOUTUBE_SUMMARY_CHANNELS=频道ID`, `OPENAI_API_KEY`, `DISCORD_BOT_TOKEN`, `LLM_MODEL`
-- **使用：**
+- **文件：** `bot/youtube_monitor.py`, `scripts/resend_youtube_summary.py`, `ingestion/ingest_youtube.py`
+- **命令：** `/resend_summary`
+- **说明：** Owner 用 slash 命令补发 YouTube 视频 GPT 摘要到 `YOUTUBE_SUMMARY_CHANNELS`。自动检查 ChromaDB：已有转录则直接摘要；没有则 Whisper 入库后再摘要；仍失败则基于标题生成预告式摘要（金色 Embed + footer 标明）。进度在同一条 ephemeral 消息上更新；发送失败不会误报成功。同一时间只允许一个补发任务。Monitor 关闭时仍可用。`scripts/resend_youtube_summary.py` 为命令行备用（仅支持已入库视频）
+- **配置：** `YOUTUBE_SUMMARY_CHANNELS=频道ID`, `OPENAI_API_KEY`, `LLM_MODEL`, `OWNER_USER_ID`
+- **Whisper 依赖（无字幕时必需）：** `pip install 'yt-dlp[default]' imageio-ffmpeg`；Windows 建议将 `ffmpeg.exe`、`ffprobe.exe`、`deno.exe` 放到 `.venv/Scripts/`（新版 yt-dlp 下载 YouTube 需要 JS runtime）
+- **使用（Slash 命令）：**
   ```
-  # 不写 --video-id：默认补发 data/youtube_last_video.json 里记录的最新视频
+  /resend_summary                                    — 补发最近检测到的视频
+  /resend_summary video_url:https://youtu.be/xxxxx   — 补发指定视频
+  /resend_summary video_url:... title:自定义标题      — 覆盖标题
+  ```
+- **使用（脚本备用）：**
+  ```
   python scripts/resend_youtube_summary.py
-
-  # 补发指定视频
   python scripts/resend_youtube_summary.py --video-id nTWo8Wv7Jao
-
-  # 只生成摘要、不发送到 Discord
   python scripts/resend_youtube_summary.py --video-id nTWo8Wv7Jao --dry-run
-
-  # 覆盖标题（可选）
-  python scripts/resend_youtube_summary.py --video-id nTWo8Wv7Jao --title "自定义标题"
   ```
-- **前置条件：** 该视频必须已通过 YouTube 导入写入 ChromaDB（文档 metadata 含 `video_id`）。脚本不会重新下载或转录视频
+- **流程：** ChromaDB 已有转录 → 直接生成摘要；未入库 → 自动 Whisper 转录入库 → 生成摘要；转录失败 → 基于标题生成预告式摘要 → 发到摘要频道（带获客 CTA 按钮，见第 59 项）
 
 ### 57. 购买意向自动转化
 
@@ -520,7 +523,7 @@
 ### 59. YouTube 摘要转化按钮
 
 - **文件：** `bot/youtube_monitor.py`, `bot/acquisition.py`, `scripts/resend_youtube_summary.py`
-- **说明：** 视频摘要 Embed 底部附带「了解 BigTreeSignal / 申请试用 / 查看 FAQ」按钮，教育内容同时完成获客。补发脚本同样带这些按钮
+- **说明：** 视频摘要 Embed 底部附带「了解 BigTreeSignal / 申请试用 / 查看 FAQ」按钮，教育内容同时完成获客。自动推送与 `/resend_summary`（及补发脚本）发出的摘要均带这些按钮
 - **配置：** `SIGNAL_PRODUCT_URL`, `FREE_TRIAL_ENABLED`, `FREE_TRIAL_URL`, `YOUTUBE_SUMMARY_CHANNELS`
 - **使用：** 新视频自动 ingest 后随摘要发出；补发见第 56 项
 
@@ -551,7 +554,7 @@
   4. 发活动：`/dm_role` 只发私信（先确认人数）；或 `/post_promo` / `/schedule_promo` 加可选 `dm_role` 同步私信
   5. 「取消订阅」只去掉通知身份组，现有运营标签不动。单次超过 `PROMO_DM_MAX_RECIPIENTS` 会拒绝发送
 - **命令：** `/promo_notify_panel`、`/promo_notify`、`/dm_role`；`/post_promo` 与 `/schedule_promo` 的 `dm_role` 参数
-- **盘活与订购计划书：** [`GROWTH_PLAYBOOK.md`](./GROWTH_PLAYBOOK.md)
+- **盘活与订购计划书：** [`GROWTH_PLAYBOOK.md`](../growth/GROWTH_PLAYBOOK.md)
 
 ### 63. 频道主观点总结（/views）
 

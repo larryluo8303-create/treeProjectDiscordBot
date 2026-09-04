@@ -1,3 +1,5 @@
+> **归档文档**：历史设计/阶段指南，仅供参考。现行说明见上级目录的 PROJECT_GUIDE / FEATURE_LIST / SETUP_AND_TEST 等。
+
 # BigTreeSignal 推广系统 — 设计文档
 
 ---

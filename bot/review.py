@@ -50,6 +50,15 @@ def load_negative_samples() -> list[dict]:
         return []
 
 
+def _sync_review_queue(message_id: int, status: str, final_answer: str = "") -> None:
+    """Keep the app review queue in sync with Discord DM review actions."""
+    try:
+        from bot.review_queue import review_queue
+        review_queue.resolve_by_message_id(message_id, status, final_answer)
+    except Exception as exc:
+        logger.debug("Failed to sync review queue for message %s: %s", message_id, exc)
+
+
 class EditAnswerModal(discord.ui.Modal, title="Edit draft answer"):
     """Modal pre-filled with the draft so the owner can tweak it inline."""
 
@@ -95,6 +104,11 @@ class EditAnswerModal(discord.ui.Modal, title="Edit draft answer"):
             except Exception:
                 pass
             await self.parent_view._learn_qa(edited)
+            _sync_review_queue(
+                self.parent_view.original_message.id,
+                "edited",
+                edited,
+            )
             self.parent_view.stop()
         except Exception as exc:
             self.parent_view.handled = False  # allow retry
@@ -206,6 +220,11 @@ class ReviewView(discord.ui.View):
                 view=None,
             )
             await self._learn_qa(self.draft_answer)
+            _sync_review_queue(
+                self.original_message.id,
+                "approved",
+                self.draft_answer,
+            )
         except Exception as exc:
             self.handled = False  # allow retry
             logger.error("Failed to post approved answer: %s", exc)
@@ -243,6 +262,7 @@ class ReviewView(discord.ui.View):
             question=(self.original_message.content or "").strip(),
             bad_answer=self.draft_answer.strip(),
         )
+        _sync_review_queue(self.original_message.id, "rejected")
         self.stop()
 
     async def on_timeout(self) -> None:

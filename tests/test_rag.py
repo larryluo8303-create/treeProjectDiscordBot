@@ -263,3 +263,52 @@ class TestOpenAIChatWithRetry:
             messages=[{"role": "user", "content": "hi"}],
         )
         assert result == ""
+
+
+class TestOpenAIRetrySlaRecording:
+    """A recovered retry must count as one success, not 50% error rate."""
+
+    @pytest.mark.asyncio
+    async def test_recovered_retry_counts_as_success(self):
+        import openai
+        from bot.rag import _openai_chat_with_retry
+        from bot.reliability import openai_call_count, openai_error_rate, reset_openai_calls
+
+        reset_openai_calls()
+        mock_client = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "ok"
+        mock_client.chat.completions.create.side_effect = [
+            openai.APITimeoutError(request=MagicMock()),
+            mock_response,
+        ]
+
+        result = await _openai_chat_with_retry(
+            mock_client, model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+        assert result == "ok"
+        assert openai_call_count() == 1
+        assert openai_error_rate() == 0.0
+
+    @pytest.mark.asyncio
+    async def test_double_failure_counts_as_one_error(self):
+        import openai
+        from bot.rag import _openai_chat_with_retry
+        from bot.reliability import openai_call_count, openai_error_rate, reset_openai_calls
+
+        reset_openai_calls()
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create.side_effect = [
+            openai.APITimeoutError(request=MagicMock()),
+            openai.APITimeoutError(request=MagicMock()),
+        ]
+
+        result = await _openai_chat_with_retry(
+            mock_client, model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+        assert result is None
+        assert openai_call_count() == 1
+        assert openai_error_rate() == 1.0

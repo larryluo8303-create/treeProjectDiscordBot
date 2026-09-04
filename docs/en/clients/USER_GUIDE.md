@@ -375,7 +375,7 @@ The backend includes built-in interactive API documentation:
 
 These are useful if you want to integrate with the API programmatically or test endpoints directly.
 
-For the full API reference, see [`docs/API_DESIGN.md`](./API_DESIGN.md).
+For the full API reference, see [`./API_DESIGN.md`](./API_DESIGN.md).
 
 ---
 
