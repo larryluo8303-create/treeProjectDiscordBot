@@ -1,45 +1,45 @@
-# 文档索引
+# Docs Index
 
-本目录按语言拆分为两个子文件夹；**现行文档请只读 [`zh/`](./zh/) 或 [`en/`](./en/)**。
+Documentation is split by language. **Prefer English** under [`en/`](./en/) for current guidance (resume / hiring reviewers). Chinese lives under [`zh/`](./zh/).
 
-英文版索引：[README.en.md](./README.en.md)
+中文索引：[README.zh.md](./README.zh.md)
 
-| 语言 | 路径 |
-|------|------|
+| Language | Path |
+|----------|------|
+| **English (primary)** | [`en/`](./en/) |
 | 中文 | [`zh/`](./zh/) |
-| English | [`en/`](./en/) |
 
-## 分类
+## Categories
 
-| 分类 | 说明 | 文档 |
-|------|------|------|
-| `getting-started/` | 安装与冒烟测试 | `SETUP_AND_TEST.md` |
-| `architecture/` | 项目架构与设计思路 | `PROJECT_GUIDE.md` |
-| `features/` | 功能全清单 | `FEATURE_LIST.md` |
-| `operations/` | 运营操作（推广等） | `PROMOTION_GUIDE.md` |
-| `growth/` | 增长策略与盘活手册 | `GROWTH_PLAN.md`, `GROWTH_PLAYBOOK.md` |
-| `clients/` | API / Admin / 客户端 / 上架 | `API_DESIGN.md`, `CLIENT_DESIGN.md`, `USER_GUIDE.md`, `CLIENT_USER_GUIDE.md`, `APP_STORE_GUIDE.md` |
-| `archive/` | 历史阶段设计与旧计划（仅供参考） | `PLAN.md`, `PHASE*`, `PROMOTION_DESIGN.md` |
+| Category | Purpose | Documents |
+|----------|---------|-----------|
+| `getting-started/` | Install & smoke test | `SETUP_AND_TEST.md` |
+| `architecture/` | Architecture & design rationale | `PROJECT_GUIDE.md` |
+| `features/` | Full feature inventory | `FEATURE_LIST.md` |
+| `operations/` | Ops guides (promotions, etc.) | `PROMOTION_GUIDE.md` |
+| `growth/` | Growth strategy & playbook | `GROWTH_PLAN.md`, `GROWTH_PLAYBOOK.md` |
+| `clients/` | API / Admin / clients / store publish | `API_DESIGN.md`, `CLIENT_DESIGN.md`, `USER_GUIDE.md`, `CLIENT_USER_GUIDE.md`, `APP_STORE_GUIDE.md` |
+| `archive/` | Historical phase designs (reference only) | `PLAN.md`, `PHASE*`, `PROMOTION_DESIGN.md` |
 
-## 合并与归档说明
+## Merge & archive notes
 
-**保留独立（不合并）：**
+**Keep separate (do not merge):**
 
-- `PROJECT_GUIDE`（叙事架构）与 `FEATURE_LIST`（条目清单）
-- `GROWTH_PLAN`（战略）与 `GROWTH_PLAYBOOK`（90 天操作）
-- `USER_GUIDE`（管理端 App）与 `CLIENT_USER_GUIDE`（用户端）
+- `PROJECT_GUIDE` (narrative architecture) vs `FEATURE_LIST` (item inventory)
+- `GROWTH_PLAN` (strategy) vs `GROWTH_PLAYBOOK` (90-day ops)
+- `USER_GUIDE` (admin app) vs `CLIENT_USER_GUIDE` (end-user apps)
 
-**归档（不再作为现行手册）：**
+**Archived (not living manuals):**
 
-- `PLAN.md`、`PHASE1_2_*`、`PHASE3_*`、`PROMOTION_DESIGN.md`  
-  内容已被 `PROJECT_GUIDE` / `FEATURE_LIST` / `SETUP_AND_TEST` / `PROMOTION_GUIDE` 覆盖。
+- `PLAN.md`, `PHASE1_2_*`, `PHASE3_*`, `PROMOTION_DESIGN.md`  
+  Covered by `PROJECT_GUIDE` / `FEATURE_LIST` / `SETUP_AND_TEST` / `PROMOTION_GUIDE`.
 
-每个语言目录下均有**同名文档的完整译本**；归档目录同样中英各一份。
+Each language folder has a **full translation of the same document set**, including archive.
 
-## 快速入口
+## Quick links (English)
 
-- [安装测试](./zh/getting-started/SETUP_AND_TEST.md)
-- [项目详解](./zh/architecture/PROJECT_GUIDE.md)
-- [功能清单](./zh/features/FEATURE_LIST.md)
+- [Setup & Test](./en/getting-started/SETUP_AND_TEST.md)
+- [Project Guide](./en/architecture/PROJECT_GUIDE.md)
+- [Feature List](./en/features/FEATURE_LIST.md)
 
-更多见 [`zh/README.md`](./zh/README.md)。
+See also [`en/README.md`](./en/README.md).

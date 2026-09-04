@@ -1,6 +1,6 @@
 # 中文文档
 
-总索引：[../README.md](../README.md)。英文索引：[../README.en.md](../README.en.md)。英文文档：[../en/](../en/)。
+主索引（英文优先）：[../README.md](../README.md)。中文索引：[../README.zh.md](../README.zh.md)。英文文档：[../en/](../en/)。
 
 | 目录 | 文档 |
 |------|------|

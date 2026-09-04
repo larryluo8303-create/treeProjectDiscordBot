@@ -1,6 +1,6 @@
 # English docs
 
-Full English index: [`../README.en.md`](../README.en.md). Chinese docs: [`../zh/`](../zh/). Chinese index: [`../README.md`](../README.md).
+Main docs index (English-first): [`../README.md`](../README.md). Chinese docs: [`../zh/`](../zh/). Chinese index: [`../README.zh.md`](../README.zh.md).
 
 | Folder | Documents |
 |--------|-----------|

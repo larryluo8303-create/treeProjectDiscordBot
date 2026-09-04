@@ -3,7 +3,7 @@
 Production Discord bot for a 5,000+ member stock-discussion community. It answers member questions with **RAG** over the channel owner's historical posts, routes low-confidence or high-risk answers to **human review**, and includes ops automation (Jin10 news, daily/weekly summaries, YouTube lessons, promotions) plus optional web/mobile clients.
 
 **Stack:** Python, discord.py, OpenAI (GPT / embeddings / Whisper), ChromaDB, FastAPI, React, Expo  
-**Docs:** [docs/README.md](./docs/README.md) (Chinese & English) · [Feature list](./docs/en/features/FEATURE_LIST.md) · [Project guide](./docs/en/architecture/PROJECT_GUIDE.md) · [Setup](./docs/en/getting-started/SETUP_AND_TEST.md)
+**Docs:** [English docs](./docs/en/README.md) · [Project guide](./docs/en/architecture/PROJECT_GUIDE.md) · [Feature list](./docs/en/features/FEATURE_LIST.md) · [Setup](./docs/en/getting-started/SETUP_AND_TEST.md) · [Docs index](./docs/README.md) · [中文文档](./docs/zh/README.md)
 
 ### Quick start
 
