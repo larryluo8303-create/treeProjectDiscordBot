@@ -1,8 +1,10 @@
 """Public client-facing API routes — chat, FAQ, KB search, promos, lessons,
 image analysis, digest, and lesson archive.
 
-These endpoints do NOT require admin JWT auth. They are optionally gated by
-a simple API key (CLIENT_API_KEY) and per-IP rate limiting.
+These endpoints do NOT require admin JWT auth. They are gated by
+a required API key (CLIENT_API_KEY) and per-IP rate limiting.
+Fail-closed: with CLIENT_API_ENABLED=true but no key, the router is not
+mounted at all (see bot.api.server.create_app).
 """
 
 import asyncio
@@ -106,14 +108,23 @@ async def _spend_budget() -> None:
 
 
 # ---------------------------------------------------------------------------
-# API key dependency (optional — empty CLIENT_API_KEY = open access)
+# API key dependency (fail-closed — an empty CLIENT_API_KEY denies access)
 # ---------------------------------------------------------------------------
 def _check_api_key(request: Request) -> None:
-    """Validate the x-api-key header if CLIENT_API_KEY is configured."""
+    """Validate the x-api-key header.
+
+    Fail-closed: with no key configured the endpoints deny every request
+    (503) instead of falling back to open access. Normally the router is
+    not even mounted without a key (see bot.api.server.create_app); this
+    is defense-in-depth for direct router use.
+    """
     if not CLIENT_API_ENABLED:
         raise HTTPException(status_code=404, detail="Client API is disabled.")
     if not CLIENT_API_KEY:
-        return  # open access
+        raise HTTPException(
+            status_code=503,
+            detail="Client API key is not configured (fail-closed).",
+        )
     key = request.headers.get("x-api-key", "")
     # Constant-time comparison — never leak key validity via timing.
     if not hmac.compare_digest(key, CLIENT_API_KEY):

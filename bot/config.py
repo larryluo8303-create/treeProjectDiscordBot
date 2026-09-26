@@ -424,7 +424,23 @@ API_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("API_TOKEN_EXPIRE_MINUTES", "1440"
 # SECURITY (fail-closed): disabled by default — enabling it without
 # CLIENT_API_KEY exposes all public endpoints to the internet.
 CLIENT_API_ENABLED: bool = os.getenv("CLIENT_API_ENABLED", "false").lower() in ("1", "true", "yes")
-CLIENT_API_KEY: str = os.getenv("CLIENT_API_KEY", "")  # empty = open access
+CLIENT_API_KEY: str = os.getenv("CLIENT_API_KEY", "")  # empty = NOT mounted (fail-closed)
+
+
+def client_api_usable(enabled: bool | None = None, key: str | None = None) -> bool:
+    """Fail-closed gate for the public client API.
+
+    The public router is mounted only when the API is explicitly enabled
+    AND a key is configured. Explicitly enabled without a key -> False:
+    the routes are not mounted at all, never left open to the internet.
+    """
+    if enabled is None:
+        enabled = CLIENT_API_ENABLED
+    if key is None:
+        key = CLIENT_API_KEY
+    return bool(enabled and key)
+
+
 CLIENT_RATE_LIMIT_PER_MINUTE: int = int(os.getenv("CLIENT_RATE_LIMIT_PER_MINUTE", "20"))
 # Vision analysis is far more expensive than text chat — separate, stricter limit.
 CLIENT_VISION_LIMIT_PER_MINUTE: int = int(os.getenv("CLIENT_VISION_LIMIT_PER_MINUTE", "5"))

@@ -5,7 +5,9 @@ services:
     build: .
     env_file: .env
     ports:
-      - "${API_PORT:-8090}:8090"
+      # Both sides follow API_PORT (default 8090): the app listens on
+      # API_PORT inside the container (see bot/api/server.py).
+      - "${API_PORT:-8090}:${API_PORT:-8090}"
     volumes:
       - ./chromadb_store:/app/chromadb_store
       - ./logs:/app/logs

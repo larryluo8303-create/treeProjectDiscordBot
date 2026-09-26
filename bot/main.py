@@ -44,6 +44,26 @@ from bot.acquisition_cog import AcquisitionCog
 logger = logging.getLogger(__name__)
 
 
+def _watch_task(task: asyncio.Task, name: str) -> asyncio.Task:
+    """Attach a done-callback that loudly logs any unhandled task exception.
+
+    Without this, a fire-and-forget task that raises ends up as
+    "Task exception was never retrieved" (or worse — silently swallowed),
+    which is how a dead API server or bot connection goes unnoticed.
+    """
+    def _done_cb(t: asyncio.Task) -> None:
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc is not None:
+            logger.error(
+                "Background task %r raised an unhandled exception", name,
+                exc_info=exc,
+            )
+    task.add_done_callback(_done_cb)
+    return task
+
+
 def _validate_config() -> None:
     """Check that essential config values are set."""
     errors: list[str] = []
@@ -177,7 +197,7 @@ async def main() -> None:
         )
         if api_credentials_configured():
             set_dependencies(collection, openai_client, bot)
-            api_task = asyncio.create_task(run_api_server())
+            api_task = _watch_task(asyncio.create_task(run_api_server()), "api server")
             logger.info("API server task created")
         else:
             logger.warning(
@@ -211,10 +231,10 @@ async def main() -> None:
         except asyncio.CancelledError:
             pass
 
-    bot_task = asyncio.create_task(_run_bot())
+    bot_task = _watch_task(asyncio.create_task(_run_bot()), "discord bot")
 
     # Wait for shutdown signal OR bot_task to finish (e.g. on error)
-    shutdown_task = asyncio.create_task(shutdown_event.wait())
+    shutdown_task = _watch_task(asyncio.create_task(shutdown_event.wait()), "shutdown signal")
     wait_tasks = [bot_task, shutdown_task]
     if api_task:
         wait_tasks.append(api_task)
@@ -222,6 +242,22 @@ async def main() -> None:
         wait_tasks,
         return_when=asyncio.FIRST_COMPLETED,
     )
+
+    # Loud failure: if the Discord bot or API server task died with an
+    # exception, the graceful teardown below would otherwise exit 0 as if
+    # nothing happened. Log it loudly and exit non-zero after cleanup.
+    startup_failed = False
+    for name, task in (("discord bot", bot_task), ("api server", api_task)):
+        if task is None or task not in done or task.cancelled():
+            continue
+        exc = task.exception()
+        if exc is not None:
+            logger.critical(
+                "Startup task %r failed — shutting down (exit 1).",
+                name, exc_info=exc,
+            )
+            startup_failed = True
+
     for task in pending:
         task.cancel()
         try:
@@ -244,6 +280,8 @@ async def main() -> None:
     if not bot.is_closed():
         await bot.close()
     logger.info("Bot shut down cleanly.")
+    if startup_failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

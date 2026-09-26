@@ -19,6 +19,7 @@ from bot.config import (
     CLIENT_API_ENABLED,
     CLIENT_API_KEY,
     CORS_ORIGINS,
+    client_api_usable,
 )
 
 logger = logging.getLogger(__name__)
@@ -124,11 +125,14 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type", "x-api-key"],
     )
 
+    # Fail-closed: explicitly enabled without a key => the public router is
+    # NOT mounted at all (never left open). The Discord bot keeps running.
+    mount_public = client_api_usable(CLIENT_API_ENABLED, CLIENT_API_KEY)
     if CLIENT_API_ENABLED and not CLIENT_API_KEY:
-        logger.warning(
-            "CLIENT_API_ENABLED=true with empty CLIENT_API_KEY — "
-            "public API endpoints are OPEN to the internet. "
-            "Set CLIENT_API_KEY to protect them."
+        logger.error(
+            "CLIENT_API_ENABLED=true but CLIENT_API_KEY is empty — "
+            "public API routes will NOT be mounted (fail-closed). "
+            "Set CLIENT_API_KEY to enable the public API."
         )
 
     # Register routers
@@ -152,7 +156,10 @@ def create_app() -> FastAPI:
     app.include_router(review_router)
     app.include_router(promo_router)
     app.include_router(digest_router)
-    app.include_router(public_router)
+    if mount_public:
+        app.include_router(public_router)
+    else:
+        logger.info("Public client API routes not mounted.")
 
     @app.get("/api/health")
     async def health():
