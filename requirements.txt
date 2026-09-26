@@ -15,12 +15,13 @@ pymupdf==1.28.2
 # bcrypt stays at 4.0.1: 4.1+ raises on passwords >72 bytes, which breaks
 # passlib's bcrypt backend at login time.
 bcrypt==4.0.1
-# Not covered by the test suite — minimum versions only, pin after verifying.
-youtube-transcript-api>=0.6.0
-yt-dlp[default]>=2024.1.0
-imageio-ffmpeg>=0.5.0
-python-multipart>=0.0.6
-tzdata>=2024.1
+# Not covered by the test suite — pinned to versions verified to install and
+# import cleanly on 2026-09-26 (install-verified only; pin after test coverage).
+youtube-transcript-api==1.2.4
+yt-dlp[default]==2026.8.19
+imageio-ffmpeg==0.6.0
+python-multipart==0.0.32
+tzdata==2026.4
 # Docs tooling (md2pdf.py)
-markdown>=3.4.0
-fpdf2>=2.7.0
+markdown==3.11
+fpdf2==2.8.8

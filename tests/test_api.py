@@ -312,18 +312,41 @@ class TestWSManager:
         assert _verify_ws_token("") is False
 
 
+import contextlib
+
+
+@contextlib.contextmanager
+def _mounted_public_client(key="test-key"):
+    """Yield a TestClient with the public router mounted (fail-closed gate passed).
+
+    Mounting is decided in bot.api.server.create_app from the server-level
+    CLIENT_API_ENABLED/CLIENT_API_KEY, and per-request checks read the
+    routes_public-level names — both are patched here for the app build and
+    the requests. The client sends the key by default.
+    """
+    from fastapi.testclient import TestClient
+    from bot.api.server import create_app
+
+    patches = [
+        patch("bot.api.server.CLIENT_API_ENABLED", True),
+        patch("bot.api.server.CLIENT_API_KEY", key),
+        patch("bot.api.routes_public.CLIENT_API_ENABLED", True),
+        patch("bot.api.routes_public.CLIENT_API_KEY", key),
+    ]
+    for p in patches:
+        p.start()
+    try:
+        yield TestClient(create_app(), headers={"x-api-key": key})
+    finally:
+        for p in reversed(patches):
+            p.stop()
+
+
 class TestPublicAPI:
     """Test public client-facing API routes."""
 
     def test_public_faq(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             resp = client.get("/api/public/faq")
             assert resp.status_code == 200
             data = resp.json()
@@ -342,84 +365,38 @@ class TestPublicAPI:
             assert resp.status_code == 404
 
     def test_public_faq_bad_api_key(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", "secret123"):
+        with _mounted_public_client(key="secret123") as client:
             # No key
-            resp = client.get("/api/public/faq")
+            resp = client.get("/api/public/faq", headers={"x-api-key": ""})
             assert resp.status_code == 403
 
             # Wrong key
             resp = client.get("/api/public/faq", headers={"x-api-key": "wrong"})
             assert resp.status_code == 403
 
-            # Correct key
-            resp = client.get("/api/public/faq", headers={"x-api-key": "secret123"})
-            assert resp.status_code == 200
-
     def test_public_chat_empty_message(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             resp = client.post("/api/public/chat", json={"message": ""})
             assert resp.status_code == 400
 
     def test_public_chat_too_long(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             resp = client.post("/api/public/chat", json={"message": "x" * 2001})
             assert resp.status_code == 400
 
     def test_public_kb_search_empty(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             resp = client.get("/api/public/kb/search", params={"q": ""})
             assert resp.status_code == 400
 
     def test_public_promos(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             resp = client.get("/api/public/promos")
             assert resp.status_code == 200
             assert "items" in resp.json()
 
     def test_public_lessons(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             resp = client.get("/api/public/lessons")
             assert resp.status_code == 200
             assert "items" in resp.json()
@@ -448,14 +425,7 @@ class TestPublicAPI:
         _request_log.clear()
 
     def test_public_digest(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             resp = client.get("/api/public/digest")
             assert resp.status_code == 200
             data = resp.json()
@@ -464,14 +434,7 @@ class TestPublicAPI:
             assert data["period"] == "24h"
 
     def test_public_lessons_archive(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             resp = client.get("/api/public/lessons/archive")
             assert resp.status_code == 200
             data = resp.json()
@@ -479,34 +442,62 @@ class TestPublicAPI:
             assert "count" in data
 
     def test_public_analyze_image_no_file(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
-
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             # No file provided should return 422 (validation error)
             resp = client.post("/api/public/analyze-image")
             assert resp.status_code == 422
 
     def test_public_analyze_image_wrong_type(self):
-        from fastapi.testclient import TestClient
-        from bot.api.server import create_app
         import io
 
-        app = create_app()
-        client = TestClient(app)
-
-        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
-             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+        with _mounted_public_client() as client:
             # Non-image file
             resp = client.post(
                 "/api/public/analyze-image",
                 files={"image": ("test.txt", io.BytesIO(b"not an image"), "text/plain")},
             )
             assert resp.status_code == 400
+
+
+class TestPublicAPIFailClosed:
+    """Public API is fail-closed: enabled without a key => routes not mounted."""
+
+    def test_enabled_without_key_not_mounted(self):
+        from fastapi.testclient import TestClient
+        from bot.api.server import create_app
+
+        with patch("bot.api.server.CLIENT_API_ENABLED", True), \
+             patch("bot.api.server.CLIENT_API_KEY", ""):
+            app = create_app()
+        client = TestClient(app)
+        resp = client.get("/api/public/faq")
+        assert resp.status_code == 404
+
+    def test_enabled_with_key_mounted(self):
+        with _mounted_public_client(key="secret123") as client:
+            resp = client.get("/api/public/faq")
+            assert resp.status_code == 200
+
+    def test_endpoint_denies_when_key_missing(self):
+        # Defense-in-depth: even if the router were reached directly with no
+        # key configured, _check_api_key denies instead of open access.
+        from bot.api.routes_public import _check_api_key
+        from fastapi import HTTPException
+
+        mock_request = MagicMock()
+        with patch("bot.api.routes_public.CLIENT_API_ENABLED", True), \
+             patch("bot.api.routes_public.CLIENT_API_KEY", ""):
+            with pytest.raises(HTTPException) as exc_info:
+                _check_api_key(mock_request)
+            assert exc_info.value.status_code == 503
+
+    def test_client_api_usable_helper(self):
+        from bot.config import client_api_usable
+
+        assert client_api_usable(False, "") is False
+        assert client_api_usable(True, "") is False
+        assert client_api_usable(False, "k") is False
+        assert client_api_usable(True, "k") is True
 
 
 class TestApiCredentialsConfigured:
