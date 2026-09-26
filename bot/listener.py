@@ -72,6 +72,7 @@ from bot.promo_config import (
 from bot.auto_mod import _DISCORD_INVITE, _EXTERNAL_PLATFORM_LINKS, _SPAM_KEYWORDS
 from bot.rag import analyze_image, retrieve_context, run_rag_pipeline
 from bot.review import notify_owner_auto_reply, send_for_review
+from bot.owner_alerts import note_discord_error
 from bot.stats import bot_stats
 
 logger = logging.getLogger(__name__)
@@ -570,6 +571,7 @@ class MessageListener(commands.Cog):
         # VIP role bypass for rate limiting
         is_vip = self._is_vip(message.author)
         if not is_vip and not self._try_consume_rate_limit(message.author.id):
+            bot_stats.record_rate_limited()
             return
         await self._queue.put(message)
 
@@ -1226,12 +1228,14 @@ class MessageListener(commands.Cog):
                                     allowed_mentions=discord.AllowedMentions.none())
             except (discord.NotFound, discord.HTTPException) as reply_err:
                 # Original message was deleted or invalid reference
+                note_discord_error(reply_err)
                 logger.warning("Reply to message %s failed (%s), sending to channel instead",
                                message.id, reply_err)
                 try:
                     await message.channel.send(reply_text,
                                               allowed_mentions=discord.AllowedMentions.none())
-                except Exception:
+                except Exception as send_err:
+                    note_discord_error(send_err)
                     logger.error("Failed to send reply to channel %s", message.channel.id)
             # Record bot's answer in conversation memory
             self._add_to_memory(message.channel.id, "bot", reply_text)

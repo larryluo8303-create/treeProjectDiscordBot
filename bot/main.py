@@ -34,6 +34,7 @@ from bot.health import HealthCog
 from bot.ingestion_scheduler import IngestionSchedulerCog
 from bot.listener import MessageListener
 from bot.news_feed import NewsFeedCog
+from bot.owner_alerts import OwnerAlertCog
 from bot.promo_monitor import PromoMonitorCog
 from bot.scheduler import SchedulerCog
 from bot.webhook import WebhookServer
@@ -141,6 +142,7 @@ async def main() -> None:
     await bot.add_cog(BotCommands(bot, collection, openai_client))
     await bot.add_cog(SchedulerCog(bot, openai_client))
     await bot.add_cog(HealthCog(bot))
+    await bot.add_cog(OwnerAlertCog(bot))
     await bot.add_cog(IngestionSchedulerCog(bot))
     await bot.add_cog(DigestCog(bot))
     await bot.add_cog(NewsFeedCog(bot))

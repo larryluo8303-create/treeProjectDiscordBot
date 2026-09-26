@@ -271,6 +271,20 @@ SLA_ALERT_WEBHOOK_URL: str = os.getenv("SLA_ALERT_WEBHOOK_URL", "")
 REVIEW_QUEUE_EXPIRE_SECONDS: int = int(os.getenv("REVIEW_QUEUE_EXPIRE_SECONDS", "86400"))
 
 # ---------------------------------------------------------------------------
+# Owner Observability — daily health digest + anomaly DM alerts.
+# All output goes to the owner's DM only; nothing is ever posted to channels.
+# ---------------------------------------------------------------------------
+HEALTH_DIGEST_ENABLED: bool = os.getenv("HEALTH_DIGEST_ENABLED", "true").lower() in ("1", "true", "yes")
+HEALTH_DIGEST_HOUR: int = int(os.getenv("HEALTH_DIGEST_HOUR", "8"))  # ET hour (America/New_York)
+ALERT_COOLDOWN_SECONDS: int = int(os.getenv("ALERT_COOLDOWN_SECONDS", "3600"))
+ALERT_OPENAI_429_THRESHOLD: int = int(os.getenv("ALERT_OPENAI_429_THRESHOLD", "3"))
+ALERT_OPENAI_429_WINDOW_SECONDS: int = int(os.getenv("ALERT_OPENAI_429_WINDOW_SECONDS", "900"))
+ALERT_RECONNECT_THRESHOLD: int = int(os.getenv("ALERT_RECONNECT_THRESHOLD", "5"))
+ALERT_RECONNECT_WINDOW_SECONDS: int = int(os.getenv("ALERT_RECONNECT_WINDOW_SECONDS", "900"))
+ALERT_403_THRESHOLD: int = int(os.getenv("ALERT_403_THRESHOLD", "5"))
+ALERT_403_WINDOW_SECONDS: int = int(os.getenv("ALERT_403_WINDOW_SECONDS", "600"))
+
+# ---------------------------------------------------------------------------
 # Digest
 # ---------------------------------------------------------------------------
 DIGEST_ENABLED: bool = os.getenv("DIGEST_ENABLED", "false").lower() in ("1", "true", "yes")

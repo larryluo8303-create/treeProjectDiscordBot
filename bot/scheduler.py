@@ -27,6 +27,11 @@ from bot.config import (
     SIGNAL_PRODUCT_NAME,
     SIGNAL_PRODUCT_URL,
 )
+from bot.owner_alerts import (
+    evaluate_and_alert as evaluate_owner_alerts,
+    note_discord_error,
+    record_scheduler_subtask_failure,
+)
 from bot.reliability import evaluate_and_alert, mark_scheduler_tick
 from bot.stats import bot_stats
 from bot.utils import atomic_json_write, data_path, resolve_channel
@@ -353,11 +358,26 @@ class SchedulerCog(commands.Cog):
         subtasks.append(("learning_gap_report", self._process_learning_gap_report(now)))
         if FEATURE_SLA_MONITORING:
             subtasks.append(("sla_monitoring", evaluate_and_alert(self.bot, bot_stats)))
+        # Owner observability: anomaly DM alerts + daily health digest.
+        # Both are owner-DM-only; they never post to guild channels.
+        subtasks.append(("owner_alerts", evaluate_owner_alerts(self.bot)))
+        subtasks.append(("health_digest", self._process_health_digest(now)))
         for name, coro in subtasks:
             try:
                 await coro
-            except Exception:
+            except Exception as exc:
                 logger.exception("Scheduler subtask %s failed; continuing with others", name)
+                # Feed the anomaly alerter (itself cooldown-bounded); a failure
+                # here must never break this isolation loop.
+                try:
+                    record_scheduler_subtask_failure(name, exc)
+                except Exception:
+                    pass
+
+    async def _process_health_digest(self, now: datetime) -> None:
+        """Daily owner health digest DM (owner-DM-only, never to channels)."""
+        from bot.health_digest import maybe_send_daily_digest
+        await maybe_send_daily_digest(self.bot, now)
 
     # ── Promos ───────────────────────────────────────────────────────────────
 
@@ -415,6 +435,7 @@ class SchedulerCog(commands.Cog):
                     await ch.send(content=mention or None, embed=embed)
                     sent += 1
                 except Exception as exc:
+                    note_discord_error(exc)
                     logger.warning("Failed to post promo %s to channel %d: %s",
                                    promo["id"], cid, exc)
 
@@ -550,6 +571,7 @@ class SchedulerCog(commands.Cog):
                     await ch.send(embed=embed)
                     sent += 1
                 except Exception as exc:
+                    note_discord_error(exc)
                     logger.warning("Failed to post lesson %s to channel %d: %s",
                                    lesson["id"], cid, exc)
 
@@ -586,6 +608,7 @@ class SchedulerCog(commands.Cog):
                     await ch.send(embed=embed)
                     sent += 1
                 except Exception as exc:
+                    note_discord_error(exc)
                     logger.warning("Failed to post reminder %s to channel %d: %s",
                                    rem["id"], cid, exc)
             if sent > 0:
@@ -650,6 +673,7 @@ class SchedulerCog(commands.Cog):
                 await ch.send(embed=embed)
                 sent += 1
             except Exception as exc:
+                note_discord_error(exc)
                 logger.warning("FAQ push: failed to post to channel %d: %s", cid, exc)
         self._faq_last_pushed_date = today_str
         self._save_faq_push_state()
