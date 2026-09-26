@@ -332,6 +332,58 @@ class MessageListener(commands.Cog):
             return True
         return False
 
+    def _is_rate_limited(self, user_id: int) -> bool:
+        """Pure check: True if a request from ``user_id`` would be rate limited.
+
+        Does NOT consume any tokens and does not create bucket entries —
+        use :meth:`_record_reply` to consume, or :meth:`_try_consume_rate_limit`
+        for an atomic check-and-consume.  Refill math mirrors the original
+        pre-atomic implementation so burst behavior is unchanged.
+        """
+        now = time.time()
+
+        # Per-user token bucket (1 token per USER_COOLDOWN_SECONDS, burst=1)
+        user_bucket = self._user_cooldowns.get(user_id)
+        if user_bucket is not None:
+            elapsed = now - user_bucket[1]
+            user_tokens = min(1.0, user_bucket[0] + elapsed / USER_COOLDOWN_SECONDS)
+            if user_tokens < 1.0:
+                return True
+
+        # Global token bucket (GLOBAL_MAX_PER_MINUTE tokens per minute)
+        elapsed_global = now - self._global_last_refill
+        global_tokens = min(
+            float(GLOBAL_MAX_PER_MINUTE),
+            self._global_tokens + elapsed_global * (GLOBAL_MAX_PER_MINUTE / 60.0),
+        )
+        return global_tokens < 1.0
+
+    def _record_reply(self, user_id: int) -> None:
+        """Consume one token from the per-user and global buckets.
+
+        Refills both buckets based on elapsed time first, then deducts.
+        """
+        now = time.time()
+
+        user_bucket = self._user_cooldowns.get(user_id)
+        if user_bucket is None:
+            # (tokens, last_refill_time)
+            self._user_cooldowns[user_id] = [1.0, now]
+            user_bucket = self._user_cooldowns[user_id]
+        else:
+            elapsed = now - user_bucket[1]
+            user_bucket[0] = min(1.0, user_bucket[0] + elapsed / USER_COOLDOWN_SECONDS)
+            user_bucket[1] = now
+        user_bucket[0] = max(0.0, user_bucket[0] - 1.0)
+
+        elapsed_global = now - self._global_last_refill
+        self._global_tokens = min(
+            float(GLOBAL_MAX_PER_MINUTE),
+            self._global_tokens + elapsed_global * (GLOBAL_MAX_PER_MINUTE / 60.0),
+        )
+        self._global_last_refill = now
+        self._global_tokens = max(0.0, self._global_tokens - 1.0)
+
     def _try_consume_rate_limit(self, user_id: int) -> bool:
         """Check-and-consume rate limit atomically.
 
@@ -343,46 +395,41 @@ class MessageListener(commands.Cog):
         after the whole RAG pipeline finished) were separated by seconds of
         OpenAI calls, so N rapid messages all saw full buckets and all
         triggered expensive pipeline runs.
+
+        The check and the consume run back-to-back with no ``await`` in
+        between, so no other coroutine can interleave — this is atomic with
+        respect to the asyncio event loop.
+        """
+        if self._is_rate_limited(user_id):
+            logger.info("跳过: 速率限制 (user=%d)", user_id)
+            return False
+        self._record_reply(user_id)
+        return True
+
+    def _refund_rate_limit(self, user_id: int) -> None:
+        """Return one token to the per-user and global buckets (capped at max).
+
+        Called when a message consumed a token at enqueue time but the
+        pipeline bailed out early (e.g. voice transcription failed, empty
+        text) before doing any expensive work — the user should not lose
+        their cooldown slot for a request that never ran.
         """
         now = time.time()
 
-        # Per-user token bucket (1 token per USER_COOLDOWN_SECONDS, burst=1)
         user_bucket = self._user_cooldowns.get(user_id)
-        if user_bucket is None:
-            # (tokens, last_refill_time)
-            self._user_cooldowns[user_id] = [1.0, now]
-            user_bucket = self._user_cooldowns[user_id]
-        else:
+        if user_bucket is not None:
             elapsed = now - user_bucket[1]
-            refill = elapsed / USER_COOLDOWN_SECONDS
-            user_bucket[0] = min(1.0, user_bucket[0] + refill)
+            user_bucket[0] = min(
+                1.0, user_bucket[0] + elapsed / USER_COOLDOWN_SECONDS + 1.0
+            )
             user_bucket[1] = now
 
-        if user_bucket[0] < 1.0:
-            logger.info("跳过: 用户速率限制 (user=%d, %.1f s until token)", user_id,
-                         (1.0 - user_bucket[0]) * USER_COOLDOWN_SECONDS)
-            return False
-
-        # Global token bucket (GLOBAL_MAX_PER_MINUTE tokens, refill rate = GLOBAL_MAX_PER_MINUTE/60 per sec)
         elapsed_global = now - self._global_last_refill
-        refill_rate = GLOBAL_MAX_PER_MINUTE / 60.0
         self._global_tokens = min(
             float(GLOBAL_MAX_PER_MINUTE),
-            self._global_tokens + elapsed_global * refill_rate,
+            self._global_tokens + elapsed_global * (GLOBAL_MAX_PER_MINUTE / 60.0) + 1.0,
         )
         self._global_last_refill = now
-
-        if self._global_tokens < 1.0:
-            logger.info("跳过: 全局速率限制 (tokens=%.2f)", self._global_tokens)
-            return False
-
-        # Allowed — consume one token from each bucket immediately.
-        user_bucket[0] = max(0.0, user_bucket[0] - 1.0)
-        self._global_tokens = max(0.0, self._global_tokens - 1.0)
-        return True
-
-    # NOTE: _record_reply() was removed — token consumption now happens
-    # atomically inside _try_consume_rate_limit() at check time.
 
     # ── Conversation memory ──────────────────────────────────────────────────
 
@@ -1066,6 +1113,8 @@ class MessageListener(commands.Cog):
         # Resolve text (Whisper-transcribe Discord voice notes when present)
         user_text, voice_status = await self._resolve_user_text(message)
         if voice_status == "silent":
+            # Token was pre-consumed at enqueue time; nothing ran — refund it.
+            self._refund_rate_limit(message.author.id)
             return
         if voice_status:
             try:
@@ -1076,9 +1125,12 @@ class MessageListener(commands.Cog):
                 )
             except Exception:
                 pass
+            # Transcription failed before any expensive work — refund the token.
+            self._refund_rate_limit(message.author.id)
             return
         if not user_text and not self._get_image_urls(message):
             logger.info("跳过: 无文字且无图片 (id=%s)", message.id)
+            self._refund_rate_limit(message.author.id)
             return
 
         # Auto language detection — append reply language instruction

@@ -824,6 +824,7 @@ class BotCommands(commands.Cog):
 
     @app_commands.command(name="ask", description="向AI助手提问（使用RAG知识库）")
     @app_commands.describe(question="你的问题")
+    @app_commands.checks.cooldown(1, 30.0)  # per-user 30s — mirrors USER_COOLDOWN_SECONDS
     async def ask_cmd(self, interaction: discord.Interaction, question: str) -> None:
         if EXCLUDED_CHANNEL_IDS and interaction.channel_id in EXCLUDED_CHANNEL_IDS:
             await interaction.response.send_message(
@@ -918,6 +919,25 @@ class BotCommands(commands.Cog):
                 )
             except Exception as exc:
                 logger.warning("Failed to forward /ask query for review: %s", exc)
+
+    @ask_cmd.error
+    async def ask_cmd_error(
+        self, interaction: discord.Interaction, error: app_commands.AppCommandError
+    ) -> None:
+        """User-facing error handler for /ask (Simplified Chinese prompts)."""
+        if isinstance(error, app_commands.CommandOnCooldown):
+            retry = int(error.retry_after) + 1
+            msg = f"问得太快了，请 {retry} 秒后再试。"
+            logger.debug("/ask cooldown hit by user %d", interaction.user.id)
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(msg, ephemeral=True)
+                else:
+                    await interaction.response.send_message(msg, ephemeral=True)
+            except Exception:
+                pass
+            return
+        logger.warning("/ask error: %s", error)
 
     # ── /status ──────────────────────────────────────────────────────────
 
