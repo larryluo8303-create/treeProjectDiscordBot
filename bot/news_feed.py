@@ -184,9 +184,12 @@ def build_embed(item: dict) -> discord.Embed:
     title, body = extract_title_and_content(raw_content)
     time_str = _convert_beijing_to_toronto(item.get("time", ""))
 
+    # SECURITY/stability: truncate to Discord limits BEFORE sending.  An
+    # over-long body used to raise HTTPException on every attempt, and the
+    # failed item blocked the cursor forever (poison item).
     embed = discord.Embed(
         title=f"\U0001f534 {title}"[:256],
-        description=body,
+        description=body[:4096],
         color=0xE74C3C,
     )
 
@@ -208,11 +211,17 @@ def build_text(item: dict) -> str:
     """Build a plain text message for a regular flash news item."""
     data = item.get("data") or {}
     content = _clean_html(data.get("content", ""))
-    return f"\U0001f4f0 {content}"
+    # Discord plain-message limit is 2000 chars — truncate to avoid a
+    # poison item that can never be posted (see _fetch_and_post).
+    return f"\U0001f4f0 {content}"[:2000]
 
 
 class NewsFeedCog(commands.Cog):
     """Polls Jin10 flash API and posts market news to Discord channels."""
+
+    # An item that fails this many consecutive times is dead-lettered
+    # (skipped with a warning) instead of blocking the cursor forever.
+    _MAX_ITEM_FAILURES = 3
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -221,6 +230,7 @@ class NewsFeedCog(commands.Cog):
         self._session: aiohttp.ClientSession | None = None
         self._last_id: str = _load_last_id()
         self._consecutive_errors: int = 0
+        self._item_failures: dict[str, int] = {}
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -315,7 +325,9 @@ class NewsFeedCog(commands.Cog):
             return
 
         posted_ids: list[str] = []
+        dead_ids: list[str] = []
         for item in new_items:
+            item_id = item.get("id", "")
             important = item.get("important")
             if important:
                 message = build_embed(item)
@@ -342,20 +354,40 @@ class NewsFeedCog(commands.Cog):
                     logger.warning("News feed: failed to post to channel %d: %s", channel_id, exc)
 
             if posted_to_any:
-                item_id = item.get("id", "")
                 if item_id:
                     posted_ids.append(item_id)
+                self._item_failures.pop(item_id, None)
+            else:
+                # Dead-letter: an item that can never be posted (e.g. a
+                # channel the bot was removed from) must not block the
+                # cursor forever — skip it after N failures with a warning.
+                fails = self._item_failures.get(item_id, 0) + 1
+                if fails >= self._MAX_ITEM_FAILURES:
+                    logger.warning(
+                        "News feed: dead-lettering item %s after %d post failures",
+                        item_id, fails,
+                    )
+                    if item_id:
+                        dead_ids.append(item_id)
+                    self._item_failures.pop(item_id, None)
+                else:
+                    self._item_failures[item_id] = fails
 
-        if not posted_ids:
+        advanced_ids = posted_ids + dead_ids
+        if not advanced_ids:
             logger.warning("News feed: failed to post any items — not advancing last_id")
             return
 
         # Only advance after successful posts. If all items posted, also skip
         # non-important items returned in the same API page.
-        if len(posted_ids) == len(new_items):
+        if len(advanced_ids) == len(new_items):
             self._maybe_advance_last_id(all_ids)
         else:
-            self._maybe_advance_last_id(posted_ids)
+            self._maybe_advance_last_id(advanced_ids)
+        # Drop stale failure counters for items the cursor has passed.
+        for fid in list(self._item_failures):
+            if fid <= self._last_id:
+                self._item_failures.pop(fid, None)
 
         logger.info("Jin10 news feed: posted %d item(s) to %d channel(s)",
                      len(posted_ids), len(NEWS_CHANNEL_IDS))

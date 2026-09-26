@@ -404,6 +404,9 @@ WEBHOOK_MAX_ITEMS: int = int(os.getenv("WEBHOOK_MAX_ITEMS", "50"))
 ADMIN_ENABLED: bool = os.getenv("ADMIN_ENABLED", "false").lower() in ("1", "true", "yes")
 ADMIN_PORT: int = int(os.getenv("ADMIN_PORT", "8082"))
 ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "")
+# SECURITY: bind to localhost by default; the admin panel can trigger
+# OpenAI-spending endpoints, so never expose it without a firewall.
+ADMIN_HOST: str = os.getenv("ADMIN_HOST", "127.0.0.1")
 
 # ---------------------------------------------------------------------------
 # API Server (FastAPI)

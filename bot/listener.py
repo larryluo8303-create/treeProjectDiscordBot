@@ -332,7 +332,18 @@ class MessageListener(commands.Cog):
             return True
         return False
 
-    def _is_rate_limited(self, user_id: int) -> bool:
+    def _try_consume_rate_limit(self, user_id: int) -> bool:
+        """Check-and-consume rate limit atomically.
+
+        Returns True if the request is allowed (one token was consumed from
+        both the per-user and global buckets), False if rate limited.
+
+        SECURITY: tokens are consumed HERE, at check time.  Previously the
+        check (_is_rate_limited) and the consumption (_record_reply, called
+        after the whole RAG pipeline finished) were separated by seconds of
+        OpenAI calls, so N rapid messages all saw full buckets and all
+        triggered expensive pipeline runs.
+        """
         now = time.time()
 
         # Per-user token bucket (1 token per USER_COOLDOWN_SECONDS, burst=1)
@@ -350,7 +361,7 @@ class MessageListener(commands.Cog):
         if user_bucket[0] < 1.0:
             logger.info("跳过: 用户速率限制 (user=%d, %.1f s until token)", user_id,
                          (1.0 - user_bucket[0]) * USER_COOLDOWN_SECONDS)
-            return True
+            return False
 
         # Global token bucket (GLOBAL_MAX_PER_MINUTE tokens, refill rate = GLOBAL_MAX_PER_MINUTE/60 per sec)
         elapsed_global = now - self._global_last_refill
@@ -363,16 +374,15 @@ class MessageListener(commands.Cog):
 
         if self._global_tokens < 1.0:
             logger.info("跳过: 全局速率限制 (tokens=%.2f)", self._global_tokens)
-            return True
+            return False
 
-        return False
-
-    def _record_reply(self, user_id: int) -> None:
-        # Consume one token from each bucket
-        user_bucket = self._user_cooldowns.get(user_id)
-        if user_bucket is not None:
-            user_bucket[0] = max(0.0, user_bucket[0] - 1.0)
+        # Allowed — consume one token from each bucket immediately.
+        user_bucket[0] = max(0.0, user_bucket[0] - 1.0)
         self._global_tokens = max(0.0, self._global_tokens - 1.0)
+        return True
+
+    # NOTE: _record_reply() was removed — token consumption now happens
+    # atomically inside _try_consume_rate_limit() at check time.
 
     # ── Conversation memory ──────────────────────────────────────────────────
 
@@ -559,7 +569,7 @@ class MessageListener(commands.Cog):
             return
         # VIP role bypass for rate limiting
         is_vip = self._is_vip(message.author)
-        if not is_vip and self._is_rate_limited(message.author.id):
+        if not is_vip and not self._try_consume_rate_limit(message.author.id):
             return
         await self._queue.put(message)
 
@@ -1151,37 +1161,17 @@ class MessageListener(commands.Cog):
             question=user_text,
         )
 
-        # Safety guardrails: high-risk content can be forced to owner review.
-        if is_feature_enabled_for_channel(
-            FEATURE_SAFETY_GUARDRAILS,
-            FEATURE_SAFETY_GUARDRAILS_CANARY_CHANNEL_IDS,
+        # Safety guardrails + clarification: shared waterline with /ask
+        # (bot/safety.py) — high-risk content is forced to owner review and
+        # low-confidence auto-replies get a clarification follow-up.
+        from bot.safety import apply_safety_routing
+        apply_safety_routing(
+            user_text,
+            routing,
+            confidence,
             message.channel.id,
-        ):
-            from bot.guardrails import detect_high_risk_signals
-            risk_hits = detect_high_risk_signals(user_text, routing["answer"])
-            if risk_hits and routing["action"] == "auto_reply":
-                if GUARDRAIL_MODE == "disclaimer":
-                    routing["answer"] = f"{routing['answer']}\n\n{GUARDRAIL_DISCLAIMER}"
-                    routing["reason"] += " + guardrail disclaimer"
-                else:
-                    routing["action"] = "forward_to_owner"
-                    routing["reason"] = "high-risk signal detected by guardrails"
-
-        # Clarification follow-up: ask one clarifying question for low-confidence
-        # auto replies instead of sending an ambiguous answer directly.
-        if (
-            routing["action"] == "auto_reply"
-            and not image_urls
-            and is_feature_enabled_for_channel(
-                FEATURE_CLARIFICATION_FOLLOWUP,
-                FEATURE_CLARIFICATION_CANARY_CHANNEL_IDS,
-                message.channel.id,
-            )
-        ):
-            from bot.clarification import build_clarification_reply, needs_clarification
-            if needs_clarification(confidence, CLARIFICATION_CONFIDENCE_MAX):
-                routing["answer"] = build_clarification_reply(user_text)
-                routing["reason"] += " + clarification follow-up"
+            image_urls=image_urls,
+        )
 
         elapsed_ms = int((time.time() - start) * 1000)
         # Hang / reconnect can leave a request running for hours; don't persist
@@ -1245,7 +1235,6 @@ class MessageListener(commands.Cog):
                     logger.error("Failed to send reply to channel %s", message.channel.id)
             # Record bot's answer in conversation memory
             self._add_to_memory(message.channel.id, "bot", reply_text)
-            self._record_reply(message.author.id)
             # Notify the owner that the bot auto-replied (fire-and-forget DM)
             asyncio.create_task(
                 notify_owner_auto_reply(
@@ -1266,7 +1255,6 @@ class MessageListener(commands.Cog):
                 collection=self.collection,
                 openai_client=self.openai_client,
             )
-            self._record_reply(message.author.id)
 
             # Also add to the app review queue
             try:
@@ -1329,7 +1317,6 @@ class MessageListener(commands.Cog):
 
         record_funnel("intent_hits")
         record_funnel("cta_posts")
-        self._record_reply(message.author.id)
         asyncio.create_task(notify_owner_intent(self.bot, message, phrases))
         if isinstance(message.author, discord.Member):
             asyncio.create_task(assign_lead_role(message.author))

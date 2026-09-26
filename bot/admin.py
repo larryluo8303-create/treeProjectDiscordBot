@@ -20,6 +20,7 @@ import openai
 
 from bot.config import (
     ADMIN_ENABLED,
+    ADMIN_HOST,
     ADMIN_PORT,
     ADMIN_SECRET,
     CONFIDENCE_THRESHOLD,
@@ -143,7 +144,22 @@ _DASHBOARD_HTML = """\
 </div>
 
 <script>
-const SECRET = '';  // set if ADMIN_SECRET is used
+// SECURITY: escape all user-controlled text before injecting into HTML.
+// Previously question/KB/FAQ text was interpolated raw into innerHTML,
+// allowing stored XSS (e.g. a Discord user posting <img onerror=...> as a
+// "question" would execute JS in the admin's browser).
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+// Admin secret: pass ?secret=... once, then it's kept in sessionStorage.
+const _qSecret = new URLSearchParams(location.search).get('secret') || '';
+if (_qSecret) { try { sessionStorage.setItem('admin_secret', _qSecret); } catch (e) {} }
+const SECRET = _qSecret || (function(){ try { return sessionStorage.getItem('admin_secret') || ''; } catch (e) { return ''; } })();
 const headers = SECRET ? {'X-Admin-Secret': SECRET} : {};
 
 async function fetchJson(url) {
@@ -164,8 +180,8 @@ async function loadStats() {
   tbody.innerHTML = '';
   (d.recent || []).forEach(r => {
     const icon = r.action === 'auto_reply' ? '✅' : '📩';
-    tbody.innerHTML += `<tr><td>${r.question.substring(0,60)}</td><td>${r.confidence}</td>
-      <td>${icon}</td><td>${r.latency_ms}ms</td></tr>`;
+    tbody.innerHTML += `<tr><td>${esc(r.question).substring(0,60)}</td><td>${esc(r.confidence)}</td>
+      <td>${icon}</td><td>${esc(r.latency_ms)}ms</td></tr>`;
   });
 }
 
@@ -180,9 +196,9 @@ async function loadKB() {
   const tbody = document.getElementById('kb-samples');
   tbody.innerHTML = '';
   (d.samples || []).forEach(s => {
-    tbody.innerHTML += `<tr><td style="font-size:0.7rem">${s.id.substring(0,20)}</td>
-      <td><span class="badge badge-green">${s.type||'—'}</span></td>
-      <td>${(s.text||'').substring(0,80)}…</td></tr>`;
+    tbody.innerHTML += `<tr><td style="font-size:0.7rem">${esc(s.id).substring(0,20)}</td>
+      <td><span class="badge badge-green">${esc(s.type)||'—'}</span></td>
+      <td>${esc(s.text).substring(0,80)}…</td></tr>`;
   });
 }
 
@@ -195,7 +211,7 @@ async function loadFaq() {
   }
   ul.innerHTML = '';
   d.items.forEach((f, i) => {
-    ul.innerHTML += `<li><div class="q">${i+1}. ${f.q}</div><div class="a">${f.a}</div></li>`;
+    ul.innerHTML += `<li><div class="q">${i+1}. ${esc(f.q)}</div><div class="a">${esc(f.a)}</div></li>`;
   });
 }
 
@@ -243,13 +259,27 @@ class AdminServer:
             logger.warning("aiohttp not installed — admin panel disabled. pip install aiohttp")
             return
 
+        # SECURITY (fail-closed): the admin panel exposes OpenAI-spending
+        # endpoints — refuse to start without a secret.  Previously an empty
+        # ADMIN_SECRET meant "no auth at all".
+        if not ADMIN_SECRET:
+            logger.error(
+                "ADMIN_SECRET is not set — admin panel will NOT start. "
+                "Set ADMIN_SECRET to a random string to enable it."
+            )
+            return
+
         @web.middleware
         async def auth_middleware(request, handler):
-            if ADMIN_SECRET:
-                if request.path.startswith("/admin/api/"):
-                    secret = request.headers.get("X-Admin-Secret", "")
-                    if secret != ADMIN_SECRET:
+            # Both the dashboard page and the API require the secret.
+            # Browsers can't send custom headers on navigation, so the page
+            # also accepts ?secret= (stored in sessionStorage by the page JS).
+            if request.path.startswith("/admin/"):
+                secret = request.headers.get("X-Admin-Secret", "") or request.query.get("secret", "")
+                if not secret or secret != ADMIN_SECRET:
+                    if request.path.startswith("/admin/api/"):
                         return web.json_response({"error": "unauthorized"}, status=401)
+                    return web.Response(text="Unauthorized", status=401)
             return await handler(request)
 
         app = web.Application(middlewares=[auth_middleware])
@@ -262,10 +292,10 @@ class AdminServer:
 
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", ADMIN_PORT)
+        site = web.TCPSite(runner, ADMIN_HOST, ADMIN_PORT)
         await site.start()
         self._runner = runner
-        logger.info("Admin panel started on port %d", ADMIN_PORT)
+        logger.info("Admin panel started on %s:%d", ADMIN_HOST, ADMIN_PORT)
 
     async def stop(self) -> None:
         if self._runner:

@@ -836,11 +836,27 @@ class BotCommands(commands.Cog):
             )
             return
 
+        # Rate limiting: /ask shares the same token buckets as the message
+        # channel (bot/listener.py).  Previously /ask had zero protection and
+        # could burn OpenAI budget without limit.
+        listener = self.bot.get_cog("MessageListener")
+        if listener is not None and hasattr(listener, "_try_consume_rate_limit"):
+            if not listener._try_consume_rate_limit(interaction.user.id):
+                await interaction.response.send_message(
+                    "问得太快了，请稍后再试。", ephemeral=True,
+                )
+                return
+
         await interaction.response.defer()  # may take a few seconds
+
+        import time as _time
 
         from bot.confidence import route_answer
         from bot.rag import run_rag_pipeline
+        from bot.safety import apply_safety_routing
+        from bot.stats import bot_stats
 
+        _start = _time.time()
         answer, confidence, context_chunks = await run_rag_pipeline(
             question=question,
             collection=self.collection,
@@ -857,6 +873,19 @@ class BotCommands(commands.Cog):
             context_count=len(context_chunks),
             best_distance=best_distance,
             question=question,
+        )
+
+        # Same safety waterline as the message channel: guardrails +
+        # clarification follow-up (previously /ask skipped both).
+        apply_safety_routing(question, routing, confidence, interaction.channel_id)
+
+        _elapsed_ms = int((_time.time() - _start) * 1000)
+        bot_stats.record_query(
+            question=question[:200],
+            channel_id=interaction.channel_id,
+            confidence=confidence,
+            action=routing["action"],
+            latency_ms=_elapsed_ms,
         )
 
         if routing["action"] == "auto_reply":

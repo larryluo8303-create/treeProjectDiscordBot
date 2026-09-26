@@ -1,5 +1,6 @@
 """RAG pipeline: embed query → retrieve from ChromaDB → generate styled answer."""
 
+import asyncio
 import logging
 import os
 import re
@@ -112,19 +113,7 @@ async def retrieve_context(
     # Embed the question (with LRU cache)
     question_embedding = embedding_cache.get(question)
     if question_embedding is None:
-        try:
-            response = await openai_client.embeddings.create(
-                model=EMBEDDING_MODEL,
-                input=[question],
-            )
-        except (openai.APITimeoutError, openai.APIConnectionError) as first_err:
-            logger.warning("Embedding API error (%s) in retrieve_context — retrying once",
-                           type(first_err).__name__)
-            response = await openai_client.embeddings.create(
-                model=EMBEDDING_MODEL,
-                input=[question],
-            )
-        question_embedding = response.data[0].embedding
+        question_embedding = await _embedding_with_retry(openai_client, question)
         embedding_cache.put(question, question_embedding)
 
     # Query ChromaDB (async wrapper delegates to thread)
@@ -275,6 +264,24 @@ def _record_openai_call(success: bool) -> None:
         pass
 
 
+class OpenAIUnavailableError(Exception):
+    """OpenAI is unavailable after retries (rate limit / quota / auth error).
+
+    Callers should degrade gracefully (e.g. a "try later" reply or forward
+    to owner review) instead of letting the exception bubble up and silently
+    drop the user's message.
+    """
+
+
+def _retry_after_seconds(exc: Exception, default: float) -> float:
+    """Extract Retry-After from a rate-limit error, falling back to default."""
+    try:
+        retry_after = exc.response.headers.get("retry-after")  # type: ignore[union-attr]
+        return max(0.0, min(float(retry_after), 60.0))
+    except Exception:
+        return default
+
+
 async def _openai_chat_with_retry(
     openai_client: openai.AsyncOpenAI,
     *,
@@ -283,12 +290,19 @@ async def _openai_chat_with_retry(
     max_tokens: int = LLM_MAX_TOKENS,
     temperature: float = LLM_TEMPERATURE,
 ) -> str | None:
-    """Call OpenAI chat completions with a single retry on transient errors.
+    """Call OpenAI chat completions with retries on transient errors.
 
-    Returns the raw response text, or ``None`` if both attempts fail.
-    Records SLA success/failure once per logical request, so a recovered
-    retry does not inflate the error rate.
+    - 429 RateLimitError: exponential backoff (respecting Retry-After),
+      up to 3 attempts, then raises OpenAIUnavailableError.
+    - Timeout/connection errors: one immediate retry (as before), then
+      raises OpenAIUnavailableError.
+    - Auth/quota errors (AuthenticationError, PermissionDeniedError):
+      no retry — raises OpenAIUnavailableError immediately.
+
+    Returns the raw response text, or ``None`` if the model returns no
+    content.  Records SLA success/failure once per logical request.
     """
+    # Attempt 1
     try:
         response = await openai_client.chat.completions.create(
             model=model,
@@ -298,6 +312,32 @@ async def _openai_chat_with_retry(
         )
         _record_openai_call(True)
         return response.choices[0].message.content or ""
+    except openai.RateLimitError as rl_err:
+        logger.warning("OpenAI rate limited (429) — backing off and retrying")
+        for attempt in (1, 2, 3):
+            await asyncio.sleep(_retry_after_seconds(rl_err, 2.0 ** attempt))
+            try:
+                response = await openai_client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+                _record_openai_call(True)
+                logger.info("OpenAI retry %d/%d succeeded after 429", attempt, 3)
+                return response.choices[0].message.content or ""
+            except openai.RateLimitError as retry_rl:
+                rl_err = retry_rl
+                logger.warning("OpenAI still rate limited (attempt %d/3)", attempt)
+            except Exception as retry_err:
+                _record_openai_call(False)
+                logger.error("OpenAI retry failed with %s: %s",
+                             type(retry_err).__name__, retry_err)
+                raise OpenAIUnavailableError(
+                    f"OpenAI unavailable ({type(retry_err).__name__})") from retry_err
+        _record_openai_call(False)
+        logger.error("OpenAI rate limit persisted after 3 backoff retries")
+        raise OpenAIUnavailableError("OpenAI rate limit exceeded (429)")
     except (openai.APITimeoutError, openai.APIConnectionError) as first_err:
         logger.warning("OpenAI API error (%s) — retrying once", type(first_err).__name__)
         try:
@@ -312,7 +352,69 @@ async def _openai_chat_with_retry(
         except Exception as retry_err:
             _record_openai_call(False)
             logger.error("OpenAI API retry also failed: %s", retry_err)
-            return None
+            raise OpenAIUnavailableError(
+                f"OpenAI unavailable ({type(retry_err).__name__})") from retry_err
+    except (openai.AuthenticationError, openai.PermissionDeniedError) as auth_err:
+        # Wrong API key or quota exhausted — retrying is pointless.
+        _record_openai_call(False)
+        logger.error("OpenAI auth/quota error (%s): %s — check API key and billing",
+                     type(auth_err).__name__, auth_err)
+        raise OpenAIUnavailableError(
+            f"OpenAI auth/quota error ({type(auth_err).__name__})") from auth_err
+
+
+async def _embedding_with_retry(
+    openai_client: openai.AsyncOpenAI,
+    text: str,
+) -> list[float]:
+    """Create one embedding with the same retry policy as chat calls."""
+    try:
+        response = await openai_client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=[text],
+        )
+        _record_openai_call(True)
+        return response.data[0].embedding
+    except openai.RateLimitError as rl_err:
+        logger.warning("Embedding rate limited (429) — backing off and retrying")
+        for attempt in (1, 2, 3):
+            await asyncio.sleep(_retry_after_seconds(rl_err, 2.0 ** attempt))
+            try:
+                response = await openai_client.embeddings.create(
+                    model=EMBEDDING_MODEL,
+                    input=[text],
+                )
+                _record_openai_call(True)
+                return response.data[0].embedding
+            except openai.RateLimitError as retry_rl:
+                rl_err = retry_rl
+                logger.warning("Embedding still rate limited (attempt %d/3)", attempt)
+            except Exception as retry_err:
+                _record_openai_call(False)
+                raise OpenAIUnavailableError(
+                    f"Embedding unavailable ({type(retry_err).__name__})") from retry_err
+        _record_openai_call(False)
+        raise OpenAIUnavailableError("Embedding rate limit exceeded (429)")
+    except (openai.APITimeoutError, openai.APIConnectionError) as first_err:
+        logger.warning("Embedding API error (%s) — retrying once",
+                       type(first_err).__name__)
+        try:
+            response = await openai_client.embeddings.create(
+                model=EMBEDDING_MODEL,
+                input=[text],
+            )
+            _record_openai_call(True)
+            return response.data[0].embedding
+        except Exception as retry_err:
+            _record_openai_call(False)
+            raise OpenAIUnavailableError(
+                f"Embedding unavailable ({type(retry_err).__name__})") from retry_err
+    except (openai.AuthenticationError, openai.PermissionDeniedError) as auth_err:
+        _record_openai_call(False)
+        logger.error("Embedding auth/quota error (%s) — check API key and billing",
+                     type(auth_err).__name__)
+        raise OpenAIUnavailableError(
+            f"Embedding auth/quota error ({type(auth_err).__name__})") from auth_err
 
 
 async def generate_answer(
@@ -343,14 +445,19 @@ async def generate_answer(
         question=question,
     )
 
-    raw_answer = await _openai_chat_with_retry(
-        openai_client,
-        model=LLM_MODEL,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
+    try:
+        raw_answer = await _openai_chat_with_retry(
+            openai_client,
+            model=LLM_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+    except OpenAIUnavailableError:
+        # Rate limit / quota / auth failure after retries — degrade to a
+        # user-facing "try later" message instead of silently dropping.
+        return get_locale("no_answer"), 1
     if raw_answer is None:
         return get_locale("no_answer"), 1
 
@@ -378,7 +485,12 @@ async def run_rag_pipeline(
     tuple[str, int, list[dict]]
         (answer_text, confidence_score, context_chunks)
     """
-    context_chunks = await retrieve_context(question, collection, openai_client)
+    try:
+        context_chunks = await retrieve_context(question, collection, openai_client)
+    except OpenAIUnavailableError:
+        # Embedding failed (429/quota/auth) — degrade gracefully instead of
+        # letting the exception bubble up and silently drop the message.
+        return get_locale("no_answer"), 1, []
 
     if not context_chunks:
         return (
