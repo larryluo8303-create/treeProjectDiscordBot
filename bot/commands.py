@@ -38,6 +38,7 @@ Provides:
 - /list_ban_words  — Show all banned words
 """
 
+import asyncio
 import io
 import logging
 from datetime import datetime, timedelta, timezone
@@ -1317,8 +1318,65 @@ class BotCommands(commands.Cog):
         for s in snapshots[:10]:
             from datetime import datetime as _dt
             ts = _dt.fromtimestamp(s["timestamp"]).strftime("%Y-%m-%d %H:%M")
-            lines.append(f"`{s['id']}` — {ts} — {s['doc_count']} docs — {s.get('description', '')[:50]}")
+            size = s.get("size_bytes")
+            size_str = f" — {size / (1024 * 1024):.1f} MB" if size else ""
+            lines.append(f"`{s['id']}` — {ts} — {s['doc_count']} docs{size_str} — {s.get('description', '')[:50]}")
         await interaction.response.send_message("**知识库快照：**\n" + "\n".join(lines), ephemeral=True)
+
+    # ── /kb_snapshot ─────────────────────────────────────────────────────
+
+    @app_commands.command(name="kb_snapshot", description="[Owner] 立即创建知识库快照")
+    @app_commands.describe(description="快照描述（可选）")
+    async def kb_snapshot_cmd(self, interaction: discord.Interaction, description: str = "") -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            doc_count = await self.collection.count()
+        except Exception:
+            doc_count = -1
+        from bot.kb_versioning import create_snapshot
+        try:
+            snap = await asyncio.to_thread(create_snapshot, doc_count, description)
+        except FileNotFoundError as exc:
+            await interaction.followup.send(f"❌ 快照失败：{exc}", ephemeral=True)
+            return
+        except Exception as exc:
+            await interaction.followup.send(f"❌ 快照失败：{exc}", ephemeral=True)
+            return
+        size_mb = snap["size_bytes"] / (1024 * 1024)
+        await interaction.followup.send(
+            f"✅ 快照已创建：`{snap['id']}`\n"
+            f"📚 文档数：{doc_count}\n"
+            f"💾 大小：{size_mb:.1f} MB",
+            ephemeral=True,
+        )
+
+    # ── /kb_rollback ─────────────────────────────────────────────────────
+
+    @app_commands.command(name="kb_rollback", description="[Owner] 回滚知识库到指定快照")
+    @app_commands.describe(snapshot_id="快照 ID（用 /kb_snapshots 查看）")
+    async def kb_rollback_cmd(self, interaction: discord.Interaction, snapshot_id: str) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        from bot.kb_versioning import rollback_snapshot
+        try:
+            backup = await asyncio.to_thread(rollback_snapshot, snapshot_id)
+        except (KeyError, FileNotFoundError, RuntimeError) as exc:
+            await interaction.followup.send(f"❌ 回滚失败：{exc}", ephemeral=True)
+            return
+        except Exception as exc:
+            await interaction.followup.send(f"❌ 回滚失败：{exc}", ephemeral=True)
+            return
+        backup_line = f"\n🛟 回滚前状态已备份为 `{backup['id']}`（可再次回滚撤销）" if backup else ""
+        await interaction.followup.send(
+            f"✅ 知识库已回滚到快照 `{snapshot_id}`。{backup_line}\n"
+            "⚠️ 建议重启 bot 以确保内存中的集合与磁盘一致。",
+            ephemeral=True,
+        )
 
     # ── /leaderboard ─────────────────────────────────────────────────────
 

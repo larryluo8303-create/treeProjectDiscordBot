@@ -146,3 +146,12 @@ class TestTranscriptToDocuments:
         # IDs should include chunk index
         assert docs[0]["id"] == "yt_vid12345678_0"
         assert docs[1]["id"] == "yt_vid12345678_1"
+
+    def test_single_chunk_id_always_indexed(self):
+        # Single-chunk videos must use the same yt_<id>_0 scheme as
+        # multi-chunk ones — the old bare yt_<id> form left orphan chunks
+        # behind when a transcript edit changed the chunk count.
+        segments = [{"start": 0.0, "duration": 2.0, "text": "short transcript"}]
+        docs = transcript_to_documents("singleVid9", segments, "en")
+        assert len(docs) == 1
+        assert docs[0]["id"] == "yt_singleVid9_0"
