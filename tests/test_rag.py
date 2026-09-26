@@ -340,3 +340,131 @@ class TestOpenAIRetrySlaRecording:
         assert result is None
         assert openai_call_count() == 1
         assert openai_error_rate() == 1.0
+
+
+def _make_429_error():
+    """Build an openai.RateLimitError without a real HTTP response."""
+    import openai
+
+    resp = MagicMock()
+    resp.headers = {}
+    return openai.RateLimitError("rate limited", response=resp, body=None)
+
+
+def _make_auth_error():
+    import openai
+
+    resp = MagicMock()
+    resp.headers = {}
+    return openai.AuthenticationError("invalid key", response=resp, body=None)
+
+
+def _ok_chat_response(text="ok answer"):
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = text
+    return mock_response
+
+
+class TestOpenAI429Retry:
+    """429 rate limits: backoff retry, then OpenAIUnavailableError; auth errors fail fast."""
+
+    @pytest.mark.asyncio
+    async def test_429_retry_then_success(self):
+        from bot.rag import _openai_chat_with_retry
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create.side_effect = [
+            _make_429_error(),
+            _ok_chat_response("recovered"),
+        ]
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await _openai_chat_with_retry(
+                mock_client, model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "hi"}],
+            )
+        assert result == "recovered"
+        assert mock_client.chat.completions.create.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_429_exhausted_raises_unavailable(self):
+        from bot.rag import OpenAIUnavailableError, _openai_chat_with_retry
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create.side_effect = _make_429_error()
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            with pytest.raises(OpenAIUnavailableError):
+                await _openai_chat_with_retry(
+                    mock_client, model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": "hi"}],
+                )
+        # initial attempt + 3 backoff retries
+        assert mock_client.chat.completions.create.call_count == 4
+
+    @pytest.mark.asyncio
+    async def test_auth_error_raises_unavailable_immediately(self):
+        from bot.rag import OpenAIUnavailableError, _openai_chat_with_retry
+
+        mock_client = AsyncMock()
+        mock_client.chat.completions.create.side_effect = _make_auth_error()
+        with pytest.raises(OpenAIUnavailableError):
+            await _openai_chat_with_retry(
+                mock_client, model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "hi"}],
+            )
+        assert mock_client.chat.completions.create.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_embedding_429_retry_then_success(self):
+        from bot.rag import _embedding_with_retry
+
+        mock_client = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.data = [MagicMock()]
+        mock_response.data[0].embedding = [0.1, 0.2]
+        mock_client.embeddings.create.side_effect = [
+            _make_429_error(),
+            mock_response,
+        ]
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await _embedding_with_retry(mock_client, "hello")
+        assert result == [0.1, 0.2]
+        assert mock_client.embeddings.create.call_count == 2
+
+
+class TestOpenAIDegrade:
+    """OpenAIUnavailableError must degrade to a user-facing message, never a silent drop."""
+
+    @pytest.mark.asyncio
+    async def test_generate_answer_degrades_to_no_answer(self):
+        from bot.config import get_locale
+        from bot.rag import OpenAIUnavailableError, generate_answer
+
+        mock_client = AsyncMock()
+        with patch(
+            "bot.rag._openai_chat_with_retry",
+            new=AsyncMock(side_effect=OpenAIUnavailableError("429")),
+        ):
+            answer, confidence = await generate_answer(
+                "test?", [], mock_client
+            )
+        assert answer == get_locale("no_answer")
+        assert confidence == 1
+
+    @pytest.mark.asyncio
+    async def test_run_rag_pipeline_degrades_on_embedding_failure(self):
+        from bot.config import get_locale
+        from bot.rag import OpenAIUnavailableError, run_rag_pipeline
+
+        mock_client = AsyncMock()
+        mock_collection = MagicMock()
+        with patch(
+            "bot.rag.retrieve_context",
+            new=AsyncMock(side_effect=OpenAIUnavailableError("quota")),
+        ):
+            answer, confidence, chunks = await run_rag_pipeline(
+                "test?", mock_collection, mock_client
+            )
+        assert answer == get_locale("no_answer")
+        assert confidence == 1
+        assert chunks == []
