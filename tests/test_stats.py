@@ -113,6 +113,8 @@ class TestBotStatsPersistence:
             stats._save_task = None
             from collections import deque
             stats.recent = deque(maxlen=200)
+            stats.errors = deque(maxlen=200)
+            stats.rate_limited = deque(maxlen=200)
 
             stats._save()
 
@@ -124,6 +126,8 @@ class TestBotStatsPersistence:
             stats2.total_latency_ms = 0
             stats2.channel_counts = {}
             stats2.recent = deque(maxlen=200)
+            stats2.errors = deque(maxlen=200)
+            stats2.rate_limited = deque(maxlen=200)
             stats2._dirty = False
             stats2._save_task = None
             stats2._load()
@@ -149,6 +153,8 @@ class TestBotStatsPersistence:
             stats.channel_counts = {}
             from collections import deque
             stats.recent = deque(maxlen=200)
+            stats.errors = deque(maxlen=200)
+            stats.rate_limited = deque(maxlen=200)
             stats._dirty = False
             stats._save_task = None
             stats._load()

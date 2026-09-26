@@ -327,6 +327,24 @@ def _record_openai_call(success: bool) -> None:
         pass
 
 
+def _record_owner_alert(kind: str) -> None:
+    """Record an OpenAI incident for owner anomaly alerts + digest counters.
+
+    kind: "429" (retries exhausted) or "quota" (auth/quota error).
+    Lazy imports keep this module decoupled; never raises.
+    """
+    try:
+        from bot.owner_alerts import record_openai_429, record_openai_quota_error
+        from bot.stats import bot_stats
+        if kind == "429":
+            record_openai_429()
+        elif kind == "quota":
+            record_openai_quota_error()
+        bot_stats.record_error()
+    except Exception:
+        pass
+
+
 class OpenAIUnavailableError(Exception):
     """OpenAI is unavailable after retries (rate limit / quota / auth error).
 
@@ -400,6 +418,7 @@ async def _openai_chat_with_retry(
                     f"OpenAI unavailable ({type(retry_err).__name__})") from retry_err
         _record_openai_call(False)
         logger.error("OpenAI rate limit persisted after 3 backoff retries")
+        _record_owner_alert("429")
         raise OpenAIUnavailableError("OpenAI rate limit exceeded (429)")
     except (openai.APITimeoutError, openai.APIConnectionError) as first_err:
         logger.warning("OpenAI API error (%s) — retrying once", type(first_err).__name__)
@@ -422,6 +441,7 @@ async def _openai_chat_with_retry(
         _record_openai_call(False)
         logger.error("OpenAI auth/quota error (%s): %s — check API key and billing",
                      type(auth_err).__name__, auth_err)
+        _record_owner_alert("quota")
         raise OpenAIUnavailableError(
             f"OpenAI auth/quota error ({type(auth_err).__name__})") from auth_err
 
@@ -457,6 +477,7 @@ async def _embedding_with_retry(
                 raise OpenAIUnavailableError(
                     f"Embedding unavailable ({type(retry_err).__name__})") from retry_err
         _record_openai_call(False)
+        _record_owner_alert("429")
         raise OpenAIUnavailableError("Embedding rate limit exceeded (429)")
     except (openai.APITimeoutError, openai.APIConnectionError) as first_err:
         logger.warning("Embedding API error (%s) — retrying once",
@@ -476,6 +497,7 @@ async def _embedding_with_retry(
         _record_openai_call(False)
         logger.error("Embedding auth/quota error (%s) — check API key and billing",
                      type(auth_err).__name__)
+        _record_owner_alert("quota")
         raise OpenAIUnavailableError(
             f"Embedding auth/quota error ({type(auth_err).__name__})") from auth_err
 

@@ -27,6 +27,9 @@ _SAVE_INTERVAL = 60  # seconds
 # Cap on retained query records: the stats dashboard's widest window is
 # 365 days, so keeping more than this is pure memory/disk growth.
 _MAX_RECENT_RECORDS = 20000
+# Cap on retained operational event timestamps (errors, rate-limit hits).
+_MAX_EVENT_RECORDS = 5000
+_DAY_SECONDS = 86400
 
 
 @dataclass
@@ -52,6 +55,11 @@ class BotStats:
         # All query records (persisted to disk).  Bounded: without maxlen the
         # deque (and stats.json) grew without limit on long-running bots.
         self.recent: deque[QueryRecord] = deque(maxlen=_MAX_RECENT_RECORDS)
+        # Operational event timestamps (for the owner health digest).
+        # Bounded: only the last N timestamps are kept; counts are computed
+        # over a trailing 24h window.
+        self.errors: deque[float] = deque(maxlen=_MAX_EVENT_RECORDS)
+        self.rate_limited: deque[float] = deque(maxlen=_MAX_EVENT_RECORDS)
         self._save_task: asyncio.Task | None = None
         self._dirty: bool = False
         self._load()
@@ -85,6 +93,28 @@ class BotStats:
             latency_ms=latency_ms,
         ))
         self._dirty = True
+
+    def record_error(self) -> None:
+        """Record an operational error (OpenAI failure, send failure, ...)."""
+        self.errors.append(time.time())
+        self._dirty = True
+
+    def record_rate_limited(self) -> None:
+        """Record one rate-limit rejection (user hit the token bucket)."""
+        self.rate_limited.append(time.time())
+        self._dirty = True
+
+    def _count_since(self, events: deque[float], window_seconds: float) -> int:
+        cutoff = time.time() - window_seconds
+        return sum(1 for ts in events if ts >= cutoff)
+
+    def error_count_24h(self) -> int:
+        """Number of recorded errors in the trailing 24 hours."""
+        return self._count_since(self.errors, _DAY_SECONDS)
+
+    def rate_limited_count_24h(self) -> int:
+        """Number of rate-limit rejections in the trailing 24 hours."""
+        return self._count_since(self.rate_limited, _DAY_SECONDS)
 
     @property
     def avg_confidence(self) -> float:
@@ -163,6 +193,16 @@ class BotStats:
             self.total_confidence = data.get("total_confidence", 0)
             self.total_latency_ms = data.get("total_latency_ms", 0)
             self.channel_counts = {int(k): v for k, v in data.get("channel_counts", {}).items()}
+            for ts in data.get("errors", []):
+                try:
+                    self.errors.append(float(ts))
+                except (TypeError, ValueError):
+                    continue
+            for ts in data.get("rate_limited", []):
+                try:
+                    self.rate_limited.append(float(ts))
+                except (TypeError, ValueError):
+                    continue
             now = time.time()
             for r in data.get("recent", []):
                 try:
@@ -192,6 +232,8 @@ class BotStats:
             "total_confidence": self.total_confidence,
             "total_latency_ms": self.total_latency_ms,
             "channel_counts": {str(k): v for k, v in self.channel_counts.items()},
+            "errors": list(self.errors),
+            "rate_limited": list(self.rate_limited),
             "recent": [
                 {
                     "question": r.question,
