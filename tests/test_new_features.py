@@ -351,8 +351,8 @@ class TestWelcomeFlow:
             assert member.send.call_count == 1
             from bot.acquisition import _load_drip
             jobs = _load_drip()
-            assert len(jobs) == 3
-            assert {j["step"] for j in jobs} == {"value", "cta", "reminder"}
+            assert len(jobs) == 2
+            assert {j["step"] for j in jobs} == {"trial_signal", "cta"}
 
     @pytest.mark.asyncio
     async def test_welcome_flow_includes_notify_buttons(self, tmp_path):

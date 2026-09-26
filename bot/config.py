@@ -164,6 +164,9 @@ WELCOME_FLOW_ENABLED: bool = os.getenv("WELCOME_FLOW_ENABLED", "false").lower() 
 WELCOME_VALUE_DELAY_SECONDS: int = int(os.getenv("WELCOME_VALUE_DELAY_SECONDS", "14400"))
 WELCOME_CTA_DELAY_SECONDS: int = int(os.getenv("WELCOME_CTA_DELAY_SECONDS", "86400"))
 WELCOME_REMINDER_DELAY_SECONDS: int = int(os.getenv("WELCOME_REMINDER_DELAY_SECONDS", "259200"))
+# Onboarding DM sequence: day-1 free trial signal, day-3 paid CTA.
+ONBOARD_DAY1_DELAY_SECONDS: int = int(os.getenv("ONBOARD_DAY1_DELAY_SECONDS", "86400"))
+ONBOARD_DAY3_DELAY_SECONDS: int = int(os.getenv("ONBOARD_DAY3_DELAY_SECONDS", "259200"))
 
 # ---------------------------------------------------------------------------
 # Purchase-intent conversion
@@ -178,6 +181,20 @@ INTENT_LEAD_ROLE_ID: int = int(os.getenv("INTENT_LEAD_ROLE_ID", "0"))
 INVITE_TRACKING_ENABLED: bool = os.getenv("INVITE_TRACKING_ENABLED", "true").lower() in ("1", "true", "yes")
 INVITE_REWARD_THRESHOLD: int = int(os.getenv("INVITE_REWARD_THRESHOLD", "3"))
 INVITE_REWARD_ROLE_ID: int = int(os.getenv("INVITE_REWARD_ROLE_ID", "0"))
+# Growth trio: per-invite ETF reward + monthly TopN full-version reward.
+INVITE_ETF_REWARD_ROLE_ID: int = int(os.getenv("INVITE_ETF_REWARD_ROLE_ID", "1445448090227179711"))
+INVITE_FULL_REWARD_ROLE_ID: int = int(os.getenv("INVITE_FULL_REWARD_ROLE_ID", "1445447888439349319"))
+INVITE_TOPN_COUNT: int = int(os.getenv("INVITE_TOPN_COUNT", "3"))
+INVITE_REWARD_DAYS: int = int(os.getenv("INVITE_REWARD_DAYS", "30"))
+
+# ---------------------------------------------------------------------------
+# 15-day read-only trial for new members
+# ---------------------------------------------------------------------------
+TRIAL_ROLE_NAME: str = os.getenv("TRIAL_ROLE_NAME", "新人体验15天")
+TRIAL_MEMBER_CHANNEL_IDS: list[int] = parse_id_list(
+    "TRIAL_MEMBER_CHANNEL_IDS", "912366231112282172,923449257711763466"
+)
+TRIAL_GRANT_DAYS: int = int(os.getenv("TRIAL_GRANT_DAYS", "15"))
 
 # ---------------------------------------------------------------------------
 # Auto Language Detection

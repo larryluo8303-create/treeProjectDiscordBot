@@ -139,7 +139,7 @@ class PromotionCommands(commands.Cog):
     @app_commands.command(name="invite", description="生成你的专属邀请链接（邀请好友加入社群）")
     async def invite_cmd(self, interaction: discord.Interaction) -> None:
         from bot.acquisition import invite_count_for
-        from bot.config import INVITE_REWARD_THRESHOLD, INVITE_TRACKING_ENABLED
+        from bot.config import INVITE_TRACKING_ENABLED
 
         if not INVITE_TRACKING_ENABLED:
             await interaction.response.send_message("邀请功能未开启。", ephemeral=True)
@@ -171,13 +171,83 @@ class PromotionCommands(commands.Cog):
             return
 
         count = invite_count_for(interaction.user.id)
-        extra = ""
-        if INVITE_REWARD_THRESHOLD > 0:
-            extra = f"\n你已成功邀请 **{count}** 人（满 {INVITE_REWARD_THRESHOLD} 人可获奖励身份组）。"
+        extra = (
+            f"\n你已成功邀请 **{count}** 人。"
+            "\n🎁 成功邀请 **1** 人即得 **ETF 版会员 1 个月**（自动发放）；"
+            "月度邀请 Top3 另得 full 版会员 1 个月。"
+        )
         await interaction.followup.send(
             f"你的专属邀请链接：\n{invite.url}{extra}",
             ephemeral=True,
         )
+
+    # ── /invite_leaderboard ────────────────────────────────────────────────
+
+    @app_commands.command(name="invite_leaderboard", description="邀请排行榜（近30天）")
+    async def invite_leaderboard_cmd(self, interaction: discord.Interaction) -> None:
+        from bot.acquisition import invite_rank_for, monthly_top_inviters
+        from bot.config import INVITE_TOPN_COUNT, INVITE_TRACKING_ENABLED
+
+        if not INVITE_TRACKING_ENABLED:
+            await interaction.response.send_message("邀请功能未开启。", ephemeral=True)
+            return
+        top = monthly_top_inviters(10)
+        if not top:
+            await interaction.response.send_message(
+                "近 30 天还没有邀请记录，快用 `/invite` 生成你的专属链接吧！",
+                ephemeral=True,
+            )
+            return
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
+        for i, (uid, count) in enumerate(top, 1):
+            medal = medals[i - 1] if i <= 3 else f"{i}."
+            lines.append(f"{medal} <@{uid}> — {count} 人")
+        rank, my_count = invite_rank_for(interaction.user.id)
+        if rank:
+            lines.append(f"\n你的排名：第 **{rank}** 名（{my_count} 人）")
+        else:
+            lines.append("\n你近 30 天暂未上榜，继续加油！")
+        embed = discord.Embed(
+            title="🏆 邀请排行榜（近 30 天）",
+            description="\n".join(lines),
+            color=discord.Color.gold(),
+        )
+        embed.set_footer(text=f"月度 Top{INVITE_TOPN_COUNT} 可获得 full 版会员 1 个月")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # ── /my_invites ────────────────────────────────────────────────────────
+
+    @app_commands.command(name="my_invites", description="我的邀请数据与奖励进度")
+    async def my_invites_cmd(self, interaction: discord.Interaction) -> None:
+        from bot.acquisition import invite_count_for, invite_rank_for
+        from bot.config import INVITE_ETF_REWARD_ROLE_ID, INVITE_TRACKING_ENABLED
+        from bot.timed_roles import has_active_grant
+
+        if not INVITE_TRACKING_ENABLED:
+            await interaction.response.send_message("邀请功能未开启。", ephemeral=True)
+            return
+        count = invite_count_for(interaction.user.id)
+        rank, recent = invite_rank_for(interaction.user.id)
+        grant = has_active_grant(interaction.user.id, INVITE_ETF_REWARD_ROLE_ID)
+        if grant:
+            reward_line = f"🎁 ETF 版会员奖励生效中（{str(grant.get('expires_at', ''))[:10]} 到期）"
+        elif count <= 0:
+            reward_line = "距 ETF 版会员奖励（1 个月）还差 **1** 人"
+        else:
+            reward_line = f"✅ 已达成邀请条件（累计 {count} 人），奖励按规则发放中"
+        rank_line = f"近 30 天排名：第 **{rank}** 名（{recent} 人）" if rank else "近 30 天暂未上榜"
+        embed = discord.Embed(
+            title="📨 我的邀请",
+            description=(
+                f"累计成功邀请：**{count}** 人\n"
+                f"{rank_line}\n"
+                f"{reward_line}\n\n"
+                "用 `/invite` 获取你的专属邀请链接。"
+            ),
+            color=discord.Color.blue(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # ── /schedule_promo ──────────────────────────────────────────────────────
 

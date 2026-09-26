@@ -60,15 +60,15 @@ class TestWelcomeDrip:
     def test_schedule_and_due(self, tmp_path):
         drip_file = tmp_path / "drip.json"
         with patch("bot.acquisition.DRIP_FILE", str(drip_file)), \
-             patch("bot.acquisition.WELCOME_VALUE_DELAY_SECONDS", 0), \
-             patch("bot.acquisition.WELCOME_CTA_DELAY_SECONDS", 99999), \
-             patch("bot.acquisition.WELCOME_REMINDER_DELAY_SECONDS", 99999):
+             patch("bot.acquisition.ONBOARD_DAY1_DELAY_SECONDS", 0), \
+             patch("bot.acquisition.ONBOARD_DAY3_DELAY_SECONDS", 99999):
             from bot.acquisition import due_drip_jobs, mark_drip_sent, schedule_welcome_drip
             # delay 0 skips that step
             created = schedule_welcome_drip(111, 222)
-            assert len(created) == 2
+            assert len(created) == 1
+            assert created[0]["step"] == "cta"
             due = due_drip_jobs(datetime.now(timezone.utc) + timedelta(days=2))
-            assert {j["step"] for j in due} == {"cta", "reminder"}
+            assert {j["step"] for j in due} == {"cta"}
             mark_drip_sent(created[0]["id"])
             due2 = due_drip_jobs(datetime.now(timezone.utc) + timedelta(days=2))
             assert created[0]["id"] not in {j["id"] for j in due2}
@@ -76,12 +76,11 @@ class TestWelcomeDrip:
     def test_cancel_user_jobs(self, tmp_path):
         drip_file = tmp_path / "drip.json"
         with patch("bot.acquisition.DRIP_FILE", str(drip_file)), \
-             patch("bot.acquisition.WELCOME_VALUE_DELAY_SECONDS", 10), \
-             patch("bot.acquisition.WELCOME_CTA_DELAY_SECONDS", 20), \
-             patch("bot.acquisition.WELCOME_REMINDER_DELAY_SECONDS", 30):
+             patch("bot.acquisition.ONBOARD_DAY1_DELAY_SECONDS", 10), \
+             patch("bot.acquisition.ONBOARD_DAY3_DELAY_SECONDS", 20):
             from bot.acquisition import cancel_drip_for_user, due_drip_jobs, schedule_welcome_drip
             schedule_welcome_drip(1, 99)
-            assert cancel_drip_for_user(1) == 3
+            assert cancel_drip_for_user(1) == 2
             assert due_drip_jobs(datetime.now(timezone.utc) + timedelta(days=1)) == []
 
 

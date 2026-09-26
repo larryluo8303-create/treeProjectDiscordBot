@@ -29,10 +29,13 @@ async def run_welcome_flow(member: discord.Member) -> None:
     """Send the immediate welcome DM and enqueue drip jobs."""
     description = WELCOME_MESSAGE or "欢迎来到我们的社群！"
     description += (
-        "\n\n建议先看这些：\n"
+        "\n\n📌 精华帖先看：\n"
+        "• <#901221651222495312> 信号说明\n"
         "• `/faq` 常见问题\n"
         "• `/ask` 向 AI 助手提问\n"
         f"• `/signal` 了解 {SIGNAL_PRODUCT_NAME}"
+        "\n\n🎁 新人福利：已为你开通会员频道 **15 天只读体验**"
+        "（可看会员信号，不能发言），到期自动收回。"
     )
     from bot.role_dm import default_notify_role_id
 

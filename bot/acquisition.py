@@ -19,13 +19,13 @@ from bot.config import (
     INTENT_NOTIFY_OWNER,
     INVITE_REWARD_ROLE_ID,
     INVITE_REWARD_THRESHOLD,
+    ONBOARD_DAY1_DELAY_SECONDS,
+    ONBOARD_DAY3_DELAY_SECONDS,
     OWNER_USER_ID,
     SIGNAL_PRODUCT_NAME,
     SIGNAL_PRODUCT_URL,
     VIP_ROLE_IDS,
     WELCOME_CTA_DELAY_SECONDS,
-    WELCOME_REMINDER_DELAY_SECONDS,
-    WELCOME_VALUE_DELAY_SECONDS,
 )
 from bot.utils import atomic_json_write, data_path, load_summaries
 
@@ -36,6 +36,7 @@ _ET = ZoneInfo("America/New_York")
 FUNNEL_FILE = data_path(os.getenv("FUNNEL_FILE", "data/funnel.json"))
 DRIP_FILE = data_path(os.getenv("WELCOME_DRIP_FILE", "data/welcome_drip.json"))
 INVITES_FILE = data_path(os.getenv("INVITES_FILE", "data/invites.json"))
+SETTLEMENT_FILE = data_path(os.getenv("INVITE_SETTLEMENT_FILE", "data/invite_settlement.json"))
 
 _PLACEHOLDER_HOSTS = ("your-product-url.com", "your-trial-url.com")
 
@@ -226,12 +227,16 @@ def _save_drip(jobs: list[dict]) -> None:
 
 
 def schedule_welcome_drip(user_id: int, guild_id: int) -> list[dict]:
-    """Enqueue value / CTA / reminder jobs relative to now. Returns created jobs."""
+    """Enqueue the onboarding drip relative to now.
+
+    Two steps: day-1 free trial signal, day-3 paid CTA.
+    (Legacy "value"/"reminder" steps from older versions are still handled
+    by send_drip_job for jobs already persisted.)
+    """
     now = datetime.now(timezone.utc)
     steps = [
-        ("value", WELCOME_VALUE_DELAY_SECONDS),
-        ("cta", WELCOME_CTA_DELAY_SECONDS),
-        ("reminder", WELCOME_REMINDER_DELAY_SECONDS),
+        ("trial_signal", ONBOARD_DAY1_DELAY_SECONDS),
+        ("cta", ONBOARD_DAY3_DELAY_SECONDS),
     ]
     jobs = _load_drip()
     created: list[dict] = []
@@ -330,7 +335,16 @@ async def send_drip_job(bot: discord.Client, job: dict) -> bool:
     step = job.get("step")
     view = build_cta_view()
     try:
-        if step == "value":
+        if step == "trial_signal":
+            title, body = latest_value_content()
+            embed = discord.Embed(
+                title=f"🎁 免费体验信号：{title}",
+                description=body,
+                color=discord.Color.green(),
+            )
+            embed.set_footer(text="这是新人专属的免费体验信号 · 完整实时信号请看会员频道")
+            await user.send(embed=embed, view=view)
+        elif step == "value":
             title, body = latest_value_content()
             embed = discord.Embed(title=title, description=body, color=discord.Color.blue())
             embed.set_footer(text="有问题随时在频道用 /ask 提问")
@@ -489,3 +503,68 @@ def load_invite_code_snapshot() -> dict[str, dict]:
 
 def should_grant_invite_reward(count: int) -> bool:
     return INVITE_REWARD_THRESHOLD > 0 and count >= INVITE_REWARD_THRESHOLD and INVITE_REWARD_ROLE_ID > 0
+
+
+# ── Invite leaderboard + monthly settlement ────────────────────────────────
+
+
+def monthly_top_inviters(n: int) -> list[tuple[int, int]]:
+    """Top inviters over the trailing 30 days.
+
+    Returns [(inviter_id, count)] sorted by count desc, at most max(1, n).
+    """
+    data = _load_invites()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    counts: dict[int, int] = {}
+    for attr in data.get("attributions", []):
+        try:
+            ts = datetime.fromisoformat(attr["ts"])
+        except (KeyError, ValueError):
+            continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        if ts < cutoff:
+            continue
+        inviter_id = int(attr.get("inviter_id") or 0)
+        if not inviter_id:
+            continue
+        counts[inviter_id] = counts.get(inviter_id, 0) + 1
+    ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
+    return ranked[:max(1, n)]
+
+
+def invite_rank_for(user_id: int) -> tuple[int, int]:
+    """(rank, count) for a user in the trailing-30d window; (0, 0) if unranked."""
+    ranked = monthly_top_inviters(10_000)
+    for i, (uid, count) in enumerate(ranked, 1):
+        if uid == user_id:
+            return i, count
+    return 0, 0
+
+
+def _load_settlement() -> dict:
+    try:
+        with open(SETTLEMENT_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            data.setdefault("settled_months", [])
+            return data
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+    return {"settled_months": []}
+
+
+def _save_settlement(data: dict) -> None:
+    atomic_json_write(SETTLEMENT_FILE, data, ensure_ascii=False, indent=2)
+
+
+def is_month_settled(month_key: str) -> bool:
+    """month_key like '2026-09'."""
+    return month_key in _load_settlement().get("settled_months", [])
+
+
+def mark_month_settled(month_key: str) -> None:
+    data = _load_settlement()
+    if month_key not in data["settled_months"]:
+        data["settled_months"].append(month_key)
+        _save_settlement(data)
