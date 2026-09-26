@@ -265,3 +265,53 @@ class TestInviteEtfReward:
             await cog._maybe_grant_invite_etf_reward(guild, 42, 6)
             data = json.loads(grants_file.read_text(encoding="utf-8"))
             assert len(data) == 2
+
+
+class TestMonthlySettlement:
+    def _cog_with_guild(self):
+        role = _role(777, "懒人🌴")
+        member = _member(42)
+        member.send = AsyncMock()
+        guild = _guild_with(999, member, role)
+        bot = _bot_with(guild)
+        bot.guilds = [guild]
+        from bot.acquisition_cog import AcquisitionCog
+        return AcquisitionCog(bot)
+
+    def _month_key(self):
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m")
+
+    async def test_failed_grants_are_not_marked_settled(self, tmp_path):
+        cog = self._cog_with_guild()
+        settle_file = tmp_path / "settle.json"
+        grants_file = tmp_path / "timed.json"
+        with patch("bot.acquisition.SETTLEMENT_FILE", str(settle_file)), \
+             patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.monthly_top_inviters", return_value=[(42, 5)]), \
+             patch("bot.acquisition_cog.grant_timed_role", AsyncMock(return_value=False)), \
+             patch("bot.acquisition_cog.INVITE_FULL_REWARD_ROLE_ID", 777), \
+             patch("bot.acquisition_cog.INVITE_TOPN_COUNT", 5), \
+             patch("bot.acquisition_cog.INVITE_REWARD_DAYS", 30):
+            await cog._maybe_monthly_settlement()
+            from bot.acquisition import is_month_settled
+            assert is_month_settled(self._month_key()) is False
+
+    async def test_successful_settlement_marks_month(self, tmp_path):
+        cog = self._cog_with_guild()
+        settle_file = tmp_path / "settle.json"
+        grants_file = tmp_path / "timed.json"
+        with patch("bot.acquisition.SETTLEMENT_FILE", str(settle_file)), \
+             patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.monthly_top_inviters", return_value=[(42, 5)]), \
+             patch("bot.acquisition_cog.grant_timed_role", AsyncMock(return_value=True)) as grant_mock, \
+             patch("bot.acquisition_cog.INVITE_FULL_REWARD_ROLE_ID", 777), \
+             patch("bot.acquisition_cog.INVITE_TOPN_COUNT", 5), \
+             patch("bot.acquisition_cog.INVITE_REWARD_DAYS", 30):
+            await cog._maybe_monthly_settlement()
+            from bot.acquisition import is_month_settled
+            assert is_month_settled(self._month_key()) is True
+            assert grant_mock.await_count == 1
+            # second run is a no-op (already settled)
+            await cog._maybe_monthly_settlement()
+            assert grant_mock.await_count == 1

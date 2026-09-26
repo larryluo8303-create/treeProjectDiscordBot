@@ -299,6 +299,7 @@ class AcquisitionCog(commands.Cog):
         if not top:
             mark_month_settled(month_key)
             return
+        failed = False
         for guild in self.bot.guilds:
             role = guild.get_role(INVITE_FULL_REWARD_ROLE_ID)
             if role is None:
@@ -306,6 +307,7 @@ class AcquisitionCog(commands.Cog):
                     "settlement: full-reward role %s not found in guild %s",
                     INVITE_FULL_REWARD_ROLE_ID, guild.id,
                 )
+                failed = True
                 continue
             for inviter_id, count in top:
                 member = guild.get_member(inviter_id)
@@ -319,6 +321,8 @@ class AcquisitionCog(commands.Cog):
                 if is_paid_member(member):
                     logger.info("settlement: skip %s — paid cohort member", inviter_id)
                     continue
+                if has_active_grant(inviter_id, INVITE_FULL_REWARD_ROLE_ID):
+                    continue  # already rewarded (e.g. retried settlement)
                 ok = await grant_timed_role(
                     self.bot,
                     inviter_id,
@@ -328,6 +332,7 @@ class AcquisitionCog(commands.Cog):
                     "invite_monthly_top",
                 )
                 if not ok:
+                    failed = True
                     continue
                 try:
                     await member.send(
@@ -340,4 +345,12 @@ class AcquisitionCog(commands.Cog):
                 logger.info(
                     "settlement: granted full reward to %s (count=%d)", inviter_id, count
                 )
+        if failed:
+            # Do NOT mark settled — the 24h loop will retry tomorrow. Winners
+            # that already got the role are skipped via has_active_grant above.
+            logger.warning(
+                "settlement: some grants failed for %s, will retry on next loop",
+                month_key,
+            )
+            return
         mark_month_settled(month_key)

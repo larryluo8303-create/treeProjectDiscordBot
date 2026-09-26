@@ -513,12 +513,13 @@
 - **配置：** `INTENT_CONVERT_ENABLED=true`, `INTENT_NOTIFY_OWNER=true`, `INTENT_LEAD_ROLE_ID=身份组ID`（0 表示不加身份组）, `SIGNAL_PRODUCT_URL`, `FREE_TRIAL_ENABLED`, `FREE_TRIAL_URL`
 - **使用：** 自动触发。占位链接（如 `your-product-url.com`）不会生成按钮，需换成真实 URL
 
-### 58. 新人 24–72 小时转化 drip
+### 58. 新人 onboarding DM 序列（Day 0 / 1 / 3）
 
 - **文件：** `bot/welcome_flow.py`, `bot/acquisition.py`, `bot/acquisition_cog.py`
-- **说明：** 新成员加入后立即欢迎 DM（含 `/faq` `/ask` `/signal`）。若已配置 `PROMO_NOTIFY_ROLE_IDS`，欢迎私信会带「领取通知 / 取消订阅」按钮。之后按延迟发送：最新日/视频摘要（证明有价值）→ 产品 CTA + 用户评价 → 第 3 天轻量提醒。任务写入 `data/welcome_drip.json`，Bot 重启不会丢失。已有 VIP 身份组则停止后续 drip
-- **配置：** `WELCOME_FLOW_ENABLED=true`, `WELCOME_VALUE_DELAY_SECONDS=14400`（4 小时）, `WELCOME_CTA_DELAY_SECONDS=86400`（次日）, `WELCOME_REMINDER_DELAY_SECONDS=259200`（第 3 天）
+- **说明：** Day 0 加入即刻欢迎 DM（精华入口：`#信号说明`、`/faq`、`/ask`、`/signal`，附 15 天试用说明；配置了 `PROMO_NOTIFY_ROLE_IDS` 时带「领取通知 / 取消订阅」按钮）。Day 1 发免费体验信号（最新价值内容）。Day 3 发付费 CTA + 用户评价。任务写入 `data/welcome_drip.json`，Bot 重启不丢失；成员退群自动取消未发送任务；已有 VIP 身份组则停止后续 drip
+- **配置：** `WELCOME_FLOW_ENABLED=true`, `ONBOARD_DAY1_DELAY_SECONDS=86400`（第 1 天）, `ONBOARD_DAY3_DELAY_SECONDS=259200`（第 3 天）
 - **使用：** 打开 `WELCOME_FLOW_ENABLED` 后自动对每位新成员执行。延迟单位为秒，从加入时刻起算
+- **运维手册：** [`INVITE_REWARDS_TRIAL.md`](../growth/INVITE_REWARDS_TRIAL.md)
 
 ### 59. YouTube 摘要转化按钮
 
@@ -527,13 +528,14 @@
 - **配置：** `SIGNAL_PRODUCT_URL`, `FREE_TRIAL_ENABLED`, `FREE_TRIAL_URL`, `YOUTUBE_SUMMARY_CHANNELS`
 - **使用：** 新视频自动 ingest 后随摘要发出；补发见第 56 项
 
-### 60. 邀请裂变 / 专属邀请链接
+### 60. 邀请追踪 / 排行榜 / 奖励
 
-- **文件：** `bot/acquisition.py`, `bot/acquisition_cog.py`, `bot/commands.py`
-- **说明：** 成员使用 `/invite` 生成专属 Discord 邀请。Bot 在有人加入时对比邀请码使用次数，记录邀请人。达到阈值可自动授予奖励身份组。需要 Bot 具备创建/查看邀请权限，并开启 Server Members Intent
-- **配置：** `INVITE_TRACKING_ENABLED=true`, `INVITE_REWARD_THRESHOLD=3`, `INVITE_REWARD_ROLE_ID=身份组ID`（0 表示不发奖励身份组）
-- **命令：** `/invite`
+- **文件：** `bot/acquisition.py`, `bot/acquisition_cog.py`, `bot/commands.py`, `bot/timed_roles.py`
+- **说明：** 成员用 `/invite` 生成专属邀请链接；有人加入时 Bot 对比邀请码 `uses` 增量归因。奖励：累计邀请 ≥ `INVITE_ETF_MIN_COUNT`（默认 5）→ ETF 会员身份组 30 天（DM 通知，过期 30 天后可重复获得）；每月 1 号结算近 30 天 Top `INVITE_TOPN_COUNT`（默认 5）→ full 会员身份组 30 天（幂等结算，失败重试）。已有付费 cohort 身份组的成员跳过。需要 Bot 具备「管理服务器」（读邀请列表）、「管理身份组」、「创建邀请」权限，且 Bot 身份组位置高于奖励身份组
+- **配置：** `INVITE_TRACKING_ENABLED=true`, `INVITE_ETF_REWARD_ROLE_ID`, `INVITE_ETF_MIN_COUNT=5`, `INVITE_FULL_REWARD_ROLE_ID`, `INVITE_TOPN_COUNT=5`, `INVITE_REWARD_DAYS=30`
+- **命令：** `/invite`、`/invite_leaderboard`、`/my_invites`
 - **使用：** 成员在任意服务器频道执行 `/invite`，获得仅自己可见的专属链接
+- **运维手册：** [`INVITE_REWARDS_TRIAL.md`](../growth/INVITE_REWARDS_TRIAL.md)
 
 ### 61. 转化漏斗看板
 
@@ -568,4 +570,11 @@
 - **使用：** `/views`（默认最近 24 小时）；`/views hours:48`（1–168 小时）。仅 Owner，仅服务器文字频道/帖子
 - **命令：** `/views hours:24`
 - **注意：** 与 `/daily_summary`、`/pin_summary` 不同：只总结频道主观点，当场发到执行命令的频道
+
+### 64. 限时身份组引擎与 15 天只读体验
+
+- **文件：** `bot/timed_roles.py`, `bot/acquisition_cog.py`
+- **说明：** 通用的过期身份组引擎：发放记录持久化在 `data/timed_roles.json`，每 5 分钟扫一次回收到期身份组。支撑 (a) 邀请奖励 与 (b) 新人试用：新人加入自动获得 `新人体验15天` 身份组（Bot 启动时自动创建），在会员频道只读（`view_channel` 允许、`send_messages` 拒绝），`TRIAL_GRANT_DAYS`（默认 15）天后自动收回。名字匹配 `^懒人.*\d` 的付费 cohort 身份组受保护，不会被过期回收误删；退群成员的未到期记录标记取消。缺「管理身份组」权限时所有特权调用只记警告日志、不崩溃
+- **配置：** `TRIAL_ROLE_NAME=新人体验15天`, `TRIAL_MEMBER_CHANNEL_IDS`（逗号分隔）, `TRIAL_GRANT_DAYS=15`
+- **运维手册：** [`INVITE_REWARDS_TRIAL.md`](../growth/INVITE_REWARDS_TRIAL.md)
 

@@ -513,12 +513,13 @@ All settings are configured via the `.env` file; see `.env.example` for a full s
 - **Config:** `INTENT_CONVERT_ENABLED=true`, `INTENT_NOTIFY_OWNER=true`, `INTENT_LEAD_ROLE_ID=roleId` (0 = do not assign role), `SIGNAL_PRODUCT_URL`, `FREE_TRIAL_ENABLED`, `FREE_TRIAL_URL`
 - **Usage:** Automatic. Placeholder links (e.g. `your-product-url.com`) will not generate buttons — replace with real URLs
 
-### 58. New-Member 24–72 Hour Conversion Drip
+### 58. New-Member Onboarding DM Sequence (Day 0 / 1 / 3)
 
 - **Files:** `bot/welcome_flow.py`, `bot/acquisition.py`, `bot/acquisition_cog.py`
-- **Description:** Immediate welcome DM after join (with `/faq` `/ask` `/signal`). If `PROMO_NOTIFY_ROLE_IDS` is set, welcome DM includes Opt in / Unsubscribe buttons. Then delayed sends: latest daily/video summary (prove value) → product CTA + testimonials → light day-3 reminder. Tasks persist in `data/welcome_drip.json` across restarts. VIP role holders stop further drip
-- **Config:** `WELCOME_FLOW_ENABLED=true`, `WELCOME_VALUE_DELAY_SECONDS=14400` (4 hours), `WELCOME_CTA_DELAY_SECONDS=86400` (next day), `WELCOME_REMINDER_DELAY_SECONDS=259200` (day 3)
+- **Description:** Day-0 welcome DM on join (essentials: `#信号说明`, `/faq`, `/ask`, `/signal`, plus the 15-day trial notice; Opt in / Unsubscribe buttons when `PROMO_NOTIFY_ROLE_IDS` is set). Day-1 DM: free trial signal (latest value content). Day-3 DM: paid CTA + testimonials. Jobs persist in `data/welcome_drip.json` across restarts and are cancelled when a member leaves; VIP role holders stop further drip
+- **Config:** `WELCOME_FLOW_ENABLED=true`, `ONBOARD_DAY1_DELAY_SECONDS=86400` (day 1), `ONBOARD_DAY3_DELAY_SECONDS=259200` (day 3)
 - **Usage:** With `WELCOME_FLOW_ENABLED` on, runs for every new member. Delays are in seconds from join time
+- **Ops guide:** [`INVITE_REWARDS_TRIAL.md`](../growth/INVITE_REWARDS_TRIAL.md)
 
 ### 59. YouTube Summary Conversion Buttons
 
@@ -527,13 +528,14 @@ All settings are configured via the `.env` file; see `.env.example` for a full s
 - **Config:** `SIGNAL_PRODUCT_URL`, `FREE_TRIAL_ENABLED`, `FREE_TRIAL_URL`, `YOUTUBE_SUMMARY_CHANNELS`
 - **Usage:** Sent with summaries after new-video auto-ingest; resend see item 56
 
-### 60. Invite Virality / Personal Invite Links
+### 60. Invite Tracking, Leaderboard & Rewards
 
-- **Files:** `bot/acquisition.py`, `bot/acquisition_cog.py`, `bot/commands.py`
-- **Description:** Members use `/invite` to create a personal Discord invite. On join, the bot compares invite use counts and records the inviter. Reaching a threshold can auto-grant a reward role. Requires create/view invite permissions and Server Members Intent
-- **Config:** `INVITE_TRACKING_ENABLED=true`, `INVITE_REWARD_THRESHOLD=3`, `INVITE_REWARD_ROLE_ID=roleId` (0 = no reward role)
-- **Command:** `/invite`
+- **Files:** `bot/acquisition.py`, `bot/acquisition_cog.py`, `bot/commands.py`, `bot/timed_roles.py`
+- **Description:** Members use `/invite` to create a personal Discord invite. On join, the bot diffs invite `uses` counts and records the inviter. Rewards: ≥ `INVITE_ETF_MIN_COUNT` (default 5) all-time invites → ETF membership role for 30 days (DM notified, re-earnable after a 30-day cooldown); monthly Top `INVITE_TOPN_COUNT` (default 5) by trailing-30-day invites → full membership role for 30 days, settled on the 1st (idempotent, retries on failure). Paid cohort members are skipped. Requires Manage Server (list invites), Manage Roles, Create Invite; the bot role must rank above the reward roles
+- **Config:** `INVITE_TRACKING_ENABLED=true`, `INVITE_ETF_REWARD_ROLE_ID`, `INVITE_ETF_MIN_COUNT=5`, `INVITE_FULL_REWARD_ROLE_ID`, `INVITE_TOPN_COUNT=5`, `INVITE_REWARD_DAYS=30`
+- **Commands:** `/invite`, `/invite_leaderboard`, `/my_invites`
 - **Usage:** Members run `/invite` in any server channel and get an ephemeral personal link
+- **Ops guide:** [`INVITE_REWARDS_TRIAL.md`](../growth/INVITE_REWARDS_TRIAL.md)
 
 ### 61. Conversion Funnel Dashboard
 
@@ -568,3 +570,10 @@ All settings are configured via the `.env` file; see `.env.example` for a full s
 - **Usage:** `/views` (default last 24 hours); `/views hours:48` (1–168 hours). Owner only; server text channels/threads only
 - **Command:** `/views hours:24`
 - **Note:** Unlike `/daily_summary` and `/pin_summary`: summarizes only the channel owner's views and posts immediately in the command channel
+
+### 64. Timed Role Grants & 15-Day Read-Only Trial
+
+- **Files:** `bot/timed_roles.py`, `bot/acquisition_cog.py`
+- **Description:** Generic expiring-role engine: grants persist in `data/timed_roles.json` and are revoked by a 5-minute sweep. Powers (a) invite rewards and (b) the new-member trial: joiners get the `新人体验15天` role (auto-created) with read-only access (`view_channel` allow, `send_messages` deny) to member channels, auto-revoked after `TRIAL_GRANT_DAYS` (default 15). Paid cohort roles (name matching `^懒人.*\d`) are protected from the expiry sweep; members who leave get their open grants cancelled. Every privileged Discord call degrades to a warning log without Manage Roles
+- **Config:** `TRIAL_ROLE_NAME=新人体验15天`, `TRIAL_MEMBER_CHANNEL_IDS` (comma-separated), `TRIAL_GRANT_DAYS=15`
+- **Ops guide:** [`INVITE_REWARDS_TRIAL.md`](../growth/INVITE_REWARDS_TRIAL.md)
