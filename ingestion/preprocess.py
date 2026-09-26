@@ -54,10 +54,18 @@ def load_exports(export_dir: str) -> tuple[list[dict], dict[str, dict]]:
 
     for fp in json_files:
         logger.info("Loading export file: %s", fp.name)
-        with open(fp, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(fp, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+            # One corrupt export must not kill the whole ingestion run
+            logger.error("Skipping corrupt export file %s: %s", fp.name, exc)
+            continue
 
         messages = data.get("messages", [])
+        if not isinstance(messages, list):
+            logger.error("Skipping %s: 'messages' is not a list", fp.name)
+            continue
         channel_id = str(data.get("channel", {}).get("id", "unknown"))
 
         for msg in messages:
@@ -132,6 +140,24 @@ def build_qa_pairs(
     return pairs
 
 
+def _make_group_doc(group: list[dict]) -> dict:
+    """Build the {text, metadata} doc for one merged owner-message group."""
+    merged_text = "\n".join(m.get("content", "").strip() for m in group)
+    doc_type = "grouped" if len(group) > 1 else "standalone"
+    return {
+        "text": merged_text,
+        "metadata": {
+            # All message IDs in the group (dedup in preprocess_all needs
+            # the full set — using only group[0] dropped whole groups).
+            "source_message_ids": [str(m.get("id", "")) for m in group],
+            "source_message_id": str(group[0].get("id", "")),
+            "timestamp": group[0].get("timestamp", ""),
+            "type": doc_type,
+            "channel_id": group[0].get("_channel_id", ""),
+        },
+    }
+
+
 def group_consecutive(
     messages: list[dict],
     owner_id: str,
@@ -140,45 +166,44 @@ def group_consecutive(
     """Merge consecutive owner messages within *window_seconds* into single blocks.
 
     Messages from other users between two owner messages break the group.
+    Grouping is per-channel; messages are processed in timestamp order.
     """
-    owner_msgs = [
-        m for m in messages
-        if str(m.get("author", {}).get("id", "")) == owner_id
-        and m.get("content", "").strip()
-    ]
-    if not owner_msgs:
-        return []
+    def _ts(m: dict) -> datetime:
+        try:
+            return _parse_timestamp(m.get("timestamp", ""))
+        except (ValueError, TypeError):
+            return datetime.min.replace(tzinfo=timezone.utc)
 
-    # Build index of all message timestamps for gap detection
-    groups: list[list[dict]] = []
-    current_group: list[dict] = [owner_msgs[0]]
-
-    for prev, cur in zip(owner_msgs, owner_msgs[1:]):
-        prev_ts = _parse_timestamp(prev["timestamp"])
-        cur_ts = _parse_timestamp(cur["timestamp"])
-        diff = (cur_ts - prev_ts).total_seconds()
-        if diff <= window_seconds and prev.get("_channel_id") == cur.get("_channel_id"):
-            current_group.append(cur)
-        else:
-            groups.append(current_group)
-            current_group = [cur]
-    groups.append(current_group)
+    by_channel: dict[str, list[dict]] = {}
+    for m in messages:
+        by_channel.setdefault(str(m.get("_channel_id", "")), []).append(m)
 
     results: list[dict] = []
-    for group in groups:
-        merged_text = "\n".join(m.get("content", "").strip() for m in group)
-        if not merged_text.strip():
-            continue
-        doc_type = "grouped" if len(group) > 1 else "standalone"
-        results.append({
-            "text": merged_text,
-            "metadata": {
-                "source_message_id": str(group[0].get("id", "")),
-                "timestamp": group[0].get("timestamp", ""),
-                "type": doc_type,
-                "channel_id": group[0].get("_channel_id", ""),
-            },
-        })
+    for channel_msgs in by_channel.values():
+        channel_msgs.sort(key=_ts)
+        current_group: list[dict] = []
+
+        def _flush() -> None:
+            if current_group:
+                merged = "\n".join(m.get("content", "").strip() for m in current_group)
+                if merged.strip():
+                    results.append(_make_group_doc(current_group))
+                current_group.clear()
+
+        for m in channel_msgs:
+            content = m.get("content", "").strip()
+            is_owner = str(m.get("author", {}).get("id", "")) == owner_id
+            if is_owner and content:
+                if current_group:
+                    gap = (_ts(m) - _ts(current_group[-1])).total_seconds()
+                    if gap > window_seconds:
+                        _flush()
+                current_group.append(m)
+            elif content:
+                # A message from someone else breaks the owner run
+                _flush()
+
+        _flush()
 
     logger.info("Grouped into %d blocks (%d standalone, %d grouped)",
                 len(results),
@@ -303,11 +328,14 @@ def preprocess_all(
     grouped = group_consecutive(messages, owner_id)
 
     # Combine (Q&A pairs + grouped standalone blocks)
-    # Deduplicate: if a message already appeared in a Q&A pair, skip it in grouped
+    # Deduplicate: skip a grouped block only if EVERY message in it already
+    # appeared in a Q&A pair.  Previously a single overlapping message caused
+    # the whole merged block to be dropped, losing the other messages' content.
     qa_msg_ids = {d["metadata"]["source_message_id"] for d in qa_pairs}
     standalone_docs = [
         d for d in grouped
-        if d["metadata"]["source_message_id"] not in qa_msg_ids
+        if not set(d["metadata"].get("source_message_ids",
+                                     [d["metadata"]["source_message_id"]])) <= qa_msg_ids
     ]
 
     all_docs = qa_pairs + standalone_docs

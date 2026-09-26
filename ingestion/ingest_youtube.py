@@ -426,6 +426,30 @@ def transcript_to_documents(
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 
+def _remove_video_chunks(collection, video_id: str) -> int:
+    """Delete all existing chunks for *video_id* before re-ingesting.
+
+    Chunk IDs are ``yt_{video_id}_{i}``; if a transcript changes and the chunk
+    count shifts, naive dedup would keep stale chunks (orphans) and skip
+    updated ones (ID collision).  Deleting first makes re-ingest idempotent.
+    """
+    try:
+        res = collection.get(where={"video_id": video_id}, include=[])
+    except Exception as exc:
+        logger.warning("Could not query existing chunks for video %s: %s", video_id, exc)
+        return 0
+    ids = res["ids"] if res else []
+    if ids:
+        try:
+            collection.delete(ids=ids)
+            logger.info("Removed %d old chunk(s) for video %s before re-ingest",
+                        len(ids), video_id)
+        except Exception as exc:
+            logger.warning("Could not delete old chunks for video %s: %s", video_id, exc)
+            return 0
+    return len(ids)
+
+
 def run_youtube_ingestion(
     urls: list[str],
     preferred_langs: list[str] | None = None,
@@ -460,8 +484,9 @@ def run_youtube_ingestion(
 
     # Create OpenAI client once — reused for both embedding and Whisper
     openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    collection = _get_chromadb_collection(db_path, collection_name)
 
-    all_documents: list[dict] = []
+    total_inserted = 0
     transcript_texts: dict[str, str] = {}
 
     for video_id in tqdm(video_ids, desc="Processing videos"):
@@ -505,19 +530,23 @@ def run_youtube_ingestion(
             segments=segments,
             lang=lang,
         )
-        all_documents.extend(docs)
         logger.info("Video %s: %d documents prepared", video_id, len(docs))
+        if not docs:
+            continue
 
-    if not all_documents:
-        logger.warning("No documents to ingest.")
-        return 0, transcript_texts
+        # Per-video checkpoint: clear stale chunks, then commit this video
+        # before moving to the next — a failure mid-batch never loses
+        # videos that already succeeded, and re-ingest is idempotent.
+        try:
+            _remove_video_chunks(collection, video_id)
+            total_inserted += ingest_to_chromadb(docs, collection, openai_client)
+        except Exception as exc:
+            logger.error("Video %s: ingest failed: %s", video_id, exc, exc_info=True)
+            continue
 
-    collection = _get_chromadb_collection(db_path, collection_name)
-
-    inserted = ingest_to_chromadb(all_documents, collection, openai_client)
     logger.info("YouTube ingestion complete — %d new documents added. "
-                "Total in collection: %d", inserted, collection.count())
-    return inserted, transcript_texts
+                "Total in collection: %d", total_inserted, collection.count())
+    return total_inserted, transcript_texts
 
 
 if __name__ == "__main__":

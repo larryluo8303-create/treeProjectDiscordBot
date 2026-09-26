@@ -100,8 +100,11 @@ def ingest_to_chromadb(
                 )
                 existing_ids.update(result["ids"])
             logger.info("Collection already has %d documents", len(existing_ids))
-    except Exception:
-        pass
+    except Exception as exc:
+        # Never silently swallow: if the dedup check fails we must say so,
+        # otherwise a transient Chroma error turns into mass duplicate inserts.
+        logger.warning("Could not fetch existing IDs (%s) — dedup check skipped; "
+                       "re-ingested documents may duplicate existing ones", exc)
 
     new_docs = [d for d in documents if d["id"] not in existing_ids]
     if not new_docs:
