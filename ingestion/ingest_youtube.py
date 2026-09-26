@@ -404,7 +404,12 @@ def transcript_to_documents(
 
     documents: list[dict] = []
     for i, chunk in enumerate(chunks):
-        doc_id = f"yt_{video_id}_{i}" if len(chunks) > 1 else f"yt_{video_id}"
+        # Stable ID scheme: always yt_<video_id>_<i>, even for a single
+        # chunk.  The old scheme used bare yt_<video_id> for single-chunk
+        # videos, so a 1<->2 chunk-count change left orphan chunks behind
+        # and polluted RAG context.  Re-ingest deletes old chunks first
+        # (see _remove_video_chunks), so IDs only need to be stable.
+        doc_id = f"yt_{video_id}_{i}"
         documents.append({
             "id": doc_id,
             "text": chunk,

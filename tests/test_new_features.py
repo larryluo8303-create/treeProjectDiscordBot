@@ -269,23 +269,37 @@ class TestKeywordAlert:
 class TestKBVersioning:
     def setup_method(self):
         self.tmpdir = tempfile.mkdtemp()
+        # create_snapshot now copies a real ChromaDB dir — fake one here
+        self.chroma_dir = tempfile.mkdtemp()
+        with open(os.path.join(self.chroma_dir, "chroma.sqlite3"), "w") as f:
+            f.write("fake-chroma-data")
 
     def teardown_method(self):
         import shutil
         shutil.rmtree(self.tmpdir)
+        shutil.rmtree(self.chroma_dir)
+
+    def _patched(self):
+        return (
+            patch("bot.kb_versioning.KB_SNAPSHOTS_DIR", self.tmpdir),
+            patch("bot.kb_versioning.CHROMA_DIR", self.chroma_dir),
+        )
 
     def test_create_snapshot(self):
-        with patch("bot.kb_versioning.KB_SNAPSHOTS_DIR", self.tmpdir):
+        p1, p2 = self._patched()
+        with p1, p2:
             from bot.kb_versioning import create_snapshot, list_snapshots
             snap = create_snapshot(100, "test snapshot")
             assert snap["doc_count"] == 100
             assert snap["id"].startswith("snap_")
+            assert snap["size_bytes"] > 0
+            assert os.path.isfile(os.path.join(self.tmpdir, snap["id"], "chroma.sqlite3"))
             snaps = list_snapshots()
             assert len(snaps) == 1
 
     def test_snapshot_limit(self):
-        with patch("bot.kb_versioning.KB_SNAPSHOTS_DIR", self.tmpdir), \
-             patch("bot.kb_versioning._MAX_SNAPSHOTS", 3):
+        p1, p2 = self._patched()
+        with p1, p2, patch("bot.kb_versioning._MAX_SNAPSHOTS", 3):
             from bot.kb_versioning import create_snapshot, list_snapshots
             for i in range(5):
                 create_snapshot(i * 10, f"snap {i}")
@@ -294,7 +308,8 @@ class TestKBVersioning:
             assert len(snaps) <= 3
 
     def test_get_snapshot(self):
-        with patch("bot.kb_versioning.KB_SNAPSHOTS_DIR", self.tmpdir):
+        p1, p2 = self._patched()
+        with p1, p2:
             from bot.kb_versioning import create_snapshot, get_snapshot
             snap = create_snapshot(50)
             found = get_snapshot(snap["id"])
@@ -303,7 +318,8 @@ class TestKBVersioning:
             assert get_snapshot("nonexistent") is None
 
     def test_delete_old_snapshots(self):
-        with patch("bot.kb_versioning.KB_SNAPSHOTS_DIR", self.tmpdir):
+        p1, p2 = self._patched()
+        with p1, p2:
             from bot.kb_versioning import create_snapshot, delete_old_snapshots, list_snapshots
             for i in range(5):
                 create_snapshot(i * 10)
