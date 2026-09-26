@@ -139,7 +139,7 @@ class PromotionCommands(commands.Cog):
     @app_commands.command(name="invite", description="生成你的专属邀请链接（邀请好友加入社群）")
     async def invite_cmd(self, interaction: discord.Interaction) -> None:
         from bot.acquisition import invite_count_for
-        from bot.config import INVITE_TRACKING_ENABLED
+        from bot.config import INVITE_ETF_MIN_COUNT, INVITE_TRACKING_ENABLED
 
         if not INVITE_TRACKING_ENABLED:
             await interaction.response.send_message("邀请功能未开启。", ephemeral=True)
@@ -173,8 +173,8 @@ class PromotionCommands(commands.Cog):
         count = invite_count_for(interaction.user.id)
         extra = (
             f"\n你已成功邀请 **{count}** 人。"
-            "\n🎁 成功邀请 **1** 人即得 **ETF 版会员 1 个月**（自动发放）；"
-            "月度邀请 Top3 另得 full 版会员 1 个月。"
+            f"\n🎁 成功邀请 **{INVITE_ETF_MIN_COUNT}** 人即得 **ETF 版会员 1 个月**（自动发放）；"
+            f"月度邀请 Top{INVITE_TOPN_COUNT} 另得 full 版会员 1 个月。"
         )
         await interaction.followup.send(
             f"你的专属邀请链接：\n{invite.url}{extra}",
@@ -221,7 +221,7 @@ class PromotionCommands(commands.Cog):
     @app_commands.command(name="my_invites", description="我的邀请数据与奖励进度")
     async def my_invites_cmd(self, interaction: discord.Interaction) -> None:
         from bot.acquisition import invite_count_for, invite_rank_for
-        from bot.config import INVITE_ETF_REWARD_ROLE_ID, INVITE_TRACKING_ENABLED
+        from bot.config import INVITE_ETF_MIN_COUNT, INVITE_ETF_REWARD_ROLE_ID, INVITE_TRACKING_ENABLED
         from bot.timed_roles import has_active_grant
 
         if not INVITE_TRACKING_ENABLED:
@@ -232,8 +232,8 @@ class PromotionCommands(commands.Cog):
         grant = has_active_grant(interaction.user.id, INVITE_ETF_REWARD_ROLE_ID)
         if grant:
             reward_line = f"🎁 ETF 版会员奖励生效中（{str(grant.get('expires_at', ''))[:10]} 到期）"
-        elif count <= 0:
-            reward_line = "距 ETF 版会员奖励（1 个月）还差 **1** 人"
+        elif count < INVITE_ETF_MIN_COUNT:
+            reward_line = f"距 ETF 版会员奖励（1 个月）还差 **{INVITE_ETF_MIN_COUNT - count}** 人"
         else:
             reward_line = f"✅ 已达成邀请条件（累计 {count} 人），奖励按规则发放中"
         rank_line = f"近 30 天排名：第 **{rank}** 名（{recent} 人）" if rank else "近 30 天暂未上榜"

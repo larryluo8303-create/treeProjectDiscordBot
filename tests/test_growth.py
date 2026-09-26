@@ -216,7 +216,7 @@ class TestOnboardDripSteps:
 
 
 class TestInviteEtfReward:
-    async def test_first_invite_grants_etf_role(self, tmp_path):
+    async def test_below_threshold_no_grant_at_threshold_grants(self, tmp_path):
         grants_file = tmp_path / "timed.json"
         role = _role(111, "懒人etf🌲")
         guild = _guild_with(999, _member(42), role)
@@ -225,13 +225,19 @@ class TestInviteEtfReward:
         from bot.acquisition_cog import AcquisitionCog
         cog = AcquisitionCog(bot)
         with patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.INVITE_ETF_MIN_COUNT", 5), \
              patch("bot.acquisition_cog.INVITE_ETF_REWARD_ROLE_ID", 111), \
              patch("bot.acquisition_cog.INVITE_REWARD_DAYS", 30):
+            # below threshold → no grant
             await cog._maybe_grant_invite_etf_reward(guild, 42, 1)
+            await cog._maybe_grant_invite_etf_reward(guild, 42, 4)
             from bot.timed_roles import has_active_grant
+            assert has_active_grant(42, 111) is None
+            # at threshold → grant
+            await cog._maybe_grant_invite_etf_reward(guild, 42, 5)
             assert has_active_grant(42, 111) is not None
-            # second invite while grant active → no duplicate grant
-            await cog._maybe_grant_invite_etf_reward(guild, 42, 2)
+            # second call while grant active → no duplicate grant
+            await cog._maybe_grant_invite_etf_reward(guild, 42, 6)
             data = json.loads(grants_file.read_text(encoding="utf-8"))
             assert len(data) == 1
 
@@ -247,14 +253,15 @@ class TestInviteEtfReward:
         from bot.acquisition_cog import AcquisitionCog
         cog = AcquisitionCog(bot)
         with patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.INVITE_ETF_MIN_COUNT", 5), \
              patch("bot.acquisition_cog.INVITE_ETF_REWARD_ROLE_ID", 111), \
              patch("bot.acquisition_cog.INVITE_REWARD_DAYS", 30):
-            await cog._maybe_grant_invite_etf_reward(guild, 42, 1)
+            await cog._maybe_grant_invite_etf_reward(guild, 42, 5)
             data = json.loads(grants_file.read_text(encoding="utf-8"))
             assert len(data) == 1  # still in 30d cooldown → no new grant
             # expire it 40 days ago → re-grant allowed
             old["expires_at"] = (now - timedelta(days=40)).isoformat()
             _write_grants(grants_file, [old])
-            await cog._maybe_grant_invite_etf_reward(guild, 42, 2)
+            await cog._maybe_grant_invite_etf_reward(guild, 42, 6)
             data = json.loads(grants_file.read_text(encoding="utf-8"))
             assert len(data) == 2

@@ -26,6 +26,7 @@ from bot.acquisition import (
     snapshot_invite_codes,
 )
 from bot.config import (
+    INVITE_ETF_MIN_COUNT,
     INVITE_ETF_REWARD_ROLE_ID,
     INVITE_FULL_REWARD_ROLE_ID,
     INVITE_REWARD_DAYS,
@@ -241,12 +242,13 @@ class AcquisitionCog(commands.Cog):
     async def _maybe_grant_invite_etf_reward(
         self, guild: discord.Guild, inviter_id: int, count: int
     ) -> None:
-        """First successful invite earns the ETF reward role for INVITE_REWARD_DAYS.
+        """Reaching INVITE_ETF_MIN_COUNT successful invites earns the ETF reward
+        role for INVITE_REWARD_DAYS.
 
         Re-grants are allowed only when the previous grant expired more than
         30 days ago.
         """
-        if count < 1 or not INVITE_ETF_REWARD_ROLE_ID:
+        if count < INVITE_ETF_MIN_COUNT or not INVITE_ETF_REWARD_ROLE_ID:
             return
         if has_active_grant(inviter_id, INVITE_ETF_REWARD_ROLE_ID):
             return

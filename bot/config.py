@@ -183,8 +183,9 @@ INVITE_REWARD_THRESHOLD: int = int(os.getenv("INVITE_REWARD_THRESHOLD", "3"))
 INVITE_REWARD_ROLE_ID: int = int(os.getenv("INVITE_REWARD_ROLE_ID", "0"))
 # Growth trio: per-invite ETF reward + monthly TopN full-version reward.
 INVITE_ETF_REWARD_ROLE_ID: int = int(os.getenv("INVITE_ETF_REWARD_ROLE_ID", "1445448090227179711"))
+INVITE_ETF_MIN_COUNT: int = int(os.getenv("INVITE_ETF_MIN_COUNT", "5"))
 INVITE_FULL_REWARD_ROLE_ID: int = int(os.getenv("INVITE_FULL_REWARD_ROLE_ID", "1445447888439349319"))
-INVITE_TOPN_COUNT: int = int(os.getenv("INVITE_TOPN_COUNT", "3"))
+INVITE_TOPN_COUNT: int = int(os.getenv("INVITE_TOPN_COUNT", "5"))
 INVITE_REWARD_DAYS: int = int(os.getenv("INVITE_REWARD_DAYS", "30"))
 
 # ---------------------------------------------------------------------------
