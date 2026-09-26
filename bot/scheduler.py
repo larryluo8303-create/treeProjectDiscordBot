@@ -301,6 +301,11 @@ def sync_auto_push_channels() -> None:
 
 # ── Scheduler Cog ────────────────────────────────────────────────────────────
 
+async def _async_tick(now_ts: float) -> None:
+    """Wrap the sync mark_scheduler_tick so it runs inside subtask isolation."""
+    mark_scheduler_tick(now_ts)
+
+
 class SchedulerCog(commands.Cog):
     """Background loop that checks for due promotions and lessons."""
 
@@ -332,13 +337,15 @@ class SchedulerCog(commands.Cog):
     @tasks.loop(seconds=60)
     async def _check_scheduled(self) -> None:
         now = datetime.now(timezone.utc)
-        mark_scheduler_tick(now.timestamp())
         # SECURITY/stability: each subtask is isolated in its own try/except.
         # Previously a single exception here killed the whole 60s loop
         # permanently, silently stopping all scheduled processing.
-        subtasks = []
+        # NOTE: mark_scheduler_tick() and sync_auto_push_channels() used to run
+        # outside this isolation — a failure in either one killed the loop too.
+        # They are now subtasks like everything else.
+        subtasks = [("scheduler_tick", _async_tick(now.timestamp()))]
         if PROMO_ENABLED:
-            sync_auto_push_channels()
+            subtasks.append(("auto_push_channels", asyncio.to_thread(sync_auto_push_channels)))
             subtasks.append(("promos", self._process_promos(now)))
             subtasks.append(("lessons", self._process_lessons(now)))
         subtasks.append(("reminders", self._process_reminders(now)))

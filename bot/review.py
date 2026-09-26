@@ -308,7 +308,15 @@ async def send_for_review(
             pass
         return
     if not owner:
-        logger.error("Could not fetch owner user (ID=%s)", OWNER_USER_ID)
+        logger.error("Could not fetch owner user (ID=%s) — returned falsy", OWNER_USER_ID)
+        try:
+            await original_message.reply(
+                "你的问题已记录，频道主稍后会来人工回复。",
+                mention_author=False,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except Exception:
+            pass
         return
 
     # Build embed
@@ -395,6 +403,7 @@ async def notify_owner_auto_reply(
         logger.error("Could not fetch owner user (ID=%s): %s", OWNER_USER_ID, exc)
         return
     if not owner:
+        logger.warning("notify_owner_auto_reply: fetch_user(%s) returned falsy — skipping", OWNER_USER_ID)
         return
 
     embed = discord.Embed(

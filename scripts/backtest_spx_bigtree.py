@@ -241,6 +241,36 @@ class Trade:
 
 
 @dataclass
+class RoundTrip:
+    """Cash-flow accounting for one position (round trip).
+
+    Accumulates ALL buys (incl. commission) and ALL sells (net of commission)
+    of a position. A win/loss is counted exactly once, when the position is
+    fully flattened, with pnl = total proceeds − total cost. Counting each
+    partial sell as its own trade (or only the last chunk's pnl) understates
+    pnl and inflates the trade count.
+    """
+    cost: float = 0.0      # total cash paid for buys (incl. commission)
+    proceeds: float = 0.0  # total cash received from sells (net of commission)
+
+    def record_buy(self, cash_out: float) -> None:
+        self.cost += cash_out
+
+    def record_sell(self, cash_in: float) -> None:
+        self.proceeds += cash_in
+
+    def reset(self) -> None:
+        self.cost = 0.0
+        self.proceeds = 0.0
+
+    def flatten_pnl(self) -> float | None:
+        """PnL of the completed round trip, or None if nothing was bought."""
+        if self.cost <= 0:
+            return None
+        return self.proceeds - self.cost
+
+
+@dataclass
 class Result:
     label: str
     start: pd.Timestamp
@@ -301,8 +331,11 @@ def run(
     equity_curve = []
     peak = CAPITAL
     max_dd = 0.0
-    round_entry_px = np.nan
-    round_entry_eq = np.nan
+    # Round-trip accounting: accumulate ALL cash flows of a position (buys and
+    # partial sells included). A win/loss is counted once, when the position
+    # is fully flattened. Counting only the last chunk (or every partial sell)
+    # understates pnl and inflates the trade count.
+    trip = RoundTrip()
     wins = losses = 0
     gw = gl = 0.0
 
@@ -310,7 +343,7 @@ def run(
         return cash + shares * px
 
     def fill_buy(date, px, pct, note=""):
-        nonlocal cash, shares, round_entry_px, round_entry_eq
+        nonlocal cash, shares
         px = px + SLIPPAGE
         eq = equity(px)
         room = max(0.0, 1.0 - (shares * px) / eq if eq else 0.0)
@@ -322,35 +355,37 @@ def run(
         qty = spend / px
         cash -= spend * (1 + COMMISSION)
         if shares <= 0:
-            round_entry_px = px
-            round_entry_eq = eq
+            trip.reset()
+        trip.record_buy(spend * (1 + COMMISSION))
         shares += qty
         fills.append(Trade("BUY", date, px, qty, f"{use*100:.1f}% {note}"))
 
     def fill_sell(date, px, qty, note):
-        nonlocal cash, shares, wins, losses, gw, gl, round_entry_px, round_entry_eq, stop, pos_hh
+        nonlocal cash, shares, wins, losses, gw, gl, stop, pos_hh
         px = px - SLIPPAGE
         qty = min(qty, shares)
         if qty <= 0:
             return
         proceeds = qty * px * (1 - COMMISSION)
         cash += proceeds
+        trip.record_sell(proceeds)
         shares -= qty
         fills.append(Trade("SELL", date, px, qty, note))
         if shares <= 1e-8:
             shares = 0.0
             stop = np.nan
             pos_hh = np.nan
-            if round_entry_px == round_entry_px:
-                pnl = (px - round_entry_px) * qty
-                # approximate round-trip vs entry equity
-                if px > round_entry_px:
+            # Round-trip pnl over ALL fills of this position (not just the
+            # last chunk). Counted once, at full flatten.
+            pnl = trip.flatten_pnl()
+            if pnl is not None:
+                if pnl > 0:
                     wins += 1
-                    gw += abs(pnl)
+                    gw += pnl
                 else:
                     losses += 1
                     gl += abs(pnl)
-            round_entry_px = np.nan
+            trip.reset()
 
     rows = d.itertuples()
     # Need open of next bar: iterate by position

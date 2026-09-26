@@ -4,6 +4,8 @@ import json
 import os
 import tempfile
 
+import pytest
+
 import bot.review as review_module
 
 
@@ -110,3 +112,46 @@ class TestNegativeGuidance:
             review_module.NEGATIVE_SAMPLES_FILE = original
             rag_module._negative_cache = None
             rag_module._negative_cache_time = 0.0
+
+
+# ── Review DM owner-fetch fallback ───────────────────────────────────────────
+
+
+class TestReviewOwnerFallback:
+    @pytest.mark.asyncio
+    async def test_falsy_owner_still_replies_to_user(self):
+        """fetch_user returning None must still send the 中文 fallback reply
+        to the original user (same as the exception path)."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from bot.review import send_for_review
+
+        bot = MagicMock()
+        bot.fetch_user = AsyncMock(return_value=None)
+        message = MagicMock()
+        message.reply = AsyncMock()
+        message.id = 123
+
+        with patch("bot.review.OWNER_USER_ID", 999):
+            await send_for_review(bot, message, "draft", 50)
+
+        message.reply.assert_awaited_once()
+        args, kwargs = message.reply.await_args
+        assert "已记录" in args[0]
+
+    @pytest.mark.asyncio
+    async def test_fetch_exception_still_replies_to_user(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from bot.review import send_for_review
+
+        bot = MagicMock()
+        bot.fetch_user = AsyncMock(side_effect=RuntimeError("boom"))
+        message = MagicMock()
+        message.reply = AsyncMock()
+        message.id = 123
+
+        with patch("bot.review.OWNER_USER_ID", 999):
+            await send_for_review(bot, message, "draft", 50)
+
+        message.reply.assert_awaited_once()

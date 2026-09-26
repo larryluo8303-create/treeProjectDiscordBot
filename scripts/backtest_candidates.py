@@ -209,6 +209,10 @@ def run(df: pd.DataFrame, cfg: Config, start: str, end: str, label: str) -> Resu
     max_dd = 0.0
 
     avg_entry_px = np.nan
+    # Round-trip accounting (see backtest_spx_bigtree.RoundTrip): partial sells
+    # must NOT each count as a win/loss — count once at full flatten, over the
+    # whole round trip's cash flows.
+    trip = base.RoundTrip()
     wins = losses = 0
     gw = gl = 0.0
 
@@ -241,7 +245,9 @@ def run(df: pd.DataFrame, cfg: Config, start: str, end: str, label: str) -> Resu
         cash -= spend * (1 + COMMISSION)
         if shares <= 0:
             avg_entry_px = px
-        else:
+            trip.reset()
+        trip.record_buy(spend * (1 + COMMISSION))
+        if shares > 0:
             avg_entry_px = (avg_entry_px * shares + px * qty) / (shares + qty)
         shares += qty
         last_entry_price = px
@@ -255,20 +261,23 @@ def run(df: pd.DataFrame, cfg: Config, start: str, end: str, label: str) -> Resu
             return
         proceeds = qty * px * (1 - COMMISSION)
         cash += proceeds
-        if avg_entry_px == avg_entry_px:
-            pnl = (px - avg_entry_px) * qty
-            if px > avg_entry_px:
-                wins += 1
-                gw += abs(pnl)
-            else:
-                losses += 1
-                gl += abs(pnl)
+        trip.record_sell(proceeds)
         shares -= qty
         fills.append(Trade("SELL", date, px, qty, tag))
         if shares <= 1e-8:
             shares = 0.0
             avg_entry_px = np.nan
             last_entry_price = float("nan")
+            # Count the round trip once, at full flatten.
+            pnl = trip.flatten_pnl()
+            if pnl is not None:
+                if pnl > 0:
+                    wins += 1
+                    gw += pnl
+                else:
+                    losses += 1
+                    gl += abs(pnl)
+            trip.reset()
 
     idx = d.index
     for i in range(len(d)):

@@ -17,7 +17,31 @@ from fpdf import FPDF
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MD = ROOT / "docs" / "zh" / "architecture" / "PROJECT_GUIDE.md"
 DEFAULT_PDF = ROOT / "docs" / "zh" / "architecture" / "PROJECT_GUIDE.pdf"
-FONT_PATH = Path(r"C:\Windows\Fonts\simhei.ttf")
+# Cross-platform CJK font lookup: first existing path wins.
+# Windows: SimHei/SimSun | macOS: PingFang/Songti | Linux: Noto CJK.
+FONT_CANDIDATES = [
+    Path(r"C:\Windows\Fonts\simhei.ttf"),
+    Path(r"C:\Windows\Fonts\simsun.ttc"),
+    Path("/System/Library/Fonts/PingFang.ttc"),
+    Path("/System/Library/Fonts/STHeiti Medium.ttc"),
+    Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
+    Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"),
+    Path("/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc"),
+]
+
+
+def find_cjk_font() -> Path:
+    for candidate in FONT_CANDIDATES:
+        if candidate.is_file():
+            return candidate
+    raise SystemExit(
+        "No CJK font found. Tried: "
+        + ", ".join(str(c) for c in FONT_CANDIDATES)
+        + ". Install one (e.g. fonts-noto-cjk on Linux) and re-run."
+    )
+
+
+FONT_PATH = find_cjk_font()
 
 
 class GuidePDF(FPDF):
@@ -185,7 +209,7 @@ def build_pdf(md: str, out: Path) -> None:
 
 def main() -> None:
     if not FONT_PATH.exists():
-        raise SystemExit(f"Chinese font not found: {FONT_PATH}")
+        raise SystemExit(f"Chinese font not found: {FONT_PATH} (checked {len(FONT_CANDIDATES)} locations)")
 
     args = sys.argv[1:]
     if not args:

@@ -259,8 +259,55 @@ _DEDUP_PATTERNS: list[tuple[re.Pattern, str]] = [
 ]
 
 
+# Years and calendar dates are NOT price levels and must survive redaction.
+# Without this, "2020-2024年" → "对应区间年", "2024-01-15" → "对应区间-15",
+# "在2024年" → "在关键位年".
+_YEAR_DATE_RE = re.compile(
+    r"(?:19|20)\d{2}\s*[-~～到至–—]\s*(?:19|20)\d{2}(?:\s*年)?"  # 2020-2024(年)
+    r"|(?:19|20)\d{2}[-/]\d{1,2}[-/]\d{1,2}"  # 2024-01-15
+    r"|(?:19|20)\d{2}年\d{1,2}月(?:\d{1,2}日?)?"  # 2024年3月(15日)
+    r"|(?:19|20)\d{2}年"  # 2024年
+    r"|(?:19|20)\d{2}[-/]\d{1,2}(?:[-/]\d{1,2})?"  # 2024-01
+    r"|\d{1,2}月\d{1,2}日"  # 3月15日
+)
+
+
+def _protect_years_dates(text: str) -> tuple[str, list[str]]:
+    """Replace year/date spans with digit-free placeholders before redaction."""
+    spans: list[str] = []
+
+    def _repl(m: re.Match) -> str:
+        spans.append(m.group(0))
+        n = len(spans) - 1
+        code = ""
+        k = n
+        while True:  # base-26 letters, no digits (digits would match redaction)
+            code = chr(ord("A") + k % 26) + code
+            k = k // 26 - 1
+            if k < 0:
+                break
+        return f"\x00Y{code}\x00"
+
+    return _YEAR_DATE_RE.sub(_repl, text), spans
+
+
+def _restore_years_dates(text: str, spans: list[str]) -> str:
+    for i, original in enumerate(spans):
+        n = i
+        code = ""
+        k = n
+        while True:
+            code = chr(ord("A") + k % 26) + code
+            k = k // 26 - 1
+            if k < 0:
+                break
+        text = text.replace(f"\x00Y{code}\x00", original)
+    return text
+
+
 def _redact_price_levels(text: str) -> tuple[str, int]:
     """Strip specific price numbers from text. Returns (clean_text, hits)."""
+    text, spans = _protect_years_dates(text)
     hits = 0
     for pattern, replacement in _PRICE_REDACTIONS:
         text, n = pattern.subn(replacement, text)
@@ -268,7 +315,7 @@ def _redact_price_levels(text: str) -> tuple[str, int]:
     if hits:
         for pattern, replacement in _DEDUP_PATTERNS:
             text = pattern.sub(replacement, text)
-    return text, hits
+    return _restore_years_dates(text, spans), hits
 
 
 def _record_openai_call(success: bool) -> None:

@@ -78,6 +78,34 @@ class TestRedactPriceLevels:
         assert "95" not in result
         assert hits > 0
 
+    def test_year_range_preserved(self):
+        text = "2020-2024年这段时间"
+        result, _ = _redact_price_levels(text)
+        assert "2020-2024年" in result
+
+    def test_iso_date_preserved(self):
+        text = "数据截至2024-01-15"
+        result, _ = _redact_price_levels(text)
+        assert "2024-01-15" in result
+
+    def test_year_month_preserved(self):
+        text = "在2024年3月见顶"
+        result, _ = _redact_price_levels(text)
+        assert "2024年3月" in result
+
+    def test_month_day_preserved(self):
+        text = "3月15日公布"
+        result, _ = _redact_price_levels(text)
+        assert "3月15日" in result
+
+    def test_year_with_price_still_redacted(self):
+        # Year survives, but a real price level in the same sentence is still cut.
+        text = "2024年跌破3912"
+        result, hits = _redact_price_levels(text)
+        assert "2024年" in result
+        assert "3912" not in result
+        assert hits > 0
+
     def test_stop_loss(self):
         text = "止损设在82.5"
         result, hits = _redact_price_levels(text)

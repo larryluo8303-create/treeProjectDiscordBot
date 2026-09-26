@@ -415,22 +415,49 @@ class TestAutoIngest:
 
     @pytest.mark.asyncio
     async def test_auto_ingest_disabled_skips_ingestion(self):
-        """When YOUTUBE_AUTO_INGEST is False, _ingest_video should not be called."""
+        """When YOUTUBE_AUTO_INGEST is False, _check_for_new_video must not
+        call _ingest_video, but the summary must still be posted."""
         from bot.youtube_monitor import YouTubeMonitorCog
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock, MagicMock, patch
 
         bot = MagicMock()
         cog = YouTubeMonitorCog(bot)
-        cog._ingest_video = AsyncMock()
-        cog._summarize_video = AsyncMock()
-        cog._post_summary = AsyncMock()
+        cog._last_video = {}  # force "new video" path
+        cog._ingest_video = AsyncMock(return_value=(5, "transcript text"))
+        cog._generate_and_post_summary = AsyncMock()
 
-        # Patch _check_for_new_video won't directly test this,
-        # so we verify the flag check logic directly
-        with patch("bot.youtube_monitor.YOUTUBE_AUTO_INGEST", False):
-            # The auto-ingest block should not execute
-            assert not False  # YOUTUBE_AUTO_INGEST is False, so block is skipped
-            cog._ingest_video.assert_not_called()
+        class _FakeResp:
+            status = 200
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *a):
+                return False
+            async def text(self):
+                return "<feed/>"
+
+        fake_session = MagicMock()
+        fake_session.get.return_value = _FakeResp()
+        cog._get_session = AsyncMock(return_value=fake_session)
+
+        entry = {"video_id": "vid123", "title": "T", "link": "https://youtube.com/watch?v=vid123", "published": ""}
+
+        async def run_case(auto_ingest: bool):
+            cog._last_video = {}  # force "new video" path every run
+            cog._ingest_video.reset_mock()
+            cog._generate_and_post_summary.reset_mock()
+            with patch("bot.youtube_monitor.parse_feed", return_value=[entry]), \
+                 patch("bot.youtube_monitor.YOUTUBE_LESSON_PUSH_CHANNELS", [67890]), \
+                 patch("bot.youtube_monitor.create_youtube_lesson"), \
+                 patch("bot.youtube_monitor._save_last_video"), \
+                 patch("bot.youtube_monitor.YOUTUBE_AUTO_INGEST", auto_ingest):
+                await cog._check_for_new_video()
+
+        await run_case(False)
+        cog._ingest_video.assert_not_called()
+        cog._generate_and_post_summary.assert_awaited_once()  # summary still posted
+
+        await run_case(True)
+        cog._ingest_video.assert_awaited_once_with("vid123", entry["link"])
 
     @pytest.mark.asyncio
     async def test_summary_posted_when_ingest_returns_zero(self):

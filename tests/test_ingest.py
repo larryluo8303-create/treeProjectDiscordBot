@@ -1,6 +1,12 @@
 """Tests for ingestion.ingest module — token truncation, dedup, metadata sanitization."""
 
-from ingestion.ingest import _truncate_to_tokens, _ENC, EMBEDDING_MAX_TOKENS
+from ingestion.ingest import (
+    _truncate_to_tokens,
+    _dedupe_ids,
+    _sanitize_metadata,
+    _ENC,
+    EMBEDDING_MAX_TOKENS,
+)
 
 
 class TestTruncateToTokens:
@@ -36,8 +42,7 @@ class TestTruncateToTokens:
 
 class TestIngestHelpers:
     def test_embed_batch_metadata_sanitization(self):
-        """Verify the metadata sanitization logic works correctly."""
-        # This tests the inline sanitization code pattern
+        """Call the real production sanitizer (not a re-implementation)."""
         raw_meta = {
             "type": "qa_pair",
             "count": 42,
@@ -45,13 +50,9 @@ class TestIngestHelpers:
             "active": True,
             "tags": ["a", "b"],  # list → should become str
             "nested": {"key": "val"},  # dict → should become str
+            "nothing": None,  # None → should become str
         }
-        clean_meta = {}
-        for k, v in raw_meta.items():
-            if isinstance(v, (str, int, float, bool)):
-                clean_meta[k] = v
-            else:
-                clean_meta[k] = str(v)
+        clean_meta = _sanitize_metadata(raw_meta)
 
         assert clean_meta["type"] == "qa_pair"
         assert clean_meta["count"] == 42
@@ -59,24 +60,20 @@ class TestIngestHelpers:
         assert clean_meta["active"] is True
         assert clean_meta["tags"] == "['a', 'b']"
         assert clean_meta["nested"] == "{'key': 'val'}"
+        assert clean_meta["nothing"] == "None"
 
     def test_dedup_logic(self):
-        """Test the ID dedup pattern used in ingest_to_chromadb."""
-        import uuid
-
-        ids = ["doc_1", "doc_2", "doc_1", "doc_3", "doc_1"]
-        seen: set[str] = set()
-        unique_ids: list[str] = []
-        for doc_id in ids:
-            if doc_id in seen:
-                doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
-            seen.add(doc_id)
-            unique_ids.append(doc_id)
+        """Call the real production dedup helper (not a re-implementation)."""
+        unique_ids = _dedupe_ids(["doc_1", "doc_2", "doc_1", "doc_3", "doc_1"])
 
         assert len(unique_ids) == 5
         assert len(set(unique_ids)) == 5  # all unique
         assert unique_ids[0] == "doc_1"
         assert unique_ids[1] == "doc_2"
         assert unique_ids[2].startswith("doc_1_")
-        assert unique_ids[3] == "doc_3"
         assert unique_ids[4].startswith("doc_1_")
+        assert unique_ids[2] != unique_ids[4]  # two collisions → two distinct suffixes
+
+    def test_dedup_no_collisions_unchanged(self):
+        ids = ["a", "b", "c"]
+        assert _dedupe_ids(ids) == ids

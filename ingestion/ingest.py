@@ -60,6 +60,29 @@ def embed_batch(texts: list[str], client: openai.OpenAI) -> list[list[float]]:
     return [item.embedding for item in response.data]
 
 
+def _dedupe_ids(ids: list[str]) -> list[str]:
+    """Ensure IDs are unique within a batch (append uuid suffix on collision)."""
+    seen: set[str] = set()
+    unique_ids: list[str] = []
+    for doc_id in ids:
+        if doc_id in seen:
+            doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
+        seen.add(doc_id)
+        unique_ids.append(doc_id)
+    return unique_ids
+
+
+def _sanitize_metadata(metadata: dict) -> dict:
+    """ChromaDB only accepts str, int, float, bool — stringify everything else."""
+    clean_meta = {}
+    for k, v in metadata.items():
+        if isinstance(v, (str, int, float, bool)):
+            clean_meta[k] = v
+        else:
+            clean_meta[k] = str(v)
+    return clean_meta
+
+
 def ingest_to_chromadb(
     documents: list[dict],
     collection: chromadb.Collection,
@@ -121,24 +144,10 @@ def ingest_to_chromadb(
         ids = [d["id"] for d in batch]
 
         # Ensure IDs are unique within the batch (append uuid suffix if needed)
-        seen: set[str] = set()
-        unique_ids: list[str] = []
-        for doc_id in ids:
-            if doc_id in seen:
-                doc_id = f"{doc_id}_{uuid.uuid4().hex[:8]}"
-            seen.add(doc_id)
-            unique_ids.append(doc_id)
+        unique_ids = _dedupe_ids(ids)
 
         # Sanitize metadata: ChromaDB only accepts str, int, float, bool
-        metadatas = []
-        for d in batch:
-            clean_meta = {}
-            for k, v in d["metadata"].items():
-                if isinstance(v, (str, int, float, bool)):
-                    clean_meta[k] = v
-                else:
-                    clean_meta[k] = str(v)
-            metadatas.append(clean_meta)
+        metadatas = [_sanitize_metadata(d["metadata"]) for d in batch]
 
         try:
             embeddings = embed_batch(texts, openai_client)
