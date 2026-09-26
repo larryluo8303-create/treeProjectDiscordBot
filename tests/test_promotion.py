@@ -165,7 +165,7 @@ class TestSchedulerPromoCrud:
         os.rmdir(self._tmpdir)
 
     @patch("bot.scheduler.PROMOS_FILE")
-    def test_add_and_list(self, mock_file):
+    async def test_add_and_list(self, mock_file):
         mock_file.__str__ = lambda _: self._promos_file
         # Patch at module level to use temp file
         import bot.scheduler as sched
@@ -173,7 +173,7 @@ class TestSchedulerPromoCrud:
         sched.PROMOS_FILE = self._promos_file
         try:
             dt = datetime(2024, 1, 15, 10, 0, tzinfo=timezone.utc)
-            promo = sched.add_promo(
+            promo = await sched.add_promo(
                 title="Test Promo",
                 description="50% off",
                 scheduled_at=dt,
@@ -193,41 +193,41 @@ class TestSchedulerPromoCrud:
             sched.PROMOS_FILE = orig
 
     @patch("bot.scheduler.PROMOS_FILE")
-    def test_cancel(self, mock_file):
+    async def test_cancel(self, mock_file):
         import bot.scheduler as sched
         orig = sched.PROMOS_FILE
         sched.PROMOS_FILE = self._promos_file
         try:
             dt = datetime(2024, 6, 1, 12, 0, tzinfo=timezone.utc)
-            promo = sched.add_promo("Sale", "Big sale", dt, [111], 999)
+            promo = await sched.add_promo("Sale", "Big sale", dt, [111], 999)
             pid = promo["id"]
 
-            assert sched.cancel_promo(pid) is True
+            assert await sched.cancel_promo(pid) is True
             # Cancelled promo should not appear in list
             assert len(sched.list_promos()) == 0
             # Cancelling again returns False
-            assert sched.cancel_promo(pid) is False
+            assert await sched.cancel_promo(pid) is False
         finally:
             sched.PROMOS_FILE = orig
 
     @patch("bot.scheduler.PROMOS_FILE")
-    def test_cancel_nonexistent(self, mock_file):
+    async def test_cancel_nonexistent(self, mock_file):
         import bot.scheduler as sched
         orig = sched.PROMOS_FILE
         sched.PROMOS_FILE = self._promos_file
         try:
-            assert sched.cancel_promo("promo_doesnt_exist") is False
+            assert await sched.cancel_promo("promo_doesnt_exist") is False
         finally:
             sched.PROMOS_FILE = orig
 
     @patch("bot.scheduler.PROMOS_FILE")
-    def test_trial_signal_type(self, mock_file):
+    async def test_trial_signal_type(self, mock_file):
         import bot.scheduler as sched
         orig = sched.PROMOS_FILE
         sched.PROMOS_FILE = self._promos_file
         try:
             dt = datetime(2024, 1, 15, 10, 0, tzinfo=timezone.utc)
-            promo = sched.add_promo(
+            promo = await sched.add_promo(
                 "Trial", "Free signal", dt, [111], 999,
                 promo_type="trial_signal",
             )
@@ -288,13 +288,13 @@ class TestSchedulerLessonCrud:
         os.rmdir(self._tmpdir)
 
     @patch("bot.scheduler.LESSONS_FILE")
-    def test_add_and_list(self, mock_file):
+    async def test_add_and_list(self, mock_file):
         import bot.scheduler as sched
         orig = sched.LESSONS_FILE
         sched.LESSONS_FILE = self._lessons_file
         try:
             dt = datetime(2024, 2, 1, 9, 0, tzinfo=timezone.utc)
-            lesson = sched.add_lesson(
+            lesson = await sched.add_lesson(
                 title="Lesson 1",
                 content="Introduction to trading",
                 scheduled_at=dt,
@@ -312,28 +312,28 @@ class TestSchedulerLessonCrud:
             sched.LESSONS_FILE = orig
 
     @patch("bot.scheduler.LESSONS_FILE")
-    def test_cancel_lesson(self, mock_file):
+    async def test_cancel_lesson(self, mock_file):
         import bot.scheduler as sched
         orig = sched.LESSONS_FILE
         sched.LESSONS_FILE = self._lessons_file
         try:
             dt = datetime(2024, 2, 1, 9, 0, tzinfo=timezone.utc)
-            lesson = sched.add_lesson("L1", "Content", dt, [111], 999)
+            lesson = await sched.add_lesson("L1", "Content", dt, [111], 999)
             lid = lesson["id"]
 
-            assert sched.cancel_lesson(lid) is True
+            assert await sched.cancel_lesson(lid) is True
             assert len(sched.list_lessons()) == 0
-            assert sched.cancel_lesson(lid) is False
+            assert await sched.cancel_lesson(lid) is False
         finally:
             sched.LESSONS_FILE = orig
 
     @patch("bot.scheduler.LESSONS_FILE")
-    def test_cancel_nonexistent_lesson(self, mock_file):
+    async def test_cancel_nonexistent_lesson(self, mock_file):
         import bot.scheduler as sched
         orig = sched.LESSONS_FILE
         sched.LESSONS_FILE = self._lessons_file
         try:
-            assert sched.cancel_lesson("lesson_nope") is False
+            assert await sched.cancel_lesson("lesson_nope") is False
         finally:
             sched.LESSONS_FILE = orig
 
@@ -584,50 +584,50 @@ class TestSchedulerEdgeCases:
         if os.path.exists(self._tmpdir):
             os.rmdir(self._tmpdir)
 
-    def test_multiple_promos_independent(self):
+    async def test_multiple_promos_independent(self):
         import bot.scheduler as sched
         orig = sched.PROMOS_FILE
         sched.PROMOS_FILE = self._promos_file
         try:
             dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
-            p1 = sched.add_promo("P1", "D1", dt, [1], 99)
-            p2 = sched.add_promo("P2", "D2", dt, [2], 99)
-            p3 = sched.add_promo("P3", "D3", dt, [3], 99)
+            p1 = await sched.add_promo("P1", "D1", dt, [1], 99)
+            p2 = await sched.add_promo("P2", "D2", dt, [2], 99)
+            p3 = await sched.add_promo("P3", "D3", dt, [3], 99)
 
             assert len(sched.list_promos()) == 3
 
-            sched.cancel_promo(p2["id"])
+            await sched.cancel_promo(p2["id"])
             remaining = sched.list_promos()
             assert len(remaining) == 2
             assert all(p["id"] != p2["id"] for p in remaining)
         finally:
             sched.PROMOS_FILE = orig
 
-    def test_cannot_cancel_posted_promo(self):
+    async def test_cannot_cancel_posted_promo(self):
         import bot.scheduler as sched
         orig = sched.PROMOS_FILE
         sched.PROMOS_FILE = self._promos_file
         try:
             dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
-            promo = sched.add_promo("P", "D", dt, [1], 99)
+            promo = await sched.add_promo("P", "D", dt, [1], 99)
             # Simulate it being posted
             data = sched._load_json(self._promos_file)
             data[0]["posted"] = True
             sched._save_json(self._promos_file, data)
 
-            assert sched.cancel_promo(promo["id"]) is False
+            assert await sched.cancel_promo(promo["id"]) is False
         finally:
             sched.PROMOS_FILE = orig
 
-    def test_lesson_repeat_modes_stored(self):
+    async def test_lesson_repeat_modes_stored(self):
         import bot.scheduler as sched
         orig = sched.LESSONS_FILE
         sched.LESSONS_FILE = self._lessons_file
         try:
             dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
-            l1 = sched.add_lesson("L1", "C1", dt, [1], 99, repeat="daily")
-            l2 = sched.add_lesson("L2", "C2", dt, [1], 99, repeat="weekly")
-            l3 = sched.add_lesson("L3", "C3", dt, [1], 99, repeat="none")
+            l1 = await sched.add_lesson("L1", "C1", dt, [1], 99, repeat="daily")
+            l2 = await sched.add_lesson("L2", "C2", dt, [1], 99, repeat="weekly")
+            l3 = await sched.add_lesson("L3", "C3", dt, [1], 99, repeat="none")
 
             lessons = sched.list_lessons()
             repeats = {ls["id"]: ls["repeat"] for ls in lessons}

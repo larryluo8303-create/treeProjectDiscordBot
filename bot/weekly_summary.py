@@ -61,7 +61,7 @@ _RETRY_SECONDS = 30 * 60  # retry after network / GPT failure
 _CATCHUP_GRACE_HOURS = 18  # still run if we wake within this window after target
 _SLEEP_CHUNK_SECONDS = 60  # re-check clock often (survives PC sleep better)
 
-RunStatus = Literal["posted", "empty", "failed"]
+RunStatus = Literal["posted", "empty", "failed", "busy"]
 
 
 # ── Message collection ─────────────────────────────────────────────────────
@@ -201,6 +201,8 @@ class WeeklySummaryCog(commands.Cog):
         self._openai_client = openai_client
         self._task: asyncio.Task | None = None
         self._started: bool = False
+        # Same double-@everyone race as daily summary: loop + manual trigger.
+        self._run_lock = asyncio.Lock()
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -235,6 +237,8 @@ class WeeklySummaryCog(commands.Cog):
                 await interaction.followup.send("✅ 本周总结已推送。", ephemeral=True)
             elif status == "empty":
                 await interaction.followup.send("⚠️ 本周未找到频道主消息，未推送。", ephemeral=True)
+            elif status == "busy":
+                await interaction.followup.send("⚠️ 总结正在生成中，未重复推送。", ephemeral=True)
             else:
                 await interaction.followup.send(
                     "❌ 推送失败（网络或 GPT 错误），请查看日志后重试。", ephemeral=True,
@@ -366,8 +370,16 @@ class WeeklySummaryCog(commands.Cog):
         """Collect, summarise, and post the weekly summary.
 
         Returns ``posted``, ``empty`` (no owner messages after successful reads),
-        or ``failed`` (channel / GPT / post errors — caller should retry).
+        ``failed`` (channel / GPT / post errors — caller should retry), or
+        ``busy`` (another run is in progress — skip to avoid double @everyone).
         """
+        if self._run_lock.locked():
+            logger.warning("Weekly summary: a run is already in progress — skipping duplicate")
+            return "busy"
+        async with self._run_lock:
+            return await self._run_summary_locked()
+
+    async def _run_summary_locked(self) -> RunStatus:
         try:
             now = datetime.now(timezone.utc)
             since = now - timedelta(days=7)

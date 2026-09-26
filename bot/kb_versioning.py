@@ -1,7 +1,13 @@
-"""Knowledge base version management — snapshot & rollback.
+"""Knowledge base version management — ingestion audit snapshots.
 
-Before each ingestion, takes a lightweight snapshot of the ChromaDB
-collection metadata so the owner can /kb_rollback to a previous version.
+Before each ingestion, records a lightweight metadata snapshot (timestamp,
+document count, description) so the owner can see *when* the KB changed and
+how large it was at the time.
+
+NOTE: snapshots are metadata only — the ChromaDB data itself is NOT copied,
+so true rollback to a previous version is NOT supported.  Restoring an older
+KB state requires re-ingesting from the original sources.  Do not document
+or promise a /kb_rollback command: it does not exist.
 
 Snapshots are stored in ``data/kb_snapshots/``.
 """

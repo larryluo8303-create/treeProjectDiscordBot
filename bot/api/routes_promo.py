@@ -65,7 +65,7 @@ async def create_promo(body: PromoCreate, _user: str = Depends(get_current_user)
     if not channel_ids:
         raise HTTPException(status_code=400, detail="No channel IDs configured.")
 
-    promo = add_promo(
+    promo = await add_promo(
         title=body.title,
         description=body.description,
         scheduled_at=scheduled_at,
@@ -79,7 +79,7 @@ async def create_promo(body: PromoCreate, _user: str = Depends(get_current_user)
 @router.delete("/promos/{promo_id}")
 async def delete_promo(promo_id: str, _user: str = Depends(get_current_user)) -> dict:
     """Cancel a scheduled promo."""
-    ok = cancel_promo(promo_id)
+    ok = await cancel_promo(promo_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Promo not found or already posted.")
     return {"status": "cancelled", "id": promo_id}
@@ -114,7 +114,7 @@ async def create_lesson(body: LessonCreate, _user: str = Depends(get_current_use
     if not channel_ids:
         raise HTTPException(status_code=400, detail="No channel IDs configured.")
 
-    lesson = add_lesson(
+    lesson = await add_lesson(
         title=body.title,
         content=body.content,
         scheduled_at=scheduled_at,
@@ -128,7 +128,7 @@ async def create_lesson(body: LessonCreate, _user: str = Depends(get_current_use
 @router.delete("/lessons/{lesson_id}")
 async def delete_lesson(lesson_id: str, _user: str = Depends(get_current_user)) -> dict:
     """Cancel a scheduled lesson."""
-    ok = cancel_lesson(lesson_id)
+    ok = await cancel_lesson(lesson_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Lesson not found or already posted.")
     return {"status": "cancelled", "id": lesson_id}

@@ -169,7 +169,7 @@ class TestBroadcast:
 
 
 class TestAddPromoStoresDmRole:
-    def test_dm_role_id_persisted(self, tmp_path):
+    async def test_dm_role_id_persisted(self, tmp_path):
         import bot.scheduler as sched
 
         orig = sched.PROMOS_FILE
@@ -177,7 +177,7 @@ class TestAddPromoStoresDmRole:
         try:
             from datetime import datetime, timezone
 
-            promo = sched.add_promo(
+            promo = await sched.add_promo(
                 "Sale",
                 "Desc",
                 datetime(2024, 1, 15, 10, 0, tzinfo=timezone.utc),
@@ -191,7 +191,7 @@ class TestAddPromoStoresDmRole:
         finally:
             sched.PROMOS_FILE = orig
 
-    def test_omitted_dm_role_not_stored(self, tmp_path):
+    async def test_omitted_dm_role_not_stored(self, tmp_path):
         import bot.scheduler as sched
 
         orig = sched.PROMOS_FILE
@@ -199,7 +199,7 @@ class TestAddPromoStoresDmRole:
         try:
             from datetime import datetime, timezone
 
-            promo = sched.add_promo(
+            promo = await sched.add_promo(
                 "Sale",
                 "Desc",
                 datetime(2024, 1, 15, 10, 0, tzinfo=timezone.utc),

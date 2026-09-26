@@ -40,6 +40,36 @@ _FAQ_PUSH_STATE_FILE = data_path("data/faq_push_state.json")
 _ET = ZoneInfo("America/New_York")
 
 
+def _ensure_aware(dt: datetime) -> datetime:
+    """Normalize a datetime to tz-aware for storage.
+
+    Naive datetimes are assumed to be in ET (America/New_York), the timezone
+    the scheduler reasons in.  Mixing naive and aware datetimes used to raise
+    ``TypeError: can't compare offset-naive and offset-aware datetimes`` and
+    kill the scheduler loop.
+    """
+    if dt.tzinfo is None:
+        logger.warning("Naive datetime %s assumed to be ET", dt.isoformat())
+        return dt.replace(tzinfo=_ET)
+    return dt
+
+
+def _parse_stored_dt(value: str | None) -> datetime | None:
+    """Parse an ISO datetime string from storage, tolerating naive values.
+
+    Returns None for missing values.  Naive strings (written by older code)
+    are treated as ET with a warning — never raises, never kills the loop.
+    """
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        logger.warning("Unparseable stored datetime %r — treating as missing", value)
+        return None
+    return _ensure_aware(dt)
+
+
 # ── JSON persistence helpers ─────────────────────────────────────────────────
 
 def _load_json(path: str) -> list[dict]:
@@ -54,7 +84,13 @@ def _save_json(path: str, data: list[dict]) -> None:
     atomic_json_write(path, data, ensure_ascii=False, indent=2)
 
 
-# ── Promo CRUD ───────────────────────────────────────────────────────────────
+# ── Promo CRUD ──────────────────────────────────────────────────────────────
+
+# Guards the promos.json read-modify-write cycle: _process_promos holds this
+# across its load → send → save, so a management command writing mid-cycle
+# can't have its update overwritten by a stale snapshot.
+_promos_lock = asyncio.Lock()
+_lessons_lock = asyncio.Lock()
 
 # Repeat interval mapping shared by promos and lessons
 _REPEAT_INTERVALS: dict[str, timedelta] = {
@@ -67,8 +103,12 @@ _REPEAT_INTERVALS: dict[str, timedelta] = {
 REPEAT_CHOICES = ["none", "hourly", "daily", "weekly", "monthly"]
 
 
-def _is_repeat_due(now: datetime, scheduled: datetime, last_posted: str | None, repeat: str) -> bool:
+def _is_repeat_due(now: datetime, scheduled: datetime, last_posted: datetime | None, repeat: str) -> bool:
     """Check whether a repeating item is due.
+
+    ``last_posted`` is an aware datetime (or None); callers must parse stored
+    strings with :func:`_parse_stored_dt` first — never ``fromisoformat``
+    inline, so naive legacy data can't raise TypeError here.
 
     For hourly: simple interval check (now - last_posted >= 1h).
     For daily/weekly/monthly: anchor to the original *hour:minute* in ET
@@ -78,7 +118,7 @@ def _is_repeat_due(now: datetime, scheduled: datetime, last_posted: str | None, 
         # Never posted before — due as soon as now >= scheduled
         return now >= scheduled
 
-    last_dt = datetime.fromisoformat(last_posted)
+    last_dt = last_posted
 
     if repeat == "hourly":
         return now - last_dt >= timedelta(hours=1)
@@ -108,7 +148,7 @@ def _is_repeat_due(now: datetime, scheduled: datetime, last_posted: str | None, 
     return now - last_dt >= interval
 
 
-def add_promo(
+async def add_promo(
     title: str,
     description: str,
     scheduled_at: datetime,
@@ -120,26 +160,27 @@ def add_promo(
     dm_role_id: int | None = None,
 ) -> dict:
     """Add a new scheduled promotion and persist to disk."""
-    promos = _load_json(PROMOS_FILE)
-    promo = {
-        "id": f"promo_{uuid.uuid4().hex[:8]}",
-        "type": promo_type,
-        "title": title,
-        "description": description,
-        "url": url,
-        "scheduled_at": scheduled_at.isoformat(),
-        "repeat": repeat,
-        "channel_ids": channel_ids,
-        "last_posted": None,
-        "cancelled": False,
-        "created_by": created_by,
-    }
-    if dm_role_id:
-        promo["dm_role_id"] = dm_role_id
-    promos.append(promo)
-    _save_json(PROMOS_FILE, promos)
-    logger.info("Scheduled promo %s at %s (repeat=%s)", promo["id"], promo["scheduled_at"], repeat)
-    return promo
+    async with _promos_lock:
+        promos = _load_json(PROMOS_FILE)
+        promo = {
+            "id": f"promo_{uuid.uuid4().hex[:8]}",
+            "type": promo_type,
+            "title": title,
+            "description": description,
+            "url": url,
+            "scheduled_at": _ensure_aware(scheduled_at).isoformat(),
+            "repeat": repeat,
+            "channel_ids": channel_ids,
+            "last_posted": None,
+            "cancelled": False,
+            "created_by": created_by,
+        }
+        if dm_role_id:
+            promo["dm_role_id"] = dm_role_id
+        promos.append(promo)
+        _save_json(PROMOS_FILE, promos)
+        logger.info("Scheduled promo %s at %s (repeat=%s)", promo["id"], promo["scheduled_at"], repeat)
+        return promo
 
 
 def list_promos() -> list[dict]:
@@ -148,21 +189,22 @@ def list_promos() -> list[dict]:
     return [p for p in promos if not p.get("cancelled")]
 
 
-def cancel_promo(promo_id: str) -> bool:
+async def cancel_promo(promo_id: str) -> bool:
     """Cancel a pending promotion. Returns True if found and cancelled."""
-    promos = _load_json(PROMOS_FILE)
-    for p in promos:
-        if p["id"] == promo_id and not p.get("posted") and not p.get("cancelled"):
-            p["cancelled"] = True
-            _save_json(PROMOS_FILE, promos)
-            logger.info("Cancelled promo %s", promo_id)
-            return True
-    return False
+    async with _promos_lock:
+        promos = _load_json(PROMOS_FILE)
+        for p in promos:
+            if p["id"] == promo_id and not p.get("posted") and not p.get("cancelled"):
+                p["cancelled"] = True
+                _save_json(PROMOS_FILE, promos)
+                logger.info("Cancelled promo %s", promo_id)
+                return True
+        return False
 
 
 # ── Lesson CRUD ──────────────────────────────────────────────────────────────
 
-def add_lesson(
+async def add_lesson(
     title: str,
     content: str,
     scheduled_at: datetime,
@@ -171,23 +213,24 @@ def add_lesson(
     repeat: str = "none",
 ) -> dict:
     """Add a new scheduled lesson and persist to disk."""
-    lessons = _load_json(LESSONS_FILE)
-    lesson = {
-        "id": f"lesson_{uuid.uuid4().hex[:8]}",
-        "title": title,
-        "content": content,
-        "scheduled_at": scheduled_at.isoformat(),
-        "repeat": repeat,
-        "channel_ids": channel_ids,
-        "last_posted": None,
-        "cancelled": False,
-        "created_by": created_by,
-    }
-    lessons.append(lesson)
-    _save_json(LESSONS_FILE, lessons)
-    logger.info("Scheduled lesson %s at %s (repeat=%s)",
-                lesson["id"], lesson["scheduled_at"], repeat)
-    return lesson
+    async with _lessons_lock:
+        lessons = _load_json(LESSONS_FILE)
+        lesson = {
+            "id": f"lesson_{uuid.uuid4().hex[:8]}",
+            "title": title,
+            "content": content,
+            "scheduled_at": _ensure_aware(scheduled_at).isoformat(),
+            "repeat": repeat,
+            "channel_ids": channel_ids,
+            "last_posted": None,
+            "cancelled": False,
+            "created_by": created_by,
+        }
+        lessons.append(lesson)
+        _save_json(LESSONS_FILE, lessons)
+        logger.info("Scheduled lesson %s at %s (repeat=%s)",
+                    lesson["id"], lesson["scheduled_at"], repeat)
+        return lesson
 
 
 def list_lessons() -> list[dict]:
@@ -196,16 +239,17 @@ def list_lessons() -> list[dict]:
     return [ls for ls in lessons if not ls.get("cancelled")]
 
 
-def cancel_lesson(lesson_id: str) -> bool:
+async def cancel_lesson(lesson_id: str) -> bool:
     """Cancel a lesson. Returns True if found and cancelled."""
-    lessons = _load_json(LESSONS_FILE)
-    for ls in lessons:
-        if ls["id"] == lesson_id and not ls.get("cancelled"):
-            ls["cancelled"] = True
-            _save_json(LESSONS_FILE, lessons)
-            logger.info("Cancelled lesson %s", lesson_id)
-            return True
-    return False
+    async with _lessons_lock:
+        lessons = _load_json(LESSONS_FILE)
+        for ls in lessons:
+            if ls["id"] == lesson_id and not ls.get("cancelled"):
+                ls["cancelled"] = True
+                _save_json(LESSONS_FILE, lessons)
+                logger.info("Cancelled lesson %s", lesson_id)
+                return True
+        return False
 
 
 def sync_auto_push_channels() -> None:
@@ -311,6 +355,13 @@ class SchedulerCog(commands.Cog):
     # ── Promos ───────────────────────────────────────────────────────────────
 
     async def _process_promos(self, now: datetime) -> None:
+        # Hold the lock across load → send → save so a concurrent add/cancel
+        # can't be overwritten by this tick's stale snapshot.
+        async with _promos_lock:
+            await self._process_promos_locked(now)
+
+    async def _process_promos_locked(self, now: datetime) -> None:
+        """Body of _process_promos; caller must hold _promos_lock."""
         promos = _load_json(PROMOS_FILE)
         changed = False
 
@@ -319,17 +370,20 @@ class SchedulerCog(commands.Cog):
                 continue
 
             # Auto-expire promos with an expires_at timestamp
-            expires_at = promo.get("expires_at")
+            expires_at = _parse_stored_dt(promo.get("expires_at"))
             if expires_at:
-                if now >= datetime.fromisoformat(expires_at):
+                if now >= expires_at:
                     promo["cancelled"] = True
                     changed = True
                     logger.info("Auto-expired promo %s", promo["id"])
                     continue
 
-            scheduled = datetime.fromisoformat(promo["scheduled_at"])
+            scheduled = _parse_stored_dt(promo.get("scheduled_at"))
+            if scheduled is None:
+                logger.warning("Promo %s has unparseable scheduled_at — skipping", promo.get("id"))
+                continue
             repeat = promo.get("repeat", "none")
-            last_posted = promo.get("last_posted")
+            last_posted = _parse_stored_dt(promo.get("last_posted"))
 
             # Determine if this promo is due
             if repeat == "none":
@@ -363,11 +417,14 @@ class SchedulerCog(commands.Cog):
                     name=f"promo-dm-{promo.get('id', '')}",
                 )
 
-            promo["last_posted"] = now.isoformat()
-            if repeat == "none":
-                promo["posted"] = True
-            changed = True
-            logger.info("Posted promo %s to %d channel(s) (repeat=%s)", promo["id"], sent, repeat)
+            if sent > 0:
+                promo["last_posted"] = now.isoformat()
+                if repeat == "none":
+                    promo["posted"] = True
+                changed = True
+                logger.info("Posted promo %s to %d channel(s) (repeat=%s)", promo["id"], sent, repeat)
+            else:
+                logger.warning("Promo %s: sent to 0 channels — keeping due for retry", promo["id"])
 
         if changed:
             _save_json(PROMOS_FILE, promos)
@@ -437,6 +494,12 @@ class SchedulerCog(commands.Cog):
     # ── Lessons ──────────────────────────────────────────────────────────────
 
     async def _process_lessons(self, now: datetime) -> None:
+        # Hold the lock across load → send → save (see _process_promos).
+        async with _lessons_lock:
+            await self._process_lessons_locked(now)
+
+    async def _process_lessons_locked(self, now: datetime) -> None:
+        """Body of _process_lessons; caller must hold _lessons_lock."""
         lessons = _load_json(LESSONS_FILE)
         changed = False
 
@@ -444,9 +507,12 @@ class SchedulerCog(commands.Cog):
             if lesson.get("cancelled"):
                 continue
 
-            scheduled = datetime.fromisoformat(lesson["scheduled_at"])
+            scheduled = _parse_stored_dt(lesson.get("scheduled_at"))
+            if scheduled is None:
+                logger.warning("Lesson %s has unparseable scheduled_at — skipping", lesson.get("id"))
+                continue
             repeat = lesson.get("repeat", "none")
-            last_posted = lesson.get("last_posted")
+            last_posted = _parse_stored_dt(lesson.get("last_posted"))
 
             # Determine if this lesson is due
             if repeat == "none":
@@ -480,10 +546,14 @@ class SchedulerCog(commands.Cog):
                     logger.warning("Failed to post lesson %s to channel %d: %s",
                                    lesson["id"], cid, exc)
 
-            lesson["last_posted"] = now.isoformat()
-            changed = True
-            logger.info("Posted lesson %s to %d channel(s) (repeat=%s)",
-                        lesson["id"], sent, repeat)
+            if sent > 0:
+                lesson["last_posted"] = now.isoformat()
+                changed = True
+                logger.info("Posted lesson %s to %d channel(s) (repeat=%s)",
+                            lesson["id"], sent, repeat)
+            else:
+                logger.warning("Lesson %s: sent to 0 channels — keeping due for retry",
+                               lesson["id"])
 
         if changed:
             _save_json(LESSONS_FILE, lessons)
@@ -491,7 +561,7 @@ class SchedulerCog(commands.Cog):
     # ── Reminders ─────────────────────────────────────────────────────────────
 
     async def _process_reminders(self, now: datetime) -> None:
-        from bot.reminders import get_due_reminders
+        from bot.reminders import get_due_reminders, mark_reminder_posted
         due = get_due_reminders(now)
         for rem in due:
             embed = discord.Embed(
@@ -511,7 +581,12 @@ class SchedulerCog(commands.Cog):
                 except Exception as exc:
                     logger.warning("Failed to post reminder %s to channel %d: %s",
                                    rem["id"], cid, exc)
-            logger.info("Posted reminder %s to %d channel(s)", rem["id"], sent)
+            if sent > 0:
+                mark_reminder_posted(rem["id"], now)
+                logger.info("Posted reminder %s to %d channel(s)", rem["id"], sent)
+            else:
+                logger.warning("Reminder %s: sent to 0 channels — keeping due for retry",
+                               rem["id"])
 
     # ── FAQ daily push ────────────────────────────────────────────────────
 

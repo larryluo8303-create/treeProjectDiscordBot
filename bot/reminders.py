@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from bot.utils import atomic_json_write, data_path
+from bot.scheduler import _ensure_aware, _parse_stored_dt
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ def add_reminder(
         "id": f"rem_{uuid.uuid4().hex[:8]}",
         "title": title,
         "message": message,
-        "scheduled_at": scheduled_at.isoformat(),
+        "scheduled_at": _ensure_aware(scheduled_at).isoformat(),
         "repeat": repeat,
         "channel_ids": channel_ids,
         "last_posted": None,
@@ -84,19 +85,23 @@ def cancel_reminder(reminder_id: str) -> bool:
 def get_due_reminders(now: datetime) -> list[dict]:
     """Return reminders that are due to be posted.
 
-    Also updates their last_posted timestamp in the file.
+    Does NOT mark them as posted — the caller must call
+    :func:`mark_reminder_posted` after a successful send.  Previously the
+    timestamp was written here, before sending, so a failed send still
+    counted as "posted" and the reminder was silently lost forever.
     """
     reminders = _load()
     due = []
-    changed = False
 
     for rem in reminders:
         if rem.get("cancelled"):
             continue
 
-        scheduled = datetime.fromisoformat(rem["scheduled_at"])
+        scheduled = _parse_stored_dt(rem.get("scheduled_at"))
+        if scheduled is None:
+            continue
         repeat = rem.get("repeat", "none")
-        last_posted = rem.get("last_posted")
+        last_posted = _parse_stored_dt(rem.get("last_posted"))
 
         if repeat == "none":
             if last_posted:
@@ -107,16 +112,23 @@ def get_due_reminders(now: datetime) -> list[dict]:
             if now < scheduled:
                 continue
             if last_posted:
-                last_dt = datetime.fromisoformat(last_posted)
                 interval = _REPEAT_INTERVALS.get(repeat, timedelta(days=1))
-                if now - last_dt < interval:
+                if now - last_posted < interval:
                     continue
 
         due.append(rem)
-        rem["last_posted"] = now.isoformat()
-        changed = True
-
-    if changed:
-        _save(reminders)
 
     return due
+
+
+def mark_reminder_posted(reminder_id: str, now: datetime) -> None:
+    """Record a successful reminder post.  Call only after sent > 0."""
+    reminders = _load()
+    changed = False
+    for rem in reminders:
+        if rem.get("id") == reminder_id:
+            rem["last_posted"] = _ensure_aware(now).isoformat()
+            changed = True
+            break
+    if changed:
+        _save(reminders)

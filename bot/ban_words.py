@@ -13,10 +13,12 @@ client is available (set via ``set_openai_client``).  Without it, only exact
 substring matching is performed.
 """
 
+import hashlib
 import json
 import logging
 import math
 import os
+import time
 from typing import Any
 
 import openai as _openai_mod
@@ -38,6 +40,12 @@ _openai_client: _openai_mod.AsyncOpenAI | None = None
 _ban_entries: list[dict[str, Any]] = []
 # Pre-computed lowercase set for O(1) exact substring checks
 _exact_words: list[str] = []  # lowered, kept in sync with _ban_entries
+
+# Semantic-check guards: cap message length (long-text embedding vs. a single
+# word is unreliable), cache results by content hash to avoid repeat API calls.
+_SEMANTIC_MAX_CHARS = 800
+_SEMANTIC_CACHE_TTL = 3600  # seconds
+_semantic_cache: dict[str, tuple[float, tuple[str, float] | None]] = {}
 
 
 def set_openai_client(client: _openai_mod.AsyncOpenAI) -> None:
@@ -177,15 +185,28 @@ async def check_semantic(content: str) -> tuple[str, float] | None:
 
     Returns (matched_word, similarity_score) if above threshold, else None.
     Skips entries without embeddings.
+
+    Cost/methodology guards: messages longer than _SEMANTIC_MAX_CHARS skip
+    the check (a whole long message's averaged embedding vs. a single word
+    is methodologically unsound and prone to false positives), and results
+    are cached by content hash so repeat messages don't burn API calls.
     """
     if not _ban_entries or _openai_client is None:
         return None
 
     # Only check messages with enough substance
-    if len(content.strip()) < 5:
+    text = content.strip()
+    if len(text) < 5:
+        return None
+    if len(text) > _SEMANTIC_MAX_CHARS:
         return None
 
-    msg_embedding = await _compute_embedding(content)
+    cache_key = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    cached = _semantic_cache.get(cache_key)
+    if cached is not None and time.time() - cached[0] < _SEMANTIC_CACHE_TTL:
+        return cached[1]
+
+    msg_embedding = await _compute_embedding(text)
     if msg_embedding is None:
         return None
 
@@ -201,7 +222,11 @@ async def check_semantic(content: str) -> tuple[str, float] | None:
             best_score = score
             best_word = entry["word"]
 
+    result: tuple[str, float] | None = None
     if best_word is not None and best_score >= AUTO_MOD_BAN_WORDS_SIMILARITY:
-        return (best_word, best_score)
-
-    return None
+        result = (best_word, best_score)
+    _semantic_cache[cache_key] = (time.time(), result)
+    if len(_semantic_cache) > 2000:
+        oldest = min(_semantic_cache, key=lambda k: _semantic_cache[k][0])
+        del _semantic_cache[oldest]
+    return result

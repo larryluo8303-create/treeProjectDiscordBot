@@ -234,7 +234,7 @@ class PromotionCommands(commands.Cog):
 
         repeat_mode = repeat.value if repeat else "none"
 
-        promo = add_promo(
+        promo = await add_promo(
             title=title,
             description=description,
             scheduled_at=scheduled_at,
@@ -301,7 +301,7 @@ class PromotionCommands(commands.Cog):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
             return
 
-        if cancel_promo(promo_id):
+        if await cancel_promo(promo_id):
             await interaction.response.send_message(
                 f"✅ 促销 `{promo_id}` 已取消。", ephemeral=True,
             )
@@ -631,7 +631,7 @@ class PromotionCommands(commands.Cog):
 
         repeat_mode = repeat.value if repeat else "none"
 
-        promo = add_promo(
+        promo = await add_promo(
             title=title,
             description=content,
             scheduled_at=scheduled_at,
@@ -693,7 +693,7 @@ class PromotionCommands(commands.Cog):
 
         repeat_mode = repeat.value if repeat else "none"
 
-        lesson = add_lesson(
+        lesson = await add_lesson(
             title=title,
             content=content,
             scheduled_at=scheduled_at,
@@ -759,7 +759,7 @@ class PromotionCommands(commands.Cog):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
             return
 
-        if cancel_lesson(lesson_id):
+        if await cancel_lesson(lesson_id):
             await interaction.response.send_message(
                 f"✅ 教学帖 `{lesson_id}` 已取消。", ephemeral=True,
             )

@@ -280,7 +280,33 @@ async def send_for_review(
     openai_client=None,
 ) -> None:
     """DM the owner with the question, draft answer, and review buttons."""
-    owner = await bot.fetch_user(OWNER_USER_ID)
+    if not OWNER_USER_ID:
+        # Misconfigured deployment — don't silently drop the review request.
+        # Log loudly and tell the user their question was recorded.
+        logger.error("OWNER_USER_ID is not set — cannot forward message %s for review",
+                     getattr(original_message, "id", "?"))
+        try:
+            await original_message.reply(
+                "你的问题已记录，频道主稍后会来人工回复。",
+                mention_author=False,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except Exception:
+            pass
+        return
+    try:
+        owner = await bot.fetch_user(OWNER_USER_ID)
+    except Exception as exc:
+        logger.error("Failed to fetch owner user (ID=%s): %s", OWNER_USER_ID, exc)
+        try:
+            await original_message.reply(
+                "你的问题已记录，频道主稍后会来人工回复。",
+                mention_author=False,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except Exception:
+            pass
+        return
     if not owner:
         logger.error("Could not fetch owner user (ID=%s)", OWNER_USER_ID)
         return

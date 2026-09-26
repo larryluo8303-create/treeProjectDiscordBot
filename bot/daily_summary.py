@@ -85,6 +85,10 @@ class DailySummaryCog(commands.Cog):
         self._openai_client = openai_client
         self._task: asyncio.Task | None = None
         self._started: bool = False
+        # Prevents double @everyone: the background loop and a manual
+        # /daily_summary can otherwise both pass the already-posted check
+        # before either saves, posting twice.
+        self._run_lock = asyncio.Lock()
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -114,8 +118,11 @@ class DailySummaryCog(commands.Cog):
             return
         await interaction.response.defer(ephemeral=True)
         try:
-            await self._run_summary()
-            await interaction.followup.send("✅ 今日总结已推送。", ephemeral=True)
+            posted = await self._run_summary()
+            if posted:
+                await interaction.followup.send("✅ 今日总结已推送。", ephemeral=True)
+            else:
+                await interaction.followup.send("⚠️ 今日已有总结或正在生成中，未重复推送。", ephemeral=True)
         except Exception as exc:
             logger.exception("Manual daily summary failed: %s", exc)
             await interaction.followup.send(f"❌ 推送失败: {exc}", ephemeral=True)
@@ -191,15 +198,29 @@ class DailySummaryCog(commands.Cog):
         except asyncio.CancelledError:
             logger.info("Daily summary: loop cancelled")
 
-    async def _run_summary(self) -> None:
-        """Collect today's owner messages, summarise, and post."""
+    async def _run_summary(self) -> bool:
+        """Collect today's owner messages, summarise, and post.
+
+        Returns True if a summary was posted, False if skipped (already
+        posted today, or another run is in progress).  Serialized with
+        _run_lock so concurrent loop + manual triggers can't double-post
+        @everyone.
+        """
+        if self._run_lock.locked():
+            logger.warning("Daily summary: a run is already in progress — skipping duplicate")
+            return False
+        async with self._run_lock:
+            return await self._run_summary_locked()
+
+    async def _run_summary_locked(self) -> bool:
+        """Body of _run_summary; caller must hold _run_lock."""
         try:
             now = datetime.now(timezone.utc)
             now_et = datetime.now(_ET)
 
             if self._already_posted_on_date(now_et.date()):
                 logger.info("Daily summary: already posted today — skipping")
-                return
+                return False
 
             # Collect messages from today only (since midnight ET)
             midnight_et = now_et.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -223,7 +244,7 @@ class DailySummaryCog(commands.Cog):
 
             if not messages:
                 logger.info("Daily summary: no owner messages found today — skipping")
-                return
+                return False
 
             logger.info("Daily summary: collected %d owner messages, generating summary", len(messages))
 
@@ -232,7 +253,7 @@ class DailySummaryCog(commands.Cog):
 
             if not summary:
                 logger.warning("Daily summary: GPT returned empty summary — skipping")
-                return
+                return False
 
             # Discord embed description limit is 4096 chars
             if len(summary) > 4000:
@@ -266,7 +287,7 @@ class DailySummaryCog(commands.Cog):
 
             if sent <= 0:
                 logger.warning("Daily summary: failed to post to any channel — skipping save")
-                return
+                return False
 
             logger.info("Daily summary: posted to %d channel(s)", sent)
 
@@ -278,6 +299,8 @@ class DailySummaryCog(commands.Cog):
                 message_count=len(messages),
                 timestamp=now.isoformat(),
             )
+            return True
 
         except Exception as exc:
             logger.exception("Daily summary: error: %s", exc)
+            return False

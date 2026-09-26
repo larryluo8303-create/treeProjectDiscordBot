@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 STATS_FILE = data_path(os.getenv("STATS_FILE", "data/stats.json"))
 _SAVE_INTERVAL = 60  # seconds
+# Cap on retained query records: the stats dashboard's widest window is
+# 365 days, so keeping more than this is pure memory/disk growth.
+_MAX_RECENT_RECORDS = 20000
 
 
 @dataclass
@@ -46,8 +49,9 @@ class BotStats:
         self.total_confidence: int = 0
         self.total_latency_ms: int = 0
         self.channel_counts: dict[int, int] = {}
-        # All query records (persisted to disk)
-        self.recent: deque[QueryRecord] = deque()
+        # All query records (persisted to disk).  Bounded: without maxlen the
+        # deque (and stats.json) grew without limit on long-running bots.
+        self.recent: deque[QueryRecord] = deque(maxlen=_MAX_RECENT_RECORDS)
         self._save_task: asyncio.Task | None = None
         self._dirty: bool = False
         self._load()

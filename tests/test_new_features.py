@@ -159,15 +159,20 @@ class TestReminders:
 
     def test_repeat_reminder(self):
         with patch("bot.reminders.REMINDERS_FILE", self.reminders_file):
-            from bot.reminders import add_reminder, get_due_reminders
+            from bot.reminders import add_reminder, get_due_reminders, mark_reminder_posted
             past = datetime.now(timezone.utc) - timedelta(hours=2)
             add_reminder("Repeat", "hello", past, [123], 456, repeat="hourly")
             now = datetime.now(timezone.utc)
             due = get_due_reminders(now)
             assert len(due) == 1
-            # Calling again immediately should not be due yet
+            # get_due_reminders must NOT mark as posted (old bug: a read
+            # counted as a send, so a failed send lost the reminder forever).
+            # Only an explicit mark after a successful send clears it.
             due2 = get_due_reminders(now)
-            assert len(due2) == 0
+            assert len(due2) == 1
+            mark_reminder_posted(due[0]["id"], now)
+            due3 = get_due_reminders(now)
+            assert len(due3) == 0
 
 
 # ---------------------------------------------------------------------------

@@ -231,6 +231,10 @@ class NewsFeedCog(commands.Cog):
         self._last_id: str = _load_last_id()
         self._consecutive_errors: int = 0
         self._item_failures: dict[str, int] = {}
+        # Serializes _fetch_and_post and _backfill_on_startup: without this,
+        # a reconnect backfill can run concurrently with the poll loop, both
+        # advancing _last_id and posting the same items twice (or skipping).
+        self._fetch_lock = asyncio.Lock()
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -308,6 +312,11 @@ class NewsFeedCog(commands.Cog):
 
     async def _fetch_and_post(self) -> None:
         """Fetch latest flash news from Jin10 and post new items to channels."""
+        async with self._fetch_lock:
+            await self._fetch_and_post_locked()
+
+    async def _fetch_and_post_locked(self) -> None:
+        """Body of _fetch_and_post; caller must hold _fetch_lock."""
         session = await self._get_session()
         async with session.get(JIN10_API_URL, params=JIN10_PARAMS) as resp:
             if resp.status != 200:
@@ -394,6 +403,11 @@ class NewsFeedCog(commands.Cog):
 
     async def _backfill_on_startup(self) -> None:
         """Fetch missed items from the last N hours and post as a batch."""
+        async with self._fetch_lock:
+            await self._backfill_on_startup_locked()
+
+    async def _backfill_on_startup_locked(self) -> None:
+        """Body of _backfill_on_startup; caller must hold _fetch_lock."""
         cutoff = datetime.now(timezone.utc) - timedelta(hours=NEWS_BACKFILL_HOURS)
         cutoff_beijing = cutoff.astimezone(_TZ_BEIJING).replace(tzinfo=None)
 

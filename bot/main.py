@@ -19,6 +19,7 @@ from bot.config import (
     CHROMADB_PATH,
     DISCORD_BOT_TOKEN,
     OPENAI_API_KEY,
+    OWNER_USER_ID,
     WEBHOOK_ENABLED,
 )
 from bot.admin import AdminServer
@@ -54,6 +55,12 @@ def _validate_config() -> None:
         for e in errors:
             logger.error("Config error: %s", e)
         sys.exit(1)
+    if not OWNER_USER_ID:
+        logger.warning(
+            "OWNER_USER_ID is not set — owner review DMs and forward-to-owner "
+            "will degrade to a user-facing notice. Set OWNER_USER_ID to your "
+            "Discord user ID."
+        )
 
 
 async def main() -> None:
