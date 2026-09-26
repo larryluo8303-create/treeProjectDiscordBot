@@ -8,10 +8,12 @@ from bot.webhook import _verify_signature
 
 
 class TestVerifySignature:
-    def test_no_secret_always_valid(self):
+    def test_no_secret_always_invalid(self):
+        # SECURITY (fail-closed): with no secret configured, no signature
+        # is accepted — previously this returned True (fail-open).
         with patch("bot.webhook.WEBHOOK_SECRET", ""):
-            assert _verify_signature(b"any body", "") is True
-            assert _verify_signature(b"any body", "wrongsig") is True
+            assert _verify_signature(b"any body", "") is False
+            assert _verify_signature(b"any body", "wrongsig") is False
 
     def test_valid_signature(self):
         secret = "mysecret"

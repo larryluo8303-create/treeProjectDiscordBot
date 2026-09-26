@@ -390,7 +390,13 @@ TOPIC_RESTRICTED_CHANNEL_IDS: list[int] = [
 # ---------------------------------------------------------------------------
 WEBHOOK_ENABLED: bool = os.getenv("WEBHOOK_ENABLED", "false").lower() in ("1", "true", "yes")
 WEBHOOK_PORT: int = int(os.getenv("WEBHOOK_PORT", "8081"))
+# SECURITY: bind to localhost by default; only set to 0.0.0.0 if you know
+# the port is firewalled.  WEBHOOK_SECRET is REQUIRED for writes — the
+# server rejects all ingest requests when it is empty (fail-closed).
+WEBHOOK_HOST: str = os.getenv("WEBHOOK_HOST", "127.0.0.1")
 WEBHOOK_SECRET: str = os.getenv("WEBHOOK_SECRET", "")
+WEBHOOK_MAX_BODY_BYTES: int = int(os.getenv("WEBHOOK_MAX_BODY_BYTES", str(1024 * 1024)))
+WEBHOOK_MAX_ITEMS: int = int(os.getenv("WEBHOOK_MAX_ITEMS", "50"))
 
 # ---------------------------------------------------------------------------
 # Admin
@@ -404,9 +410,11 @@ ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "")
 # ---------------------------------------------------------------------------
 API_ENABLED: bool = os.getenv("API_ENABLED", "true").lower() in ("1", "true", "yes")
 API_PORT: int = int(os.getenv("API_PORT", "8090"))
-API_SECRET_KEY: str = os.getenv("API_SECRET_KEY", "change-me-in-production")
-API_USERNAME: str = os.getenv("API_USERNAME", "admin")
-API_PASSWORD: str = os.getenv("API_PASSWORD", "admin")
+# SECURITY: no default credentials — the API server refuses to start unless
+# these are explicitly set (see validation in bot/api/server.py create_app()).
+API_SECRET_KEY: str = os.getenv("API_SECRET_KEY", "")
+API_USERNAME: str = os.getenv("API_USERNAME", "")
+API_PASSWORD: str = os.getenv("API_PASSWORD", "")
 API_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("API_TOKEN_EXPIRE_MINUTES", "1440"))
 
 # Public client API (no Discord required)

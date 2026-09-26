@@ -15,15 +15,23 @@ from datetime import datetime, timezone
 
 import openai
 
-from bot.config import EMBEDDING_MODEL, WEBHOOK_ENABLED, WEBHOOK_PORT, WEBHOOK_SECRET
+from bot.config import (
+    EMBEDDING_MODEL,
+    WEBHOOK_ENABLED,
+    WEBHOOK_HOST,
+    WEBHOOK_MAX_BODY_BYTES,
+    WEBHOOK_MAX_ITEMS,
+    WEBHOOK_PORT,
+    WEBHOOK_SECRET,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def _verify_signature(body: bytes, signature: str) -> bool:
-    """Verify HMAC-SHA256 signature if WEBHOOK_SECRET is set."""
+    """Verify HMAC-SHA256 signature.  WEBHOOK_SECRET must be set."""
     if not WEBHOOK_SECRET:
-        return True
+        return False
     expected = hmac.new(WEBHOOK_SECRET.encode(), body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
@@ -49,10 +57,11 @@ class WebhookServer:
 
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", WEBHOOK_PORT)
+        # SECURITY: bind to WEBHOOK_HOST (default 127.0.0.1) instead of 0.0.0.0.
+        site = web.TCPSite(runner, WEBHOOK_HOST, WEBHOOK_PORT)
         await site.start()
         self._runner = runner
-        logger.info("Webhook server started on port %d", WEBHOOK_PORT)
+        logger.info("Webhook server started on %s:%d", WEBHOOK_HOST, WEBHOOK_PORT)
 
     async def stop(self) -> None:
         if self._runner:
@@ -66,11 +75,21 @@ class WebhookServer:
     async def _handle_ingest(self, request) -> "web.Response":
         from aiohttp import web
 
-        body = await request.read()
+        # SECURITY (fail-closed): reject all writes when no secret is
+        # configured.  Previously a missing WEBHOOK_SECRET meant "accept
+        # everything", letting anyone poison the knowledge base and burn
+        # OpenAI embedding budget.
+        if not WEBHOOK_SECRET:
+            return web.json_response(
+                {"error": "webhook secret not configured"}, status=503
+            )
 
         # Verify signature
+        body = await request.read()
+        if len(body) > WEBHOOK_MAX_BODY_BYTES:
+            return web.json_response({"error": "payload too large"}, status=413)
         sig = request.headers.get("X-Webhook-Signature", "")
-        if WEBHOOK_SECRET and not _verify_signature(body, sig):
+        if not _verify_signature(body, sig):
             return web.json_response({"error": "invalid signature"}, status=403)
 
         try:
@@ -80,6 +99,10 @@ class WebhookServer:
 
         # Accept either a single item or a list
         items = data if isinstance(data, list) else [data]
+        if len(items) > WEBHOOK_MAX_ITEMS:
+            return web.json_response(
+                {"error": f"too many items (max {WEBHOOK_MAX_ITEMS})"}, status=413
+            )
         ingested = 0
 
         for item in items:

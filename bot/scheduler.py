@@ -289,15 +289,24 @@ class SchedulerCog(commands.Cog):
     async def _check_scheduled(self) -> None:
         now = datetime.now(timezone.utc)
         mark_scheduler_tick(now.timestamp())
+        # SECURITY/stability: each subtask is isolated in its own try/except.
+        # Previously a single exception here killed the whole 60s loop
+        # permanently, silently stopping all scheduled processing.
+        subtasks = []
         if PROMO_ENABLED:
             sync_auto_push_channels()
-            await self._process_promos(now)
-            await self._process_lessons(now)
-        await self._process_reminders(now)
-        await self._process_faq_push(now)
-        await self._process_learning_gap_report(now)
+            subtasks.append(("promos", self._process_promos(now)))
+            subtasks.append(("lessons", self._process_lessons(now)))
+        subtasks.append(("reminders", self._process_reminders(now)))
+        subtasks.append(("faq_push", self._process_faq_push(now)))
+        subtasks.append(("learning_gap_report", self._process_learning_gap_report(now)))
         if FEATURE_SLA_MONITORING:
-            await evaluate_and_alert(self.bot, bot_stats)
+            subtasks.append(("sla_monitoring", evaluate_and_alert(self.bot, bot_stats)))
+        for name, coro in subtasks:
+            try:
+                await coro
+            except Exception:
+                logger.exception("Scheduler subtask %s failed; continuing with others", name)
 
     # ── Promos ───────────────────────────────────────────────────────────────
 

@@ -6,12 +6,12 @@ import os
 import time
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from bot.config import API_PORT
+from bot.config import API_PASSWORD, API_PORT, API_SECRET_KEY, API_USERNAME
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,43 @@ def get_bot():
 
 
 # ---------------------------------------------------------------------------
-# FastAPI app
+# SPA static-file serving (security-hardened)
 # ---------------------------------------------------------------------------
+def _resolve_spa_file(dist_dir: str, full_path: str) -> str | None:
+    """Resolve a request path inside the SPA dist dir.
+
+    Returns the absolute file path if it exists and stays inside dist_dir,
+    otherwise None (caller falls back to index.html).  Raises HTTPException
+    404 on path-traversal attempts.
+    """
+    if not full_path:
+        return None
+    # SECURITY: normalize and confine the resolved path inside dist_dir —
+    # a raw os.path.join allows traversal (e.g. GET /../../../../etc/passwd).
+    file_path = os.path.normpath(os.path.join(dist_dir, full_path))
+    if os.path.commonpath([dist_dir, file_path]) != dist_dir:
+        raise HTTPException(status_code=404, detail="Not found")
+    if os.path.isfile(file_path):
+        return file_path
+    return None
+
+
 def create_app() -> FastAPI:
+    # SECURITY (fail-closed): the API exposes admin endpoints, so it must not
+    # start with missing credentials.  There are no default values — set
+    # API_USERNAME / API_PASSWORD / API_SECRET_KEY explicitly (see .env.example).
+    if not API_USERNAME or not API_PASSWORD:
+        raise RuntimeError(
+            "API_USERNAME and API_PASSWORD must be set (no default credentials). "
+            "See .env.example."
+        )
+    if not API_SECRET_KEY or len(API_SECRET_KEY) < 32:
+        raise RuntimeError(
+            "API_SECRET_KEY must be set to a random string of at least 32 characters "
+            "(e.g. generated with: python -c \"import secrets; print(secrets.token_hex(32))\"). "
+            "See .env.example."
+        )
+
     app = FastAPI(
         title="BigTree Bot API",
         version="1.0.0",
@@ -111,10 +145,11 @@ def create_app() -> FastAPI:
 
         @app.get("/{full_path:path}")
         async def serve_spa(request: Request, full_path: str):
-            # Try to serve an exact file first (favicon.ico, etc.)
-            file_path = os.path.join(_dist_dir, full_path)
-            if full_path and os.path.isfile(file_path):
-                return FileResponse(file_path)
+            # Try to serve an exact file first (favicon.ico, etc.),
+            # falling back to index.html for SPA client-side routing.
+            resolved = _resolve_spa_file(_dist_dir, full_path)
+            if resolved:
+                return FileResponse(resolved)
             return FileResponse(_index_html)
 
         logger.info("Serving web-client from %s", _dist_dir)
