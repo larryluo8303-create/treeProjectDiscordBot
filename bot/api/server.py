@@ -23,6 +23,21 @@ from bot.config import (
 
 logger = logging.getLogger(__name__)
 
+
+def api_credentials_configured() -> bool:
+    """True when the API can start: username/password set and secret key long enough.
+
+    Used by main.py to skip the API server (instead of killing the whole bot)
+    when the operator never configured API credentials.
+    """
+    return bool(
+        API_USERNAME
+        and API_PASSWORD
+        and API_SECRET_KEY
+        and len(API_SECRET_KEY) >= 32
+    )
+
+
 # ---------------------------------------------------------------------------
 # App state — set by main.py before starting the server
 # ---------------------------------------------------------------------------

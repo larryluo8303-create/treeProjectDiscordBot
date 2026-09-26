@@ -507,3 +507,35 @@ class TestPublicAPI:
                 files={"image": ("test.txt", io.BytesIO(b"not an image"), "text/plain")},
             )
             assert resp.status_code == 400
+
+
+class TestApiCredentialsConfigured:
+    def test_missing_all_returns_false(self):
+        from unittest.mock import patch
+
+        import bot.api.server as server
+
+        with patch.object(server, "API_USERNAME", ""), \
+             patch.object(server, "API_PASSWORD", ""), \
+             patch.object(server, "API_SECRET_KEY", ""):
+            assert server.api_credentials_configured() is False
+
+    def test_short_secret_key_returns_false(self):
+        from unittest.mock import patch
+
+        import bot.api.server as server
+
+        with patch.object(server, "API_USERNAME", "u"), \
+             patch.object(server, "API_PASSWORD", "p"), \
+             patch.object(server, "API_SECRET_KEY", "short"):
+            assert server.api_credentials_configured() is False
+
+    def test_fully_configured_returns_true(self):
+        from unittest.mock import patch
+
+        import bot.api.server as server
+
+        with patch.object(server, "API_USERNAME", "u"), \
+             patch.object(server, "API_PASSWORD", "p"), \
+             patch.object(server, "API_SECRET_KEY", "x" * 32):
+            assert server.api_credentials_configured() is True

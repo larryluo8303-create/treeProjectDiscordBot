@@ -164,12 +164,28 @@ async def main() -> None:
         await admin_server.start()
 
     # ── API server (FastAPI) ───────────────────────────────────────────────
+    # NOTE: the API exposes admin endpoints, so it refuses to start without
+    # credentials (see create_app()). If the operator never configured them,
+    # skip the API server with a warning instead of killing the whole bot —
+    # most operators only run the Discord bot.
     api_task = None
     if API_ENABLED:
-        from bot.api.server import set_dependencies, run_api_server
-        set_dependencies(collection, openai_client, bot)
-        api_task = asyncio.create_task(run_api_server())
-        logger.info("API server task created")
+        from bot.api.server import (
+            api_credentials_configured,
+            set_dependencies,
+            run_api_server,
+        )
+        if api_credentials_configured():
+            set_dependencies(collection, openai_client, bot)
+            api_task = asyncio.create_task(run_api_server())
+            logger.info("API server task created")
+        else:
+            logger.warning(
+                "API_ENABLED is true but API_USERNAME/API_PASSWORD/API_SECRET_KEY "
+                "are not configured — API server will NOT start. The Discord bot "
+                "continues normally. To enable the API, set the credentials "
+                "(see .env.example)."
+            )
 
     # ── Graceful shutdown on SIGTERM / SIGINT ───────────────────────────
     shutdown_event = asyncio.Event()
