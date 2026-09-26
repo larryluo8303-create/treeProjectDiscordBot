@@ -88,7 +88,6 @@ Password is verified against the bcrypt hash of `API_PASSWORD` from `.env`.
   - `review_request` — new message forwarded for review
   - `review_resolved` — item approved/edited/rejected
   - `config_changed` — runtime config updated via API
-  - `new_query` — new query processed by the bot
 - **Client behavior:** The frontend `WSManager` auto-reconnects on disconnect (5s backoff) and invalidates relevant TanStack Query caches on each event type.
 
 ### 3.4 API Endpoints Reference
@@ -276,7 +275,6 @@ The `confidenceColor(score)` helper returns green/yellow/red based on the 1–10
 - On incoming events, invalidates relevant TanStack Query caches:
   - `review_request` / `review_resolved` → invalidate `['reviews']`
   - `config_changed` → invalidate `['config']`
-  - `new_query` → invalidate `['stats']`
 - Custom event handlers can be registered via `wsManager.onEvent(handler)`.
 
 ### 4.6 Screen Details
@@ -453,16 +451,25 @@ A separate set of **public endpoints** (no admin JWT required) powers the client
 ### 10.1 Configuration
 
 ```env
-CLIENT_API_ENABLED=true              # Enable/disable public API
-CLIENT_API_KEY=                       # Empty = open access; set a key to require x-api-key header
+CLIENT_API_ENABLED=false             # Enable/disable public API (default: disabled = fail-closed)
+CLIENT_API_KEY=<your-secret-key>      # Required when enabled; empty = open access (not recommended)
 CLIENT_RATE_LIMIT_PER_MINUTE=20       # Per-IP rate limit
+CLIENT_VISION_LIMIT_PER_MINUTE=5      # Stricter per-IP limit for /analyze-image
+CLIENT_API_DAILY_LIMIT=500            # Global daily budget for OpenAI-backed public endpoints
+CLIENT_CHAT_HISTORY_PER_MSG_CHARS=2000  # Per-message cap for conversation_history
+CLIENT_CHAT_HISTORY_TOTAL_CHARS=8000    # Total cap for conversation_history
+CORS_ORIGINS=                        # Comma-separated allowed origins (empty = same-origin only)
+LOGIN_MAX_ATTEMPTS=10                # Login brute-force protection per IP
+LOGIN_WINDOW_SECONDS=300
 ```
 
 ### 10.2 Authentication
 
-- If `CLIENT_API_KEY` is empty, all public endpoints are open.
-- If set, clients must send `x-api-key: <key>` header. Returns `403` on mismatch.
-- Per-IP rate limiting: returns `429` when exceeded.
+- The public API is **disabled by default** (`CLIENT_API_ENABLED=false` → all `/api/public/*` return 404).
+- When enabled without `CLIENT_API_KEY`, all public endpoints are **open** (the server logs a warning — not recommended).
+- When `CLIENT_API_KEY` is set, clients must send it as the `x-api-key` header (compared in constant time; `403` on mismatch).
+- Per-IP rate limiting: returns `429` when exceeded. `/analyze-image` has its own stricter limit.
+- Global daily budget (`CLIENT_API_DAILY_LIMIT`, default 500): once exhausted, OpenAI-backed endpoints return `429` until the next UTC day.
 
 ### 10.3 Public Endpoints
 
@@ -473,6 +480,11 @@ CLIENT_RATE_LIMIT_PER_MINUTE=20       # Per-IP rate limit
 | `GET` | `/api/public/kb/search` | `?q=...&top_k=5` | Semantic KB search |
 | `GET` | `/api/public/promos` | — | Upcoming promotions |
 | `GET` | `/api/public/lessons` | — | Upcoming lessons |
+| `GET` | `/api/public/lessons/archive` | — | Past (already posted) lessons |
+| `POST` | `/api/public/analyze-image` | multipart `image` + optional `text` | GPT-4o vision chart/screenshot analysis. Stricter per-IP limit (default 5/min). Max 10MB. |
+| `GET` | `/api/public/news` | `?limit=50` | Recent Jin10 market flash news (15s server cache) |
+| `GET` | `/api/public/digest` | — | Public-safe 24h activity summary |
+| `GET` | `/api/public/summaries` | `?limit=30&type=daily\|weekly` | Recent GPT-generated daily/weekly summaries |
 
 ### 10.4 Client App (`app-client/`)
 

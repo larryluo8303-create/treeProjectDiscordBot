@@ -9,8 +9,13 @@ import re
 import markdown
 from fpdf import FPDF
 
+# Paths are anchored to this script's directory so it works from any cwd.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MD_PATH = os.path.join(BASE_DIR, "docs", "FEATURE_LIST.md")
+PDF_PATH = os.path.join(BASE_DIR, "docs", "FEATURE_LIST.pdf")
+
 # --- read & convert markdown to HTML ---
-with open("docs/FEATURE_LIST.md", "r", encoding="utf-8") as f:
+with open(MD_PATH, "r", encoding="utf-8") as f:
     md_text = f.read()
 
 html_body = markdown.markdown(md_text, extensions=["tables", "fenced_code"])
@@ -75,5 +80,5 @@ pdf.set_font("cjk", size=10)
 styled = '<font face="cjk" size="10">' + html_body + "</font>"
 
 pdf.write_html(styled)
-pdf.output("docs/FEATURE_LIST.pdf")
-print("PDF generated: docs/FEATURE_LIST.pdf")
+pdf.output(PDF_PATH)
+print(f"PDF generated: {PDF_PATH}")

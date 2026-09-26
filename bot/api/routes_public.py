@@ -7,6 +7,7 @@ a simple API key (CLIENT_API_KEY) and per-IP rate limiting.
 
 import asyncio
 import base64
+import hmac
 import logging
 import time
 from collections import defaultdict
@@ -14,7 +15,15 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
-from bot.config import CLIENT_API_ENABLED, CLIENT_API_KEY, CLIENT_RATE_LIMIT_PER_MINUTE
+from bot.config import (
+    CLIENT_API_ENABLED,
+    CLIENT_API_KEY,
+    CLIENT_API_DAILY_LIMIT,
+    CLIENT_CHAT_HISTORY_PER_MSG_CHARS,
+    CLIENT_CHAT_HISTORY_TOTAL_CHARS,
+    CLIENT_RATE_LIMIT_PER_MINUTE,
+    CLIENT_VISION_LIMIT_PER_MINUTE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,27 +33,76 @@ router = APIRouter(prefix="/api/public", tags=["public"])
 # Simple in-memory rate limiter (per IP, per minute)
 # ---------------------------------------------------------------------------
 _request_log: dict[str, list[float]] = defaultdict(list)
+_vision_request_log: dict[str, list[float]] = defaultdict(list)
 
 
 _last_cleanup: float = 0.0
+
+
+def _check_window(
+    log: dict[str, list[float]],
+    key: str,
+    limit: int,
+    window_seconds: int,
+    detail: str,
+) -> None:
+    now = time.time()
+    window = now - window_seconds
+    log[key] = [t for t in log[key] if t > window]
+    if len(log[key]) >= limit:
+        raise HTTPException(status_code=429, detail=detail)
+    log[key].append(now)
 
 
 def _rate_limit(request: Request) -> None:
     """Raise 429 if caller exceeds CLIENT_RATE_LIMIT_PER_MINUTE."""
     global _last_cleanup
     ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    window = now - 60
-    _request_log[ip] = [t for t in _request_log[ip] if t > window]
-    if len(_request_log[ip]) >= CLIENT_RATE_LIMIT_PER_MINUTE:
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again in a minute.")
-    _request_log[ip].append(now)
+    _check_window(_request_log, ip, CLIENT_RATE_LIMIT_PER_MINUTE, 60,
+                  "Rate limit exceeded. Try again in a minute.")
     # Periodic cleanup: evict stale IPs every 5 minutes to prevent memory leak
+    now = time.time()
     if now - _last_cleanup > 300:
         _last_cleanup = now
-        stale = [k for k, v in _request_log.items() if not v or v[-1] < window]
-        for k in stale:
-            del _request_log[k]
+        window = now - 60
+        for log in (_request_log, _vision_request_log):
+            stale = [k for k, v in log.items() if not v or v[-1] < window]
+            for k in stale:
+                del log[k]
+
+
+def _vision_rate_limit(request: Request) -> None:
+    """Stricter per-IP limit for the expensive vision endpoint."""
+    ip = request.client.host if request.client else "unknown"
+    _check_window(_vision_request_log, ip, CLIENT_VISION_LIMIT_PER_MINUTE, 60,
+                  "Vision rate limit exceeded. Try again in a minute.")
+
+
+# ---------------------------------------------------------------------------
+# Global daily budget for OpenAI-backed endpoints (all clients combined)
+# ---------------------------------------------------------------------------
+_daily_usage: dict[str, int] = {"day": "", "count": 0}
+_daily_usage_lock = asyncio.Lock()
+
+
+async def _check_daily_budget() -> None:
+    """Raise 429 once the shared daily OpenAI budget is exhausted."""
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    async with _daily_usage_lock:
+        if _daily_usage["day"] != today:
+            _daily_usage["day"] = today
+            _daily_usage["count"] = 0
+        if _daily_usage["count"] >= CLIENT_API_DAILY_LIMIT:
+            raise HTTPException(
+                status_code=429,
+                detail="Daily public API budget exhausted. Try again tomorrow.",
+            )
+        _daily_usage["count"] += 1
+
+
+async def _spend_budget() -> None:
+    """Dependency: enforce the shared daily budget on expensive endpoints."""
+    await _check_daily_budget()
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +115,8 @@ def _check_api_key(request: Request) -> None:
     if not CLIENT_API_KEY:
         return  # open access
     key = request.headers.get("x-api-key", "")
-    if key != CLIENT_API_KEY:
+    # Constant-time comparison — never leak key validity via timing.
+    if not hmac.compare_digest(key, CLIENT_API_KEY):
         raise HTTPException(status_code=403, detail="Invalid API key.")
 
 
@@ -75,6 +134,27 @@ class ChatResponse(BaseModel):
     sources: list[dict]
 
 
+def build_history_str(conversation_history: list[dict] | None) -> str:
+    """Flatten conversation history into a prompt string with hard caps.
+
+    Per-message and total character limits prevent token-bombing the LLM
+    with a huge history payload from an untrusted client.
+    """
+    if not conversation_history:
+        return ""
+    lines = []
+    total = 0
+    for msg in conversation_history[-10:]:  # limit to last 10 turns
+        content = str(msg.get("content", ""))[:CLIENT_CHAT_HISTORY_PER_MSG_CHARS]
+        role = "用户" if msg.get("role") == "user" else "助手"
+        line = f"{role}: {content}"
+        if total + len(line) > CLIENT_CHAT_HISTORY_TOTAL_CHARS:
+            break
+        total += len(line)
+        lines.append(line)
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Chat
 # ---------------------------------------------------------------------------
@@ -84,6 +164,7 @@ async def chat(
     request: Request,
     _key: None = Depends(_check_api_key),
     _rl: None = Depends(_rate_limit),
+    _budget: None = Depends(_spend_budget),
 ) -> ChatResponse:
     """Ask the bot a question and get a RAG-powered answer."""
     from bot.api.server import get_collection, get_openai_client
@@ -99,14 +180,9 @@ async def chat(
     if not collection or not openai_client:
         raise HTTPException(status_code=503, detail="Bot backend is not ready.")
 
-    # Build conversation history string
-    history_str = ""
-    if body.conversation_history:
-        lines = []
-        for msg in body.conversation_history[-10:]:  # limit to last 10 turns
-            role = "用户" if msg.get("role") == "user" else "助手"
-            lines.append(f"{role}: {msg.get('content', '')}")
-        history_str = "\n".join(lines)
+    # Build conversation history string — capped per message and in total
+    # to prevent token-bombing the LLM with a huge history payload.
+    history_str = build_history_str(body.conversation_history)
 
     answer, confidence, context_chunks = await run_rag_pipeline(
         question=body.message.strip(),
@@ -164,6 +240,7 @@ async def search_kb(
     request: Request = None,
     _key: None = Depends(_check_api_key),
     _rl: None = Depends(_rate_limit),
+    _budget: None = Depends(_spend_budget),
 ) -> dict:
     """Semantic search the knowledge base."""
     from bot.api.server import get_collection, get_openai_client
@@ -236,6 +313,8 @@ async def analyze_image_endpoint(
     text: str = "",
     _key: None = Depends(_check_api_key),
     _rl: None = Depends(_rate_limit),
+    _vision_rl: None = Depends(_vision_rate_limit),
+    _budget: None = Depends(_spend_budget),
 ) -> dict:
     """Upload an image (chart/screenshot) for GPT-4o vision analysis."""
     from bot.api.server import get_collection, get_openai_client

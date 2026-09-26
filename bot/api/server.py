@@ -11,7 +11,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from bot.config import API_PASSWORD, API_PORT, API_SECRET_KEY, API_USERNAME
+from bot.config import (
+    API_PASSWORD,
+    API_PORT,
+    API_SECRET_KEY,
+    API_USERNAME,
+    CLIENT_API_ENABLED,
+    CLIENT_API_KEY,
+    CORS_ORIGINS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,14 +97,24 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
     )
 
-    # CORS — allow all origins for mobile/web dev
+    # CORS — same-origin by default.  The bundled web-client is served from
+    # this same port, so browsers don't need cross-origin access in production.
+    # Set CORS_ORIGINS (comma-separated) only for separately-hosted frontends.
+    # SECURITY: never combine allow_origins=["*"] with allow_credentials=True.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=CORS_ORIGINS,
+        allow_credentials=bool(CORS_ORIGINS),
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "x-api-key"],
     )
+
+    if CLIENT_API_ENABLED and not CLIENT_API_KEY:
+        logger.warning(
+            "CLIENT_API_ENABLED=true with empty CLIENT_API_KEY — "
+            "public API endpoints are OPEN to the internet. "
+            "Set CLIENT_API_KEY to protect them."
+        )
 
     # Register routers
     from bot.api.auth import router as auth_router

@@ -1,18 +1,26 @@
-discord.py>=2.3.0
-openai>=1.30.0
-chromadb>=0.5.0
-python-dotenv>=1.0.0
-tiktoken>=0.7.0
-aiohttp>=3.9.0
-tqdm>=4.66.0
+# Pinned dependencies — versions verified against the full test suite.
+# Regenerate with: pip freeze | grep -iE "<pkg>==" after a green test run.
+discord.py==2.7.1
+openai==3.19.2
+chromadb==1.5.9
+python-dotenv==1.2.3
+tiktoken==0.14.0
+aiohttp==3.14.3
+tqdm==4.70.1
+fastapi==0.141.1
+uvicorn[standard]==0.54.0
+python-jose[cryptography]==3.5.0
+passlib==1.7.4
+pymupdf==1.28.2
+# bcrypt stays at 4.0.1: 4.1+ raises on passwords >72 bytes, which breaks
+# passlib's bcrypt backend at login time.
+bcrypt==4.0.1
+# Not covered by the test suite — minimum versions only, pin after verifying.
 youtube-transcript-api>=0.6.0
 yt-dlp[default]>=2024.1.0
 imageio-ffmpeg>=0.5.0
-pymupdf>=1.24.0
-fastapi>=0.111.0
-uvicorn[standard]>=0.30.0
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6
-bcrypt==4.0.1
 tzdata>=2024.1
+# Docs tooling (md2pdf.py)
+markdown>=3.4.0
+fpdf2>=2.7.0

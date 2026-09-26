@@ -88,7 +88,6 @@ API 服务器作为 `main.py` 内的 asyncio 任务运行。启动前，`main.py
   - `review_request` — 有新消息转入审核
   - `review_resolved` — 条目已批准/编辑/拒绝
   - `config_changed` — 运行时配置已通过 API 更新
-  - `new_query` — bot 处理了新查询
 - **客户端行为：** 前端 `WSManager` 在断开后自动重连（5 秒退避），并按事件类型使相关 TanStack Query 缓存失效。
 
 ### 3.4 API 端点参考
@@ -276,7 +275,6 @@ app/
 - 收到事件时，使相关 TanStack Query 缓存失效：
   - `review_request` / `review_resolved` → 使 `['reviews']` 失效
   - `config_changed` → 使 `['config']` 失效
-  - `new_query` → 使 `['stats']` 失效
 - 可通过 `wsManager.onEvent(handler)` 注册自定义事件处理。
 
 ### 4.6 屏幕详情
@@ -460,9 +458,11 @@ CLIENT_RATE_LIMIT_PER_MINUTE=20       # Per-IP rate limit
 
 ### 10.2 认证
 
-- 若 `CLIENT_API_KEY` 为空，所有公开端点开放访问。
-- 若已设置，客户端须发送 `x-api-key: <key>` 请求头。不匹配返回 `403`。
-- 按 IP 限流：超出时返回 `429`。
+- 公开 API **默认禁用**（`CLIENT_API_ENABLED=false` → 所有 `/api/public/*` 返回 404）。
+- 启用但未设置 `CLIENT_API_KEY` 时，所有公开端点**开放访问**（服务端会打 warning，不推荐）。
+- 设置了 `CLIENT_API_KEY` 时，客户端须通过 `x-api-key` 请求头发送（常量时间比较；不匹配返回 `403`）。
+- 按 IP 限流：超出时返回 `429`。`/analyze-image` 有单独的更严格限流。
+- 全局每日预算（`CLIENT_API_DAILY_LIMIT`，默认 500）：用完后 OpenAI 相关端点返回 `429`，直到下一个 UTC 日。
 
 ### 10.3 公开端点
 
@@ -473,6 +473,11 @@ CLIENT_RATE_LIMIT_PER_MINUTE=20       # Per-IP rate limit
 | `GET` | `/api/public/kb/search` | `?q=...&top_k=5` | 语义知识库搜索 |
 | `GET` | `/api/public/promos` | — | 即将到来的推广 |
 | `GET` | `/api/public/lessons` | — | 即将到来的课程 |
+| `GET` | `/api/public/lessons/archive` | — | 已发布的历史课程 |
+| `POST` | `/api/public/analyze-image` | multipart `image` + 可选 `text` | GPT-4o vision 图表/截图分析。更严格的单 IP 限流（默认 5/分钟）。最大 10MB。 |
+| `GET` | `/api/public/news` | `?limit=50` | 金十快讯（服务端 15 秒缓存） |
+| `GET` | `/api/public/digest` | — | 公开版 24 小时活跃摘要 |
+| `GET` | `/api/public/summaries` | `?limit=30&type=daily\|weekly` | 近期 GPT 生成的日/周报摘要 |
 
 ### 10.4 客户端 App（`app-client/`）
 

@@ -421,9 +421,26 @@ API_PASSWORD: str = os.getenv("API_PASSWORD", "")
 API_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("API_TOKEN_EXPIRE_MINUTES", "1440"))
 
 # Public client API (no Discord required)
-CLIENT_API_ENABLED: bool = os.getenv("CLIENT_API_ENABLED", "true").lower() in ("1", "true", "yes")
+# SECURITY (fail-closed): disabled by default — enabling it without
+# CLIENT_API_KEY exposes all public endpoints to the internet.
+CLIENT_API_ENABLED: bool = os.getenv("CLIENT_API_ENABLED", "false").lower() in ("1", "true", "yes")
 CLIENT_API_KEY: str = os.getenv("CLIENT_API_KEY", "")  # empty = open access
 CLIENT_RATE_LIMIT_PER_MINUTE: int = int(os.getenv("CLIENT_RATE_LIMIT_PER_MINUTE", "20"))
+# Vision analysis is far more expensive than text chat — separate, stricter limit.
+CLIENT_VISION_LIMIT_PER_MINUTE: int = int(os.getenv("CLIENT_VISION_LIMIT_PER_MINUTE", "5"))
+# Global daily budget for the OpenAI-backed public endpoints (chat, vision,
+# kb/search) across ALL clients — fail-safe against runaway spend.
+CLIENT_API_DAILY_LIMIT: int = int(os.getenv("CLIENT_API_DAILY_LIMIT", "500"))
+# conversation_history caps for /api/public/chat (token-bomb protection)
+CLIENT_CHAT_HISTORY_PER_MSG_CHARS: int = int(os.getenv("CLIENT_CHAT_HISTORY_PER_MSG_CHARS", "2000"))
+CLIENT_CHAT_HISTORY_TOTAL_CHARS: int = int(os.getenv("CLIENT_CHAT_HISTORY_TOTAL_CHARS", "8000"))
+# CORS: comma-separated allowed origins for browser clients.  Empty (default)
+# means same-origin only — the bundled web-client is served from the same
+# port, so cross-origin access is not needed in production.
+CORS_ORIGINS: list[str] = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+# Login brute-force protection: max attempts per IP per window.
+LOGIN_MAX_ATTEMPTS: int = int(os.getenv("LOGIN_MAX_ATTEMPTS", "10"))
+LOGIN_WINDOW_SECONDS: int = int(os.getenv("LOGIN_WINDOW_SECONDS", "300"))
 
 # ---------------------------------------------------------------------------
 # Ingestion
