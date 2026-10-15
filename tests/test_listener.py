@@ -72,6 +72,44 @@ class TestQuestionPatterns:
     def test_statement(self):
         assert not MessageListener._QUESTION_PATTERNS.search("今天大盘涨了")
 
+    # 2026-10-15: "几个月前" (time duration) must not count as a question word
+    def test_time_duration_not_question(self):
+        assert not MessageListener._QUESTION_PATTERNS.search("几个月前没有，这是新的薅羊毛招数")
+
+    def test_hours_duration_not_question(self):
+        assert not MessageListener._QUESTION_PATTERNS.search("等了几个小时")
+
+    def test_points_statement_not_question(self):
+        assert not MessageListener._QUESTION_PATTERNS.search("涨了几个点")
+
+    def test_years_statement_not_question(self):
+        assert not MessageListener._QUESTION_PATTERNS.search("持有几年了")
+
+    def test_genuine_ji_ge_question_still_matches(self):
+        assert MessageListener._QUESTION_PATTERNS.search("几个意思")
+
+    def test_question_with_mark_still_matches(self):
+        assert MessageListener._QUESTION_PATTERNS.search("持有几个月？")
+
+
+class TestNoReplyPatterns:
+    # 2026-10-15: explicit "don't answer" must suppress reply even on
+    # @mention / reply-to-bot fast paths
+    def test_no_need_reply(self):
+        assert MessageListener._NO_REPLY_PATTERNS.search("没事儿，不用回答")
+
+    def test_do_not_reply(self):
+        assert MessageListener._NO_REPLY_PATTERNS.search("不用回了")
+
+    def test_its_fine(self):
+        assert MessageListener._NO_REPLY_PATTERNS.search("没事了")
+
+    def test_real_question_not_suppressed(self):
+        assert not MessageListener._NO_REPLY_PATTERNS.search("请问怎么开户")
+
+    def test_bu_yong_dan_xin_not_suppressed(self):
+        assert not MessageListener._NO_REPLY_PATTERNS.search("不用担心")
+
 
 class TestTestimonialPatterns:
     def test_profit_simplified(self):

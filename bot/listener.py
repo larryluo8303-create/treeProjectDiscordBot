@@ -189,7 +189,17 @@ class MessageListener(commands.Cog):
         r"感恩|辛苦了|辛苦啦|太感谢|太感謝|非常感谢|非常感謝|"
         r"谢谢大佬|謝謝大佬|感谢分享|感謝分享|谢谢老师|謝謝老師|"
         r"学到了|學到了|受教了|收到|明白了|懂了|了解了|好的谢谢|好的謝謝|"
-        r"谢谢回复|謝謝回覆|感谢回复|感謝回覆|👍|🙏|❤️|💯)[\s!！。.~～]*$",
+        r"谢谢回复|謝謝回覆|感谢回复|感謝回覆|"
+        r"没事儿|沒事兒|没事了|沒事了|👍|🙏|❤️|💯)[\s!！。.~～]*$",
+        re.IGNORECASE,
+    )
+
+    # Explicit "don't answer me" / conversation-closing markers. A message that
+    # says this must never trigger a reply, even when it @mentions the bot or
+    # uses the reply-to-bot follow-up path.
+    _NO_REPLY_PATTERNS = re.compile(
+        r"(不用回答|不用回|不要回|别回|别回答|"
+        r"没事了|沒事了|没事儿了|沒事兒了|不用了)",
         re.IGNORECASE,
     )
 
@@ -212,7 +222,10 @@ class MessageListener(commands.Cog):
         r"有没有|有沒有|什么|什麼|啥|"
         r"哪个|哪個|哪些|哪里|哪裡|哪儿|哪兒|哪天|哪种|哪種|"
         r"多少|多久|多长|多長|多远|多遠|多高|多低|多大|多深|"
-        r"几点|幾點|几个|幾個|几时|幾時|"
+        r"几点|幾點|"
+        r"几个(?!月|天|年|時|时|分|秒|周|歲|岁|點|点|號|号|日|小时|小時)|"
+        r"幾個(?!月|天|年|時|时|分|秒|周|歲|岁|點|点|號|号|日|小时|小時)|"
+        r"几时|幾時|"
         r"请问|請問|请教|請教|求助|求教|教教|想问|想問|想请教|想請教|"
         r"问一下|問一下|问下|問下|问个|問個|咨询|諮詢|"
         r"求分析|求看|帮看|幫看|帮分析|幫分析|帮我看|幫我看|"
@@ -312,6 +325,10 @@ class MessageListener(commands.Cog):
         # Images / voice notes are almost always analysis or question requests
         if has_image or has_voice:
             return True
+        text = (message.content or "").strip()
+        # Explicit "don't answer" beats @mention / reply fast paths
+        if text and self._NO_REPLY_PATTERNS.search(text):
+            return False
         # Explicit @mention of the bot user
         bot_user = self.bot.user
         if bot_user is not None and bot_user in message.mentions:
@@ -328,7 +345,6 @@ class MessageListener(commands.Cog):
         if RESPOND_MODE == "mention_only":
             return False
         # Question / help-request heuristic
-        text = (message.content or "").strip()
         if text and self._QUESTION_PATTERNS.search(text):
             return True
         return False
