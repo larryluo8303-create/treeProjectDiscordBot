@@ -67,8 +67,8 @@ The three pieces are independent: invite tracking, the timed-role engine, and th
 
 - On join, a new member gets the **`新人体验15天`** role (auto-created at startup) plus a timed-grant record (`data/timed_roles.json`).
 - The role gets **read-only** access to member channels (default: fullversion + ETF squads): `view_channel=True, send_messages=False` (idempotent).
-- **Auto-revoked after 15 days** (checked every 5 minutes). Paid cohort roles are protected: roles matching `^懒人.*\d` are never removed by the expiry sweep (logged when skipped).
-- Members who already hold a paid role don't get the trial role.
+- **Auto-revoked after 15 days** (checked every 5 minutes). Paid cohort roles are protected: roles matching `^懒人[^\d]*\d+[^\d]*$` are never removed by the expiry sweep (logged when skipped). Note: names mixing digits with letters (e.g. `懒人26Q1`) are not paid cohort roles.
+- Every new member gets the trial role with no exceptions (including members who already hold a paid role); it is auto-revoked after 15 days.
 - When a member leaves, open grants are marked cancelled (kept for audit).
 
 **Config**

@@ -426,6 +426,7 @@
 - **文件：** `bot/news_feed.py`, `bot/config.py`
 - **说明：** 每 30 秒轮询金十数据 Flash API，将重要市场快讯（如央行决议、非农数据、突发事件）自动推送到指定 Discord 频道。重要快讯以 Embed 富文本格式展示，普通快讯以纯文本发送。支持去重、广告过滤、多频道推送。Bot 重新上线或 Discord 重连时自动回填离线期间（默认 24 小时内，最多 50 条）错过的重要快讯；发帖成功后才推进 `last_id`，避免漏发
 - **配置：** `NEWS_FEED_ENABLED=true`, `NEWS_CHANNEL_IDS=频道ID1,频道ID2`, `NEWS_POLL_INTERVAL_SECONDS=30`, `NEWS_IMPORTANT_ONLY=true`, `NEWS_BACKFILL_HOURS=24`（离线超过 24 小时或单次超过 50 条重要快讯时，更早的不会补发）
+- **当前路由（2026-09-29）：** 新闻频道 = `#时事新闻`（1554564605047476336），只收金十快讯；盘前简报、宏观提醒、公司公告、个股异动发 `#bigtreesignal_ai`（各自显式指定频道 ID，不再跟随新闻频道）
 
 ### 50. 每周重點總結（Weekly Summary）
 
@@ -578,3 +579,58 @@
 - **配置：** `TRIAL_ROLE_NAME=新人体验15天`, `TRIAL_MEMBER_CHANNEL_IDS`（逗号分隔）, `TRIAL_GRANT_DAYS=15`
 - **运维手册：** [`INVITE_REWARDS_TRIAL.md`](../growth/INVITE_REWARDS_TRIAL.md)
 
+
+### 65. 财报速读（Earnings Digest）
+
+- **文件：** `bot/earnings.py`
+- **说明：** 金十快讯轮询时扫描**全部**快讯（不受 important 过滤限制），匹配到关注公司的财报快讯（含 EPS/营收等硬指标数字）后，用 LLM 提取 EPS vs 预期、营收 vs 预期、超预期百分比、下季度/全年指引，生成中文速读发到 `#财报速读` 频道。同公司同财报季只发一次（`data/earnings_posted.json` 去重）。点评只做事实总结，不给买卖建议
+- **配置：** `EARNINGS_ENABLED=true`, `EARNINGS_CHANNEL_ID`, `EARNINGS_TICKERS`（逗号分隔，如 `NVDA,AAPL,MSFT,AMZN,GOOGL,META,TSLA,AMD,AVGO,MU,COIN,MSTR`）
+
+### 66. 财报日历提醒（Earnings Calendar Reminders）
+
+- **文件：** `bot/earnings.py`（`EarningsCalendarCog`）
+- **说明：** 每 6 小时查 Nasdaq 财报日历 API，关注公司在**财报前 1 天**发预告、**当天早上**再提醒一次，内容含发布日期、财季、市场预期 EPS（及机构家数）、盘前/盘后，发到 `#财报速读`。去重记录 `data/earnings_calendar_reminded.json`
+- **配置：** 沿用 `EARNINGS_ENABLED` / `EARNINGS_CHANNEL_ID` / `EARNINGS_TICKERS`
+
+### 67. 个股异动推送（Movers Alerts）
+
+- **文件：** `bot/movers.py`（`MoversCog`）
+- **说明：** 美股盘中（周一至周五 9:30–16:00 ET）每 15 分钟查 Yahoo 行情，关注公司相对昨收涨跌达到阈值即推送（默认 ±3% 首报、±5% 升级），附带金十相关快讯标题作可能原因。每天每档阈值只推一次（`data/movers_alerted.json`，7 天自动清理）。休市日自动跳过（用报价时间戳判断，避免 stale 价格误报）
+- **配置：** `MOVERS_ENABLED=true`, `MOVERS_CHANNEL_ID`（默认用新闻频道；2026-09-29 起显式指定 `#bigtreesignal_ai`，异动推送作为信号留在原频道）, `MOVERS_THRESHOLD_PCT=3.0`, `MOVERS_ESCALATE_PCT=5.0`, `MOVERS_POLL_MINUTES=15`
+
+### 68. 持仓诊断小工具（/持仓诊断）
+
+- **文件：** `bot/portfolio.py`（`PortfolioCog`）
+- **说明：** 群员执行 `/持仓诊断` 并输入如 `NVDA:30,TSLA:20,AAPL:50`（代码:权重%，2–10 只），Bot 拉取 6 个月日线（优先复权价）计算 HHI 集中度、平均两两相关性、组合年化波动率、近 6 个月回报、行业分布，再由 LLM 生成中文结构化诊断（集中度/相关性/波动率/行业偏向 + 风格总结 + 风险点）。结果 **ephemeral 仅自己可见**，不给买卖建议，强制附带「不构成投资建议」声明
+- **使用：** `/持仓诊断 持仓:NVDA:30,TSLA:20,AAPL:50`
+- **命令：** `/持仓诊断`
+
+### 69. 盘前简报（Pre-market Briefing）
+
+- **文件：** `bot/premarket.py`（`PremarketCog`）
+- **说明：** 每个交易日 8:30 ET 自动发一条盘前简报到 `#bigtreesignal_ai`：股指期货（标普/纳指）+ VIX、今日宏观事件、今日关注公司财报、关注公司盘前异动（默认 ±2%）。休市日自动改为发一条"今日休市"短消息。每天只发一次（`data/premarket_briefed.json` 去重）。期货数据时间戳非当日则判定为休市
+- **配置：** `PREMARKET_ENABLED=true`, `PREMARKET_CHANNEL_ID`（默认用新闻频道）, `PREMARKET_THRESHOLD_PCT=2.0`
+
+### 70. 宏观事件日历提醒（Macro Calendar Reminders）
+
+- **文件：** `bot/macro.py`（`MacroCog`）
+- **说明：** 内置 FOMC 议息决议、CPI、非农、PCE 的发布日历（2026-09-29 按 federalreserve.gov / BLS / BEA 官网日历核实：2026 年无政府停摆，BLS/BEA 日历正常；2025 年 43 天停摆的影响不要套用到 2026），每个事件**前 1 天发预告、当天早上再提醒一次**，发到 `#bigtreesignal_ai`。去重记录 `data/macro_reminded.json`（7 天自动清理）。BLS/BEA 更新日期后需同步修改 `EVENTS` 列表
+- **配置：** `MACRO_ENABLED=true`, `MACRO_CHANNEL_ID`（默认用新闻频道）
+
+### 71. 个股技术面速览（/技术面）
+
+- **文件：** `bot/technicals.py`（`TechnicalsCog`）
+- **说明：** 群员执行 `/技术面` 输入股票代码，Bot 拉取 1 年日线计算 RSI(14)、MACD(12,26,9)、股价相对 MA20/MA50/MA200 位置、最新成交量相对 20 日均量倍数，纯客观指标展示（附超买/超卖等中性标签；金叉/死叉只在刚形成交叉的 K 线标注，其余显示 DIF 在 DEA 上方/下方），不给结论、不给买卖建议。结果 **ephemeral 仅自己可见**，强制附带「不构成投资建议」声明
+- **命令：** `/技术面 代码:NVDA`
+
+### 72. 快速报价（/报价）
+
+- **文件：** `bot/technicals.py`（`TechnicalsCog`）
+- **说明：** 群员执行 `/报价` 输入股票代码，返回现价、相对昨收涨跌幅、今开/最高/最低/成交量，以及盘前/盘后价格（如有）。结果 **ephemeral 仅自己可见**，强制附带「不构成投资建议」声明
+- **命令：** `/报价 代码:NVDA`
+
+### 73. 公司公告监控（Corporate Announcements）
+
+- **文件：** `bot/announcements.py`（挂在 `NewsFeedCog` 快讯扫描链上）
+- **说明：** 金十快讯轮询时扫描**全部**快讯（不受 important 过滤限制），匹配到关注公司的**股票回购、增发/配股/融资、分析师评级变化**（上调/下调评级、目标价调整）即发短提醒到 `#bigtreesignal_ai`，附快讯原文摘要。财报类快讯由财报速读处理，此处自动跳过避免重复。股票代码按独立词匹配（`MU` 不会命中 `musk`，`COIN` 不会命中 `bitcoin`）；央行逆回购操作不计入"股票回购"。按快讯 ID 去重（`data/announcements_posted.json`）
+- **配置：** `ANNOUNCE_ENABLED=true`, `ANNOUNCE_CHANNEL_ID`（默认用新闻频道），沿用 `EARNINGS_TICKERS` 关注列表

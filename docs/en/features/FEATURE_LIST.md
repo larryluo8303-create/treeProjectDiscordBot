@@ -426,6 +426,7 @@ All settings are configured via the `.env` file; see `.env.example` for a full s
 - **Files:** `bot/news_feed.py`, `bot/config.py`
 - **Description:** Poll Jin10 Flash API every 30 seconds and push important market flashes (e.g. central bank decisions, NFP, breaking events) to designated Discord channels. Important flashes use Embed rich format; normal flashes are plain text. Supports dedupe, ad filtering, multi-channel push. On bot reconnect, backfills important flashes missed while offline (default last 24 hours, max 50). `last_id` advances only after a successful post to avoid gaps
 - **Config:** `NEWS_FEED_ENABLED=true`, `NEWS_CHANNEL_IDS=channelId1,channelId2`, `NEWS_POLL_INTERVAL_SECONDS=30`, `NEWS_IMPORTANT_ONLY=true`, `NEWS_BACKFILL_HOURS=24` (if offline longer than 24 hours or more than 50 important flashes, older ones are not backfilled)
+- **Current routing (2026-09-29):** news channel = `#时事新闻` (1554564605047476336), Jin10 flashes only; pre-market briefing, macro reminders, corporate announcements and stock movers go to `#bigtreesignal_ai` (each pinned via explicit channel ID, no longer following the news channel)
 
 ### 50. Weekly Summary
 
@@ -577,3 +578,58 @@ All settings are configured via the `.env` file; see `.env.example` for a full s
 - **Description:** Generic expiring-role engine: grants persist in `data/timed_roles.json` and are revoked by a 5-minute sweep. Powers (a) invite rewards and (b) the new-member trial: joiners get the `新人体验15天` role (auto-created) with read-only access (`view_channel` allow, `send_messages` deny) to member channels, auto-revoked after `TRIAL_GRANT_DAYS` (default 15). Paid cohort roles (name matching `^懒人.*\d`) are protected from the expiry sweep; members who leave get their open grants cancelled. Every privileged Discord call degrades to a warning log without Manage Roles
 - **Config:** `TRIAL_ROLE_NAME=新人体验15天`, `TRIAL_MEMBER_CHANNEL_IDS` (comma-separated), `TRIAL_GRANT_DAYS=15`
 - **Ops guide:** [`INVITE_REWARDS_TRIAL.md`](../growth/INVITE_REWARDS_TRIAL.md)
+
+### 65. Earnings Digest
+
+- **Files:** `bot/earnings.py`
+- **Description:** Each Jin10 poll scans **all** flashes (bypassing the important-only filter) for earnings releases of watched tickers (must contain hard numbers like EPS/revenue). An LLM extracts EPS vs consensus, revenue vs consensus, beat/miss %, next-quarter/full-year guidance, and posts a structured Chinese digest to the `#财报速读` channel. One post per ticker per earnings season (`data/earnings_posted.json` dedup). Factual summary only, no trading advice
+- **Config:** `EARNINGS_ENABLED=true`, `EARNINGS_CHANNEL_ID`, `EARNINGS_TICKERS` (comma-separated, e.g. `NVDA,AAPL,MSFT,AMZN,GOOGL,META,TSLA,AMD,AVGO,MU,COIN,MSTR`)
+
+### 66. Earnings Calendar Reminders
+
+- **Files:** `bot/earnings.py` (`EarningsCalendarCog`)
+- **Description:** Polls the Nasdaq earnings calendar API every 6 hours; posts a preview **1 day before** and a reminder **on the morning of** each watched ticker's earnings (date, fiscal quarter, consensus EPS with analyst count, before/after market) to `#财报速读`. Dedup in `data/earnings_calendar_reminded.json`
+- **Config:** Reuses `EARNINGS_ENABLED` / `EARNINGS_CHANNEL_ID` / `EARNINGS_TICKERS`
+
+### 67. Stock Movers Alerts
+
+- **Files:** `bot/movers.py` (`MoversCog`)
+- **Description:** During US market hours (Mon–Fri 9:30–16:00 ET) polls Yahoo quotes every 15 minutes; alerts when a watched ticker moves vs previous close past thresholds (default ±3% first alert, ±5% escalation), with related Jin10 headlines as possible reasons. One alert per ticker per threshold per day (`data/movers_alerted.json`, auto-pruned after 7 days). Skips market holidays via quote-timestamp check to avoid stale-price false alerts
+- **Config:** `MOVERS_ENABLED=true`, `MOVERS_CHANNEL_ID` (defaults to news channel; explicitly pinned to `#bigtreesignal_ai` since 2026-09-29 — movers stay on the signal channel), `MOVERS_THRESHOLD_PCT=3.0`, `MOVERS_ESCALATE_PCT=5.0`, `MOVERS_POLL_MINUTES=15`
+
+### 68. Portfolio Diagnosis Tool (/持仓诊断)
+
+- **Files:** `bot/portfolio.py` (`PortfolioCog`)
+- **Description:** Members run `/持仓诊断` with input like `NVDA:30,TSLA:20,AAPL:50` (ticker:weight%, 2–10 holdings). The bot fetches 6 months of daily bars (adjusted closes preferred), computes HHI concentration, average pairwise correlation, annualized portfolio volatility, 6-month return and sector breakdown, then an LLM writes a structured Chinese diagnosis (concentration/correlation/volatility/sector tilt, style summary, risk points). Reply is **ephemeral (visible only to the requester)**; no buy/sell advice; always ends with a not-investment-advice disclaimer
+- **Usage:** `/持仓诊断 持仓:NVDA:30,TSLA:20,AAPL:50`
+- **Command:** `/持仓诊断`
+
+### 69. Pre-market Briefing
+
+- **Files:** `bot/premarket.py` (`PremarketCog`)
+- **Description:** Every trading day at 08:30 ET posts a pre-market briefing to `#bigtreesignal_ai`: index futures (S&P/Nasdaq) + VIX, today's macro events, today's earnings for watched tickers, and pre-market movers among watched tickers (default ±2%). On market holidays posts a short "market closed" note instead (detected via stale ES futures timestamp). Once per day (`data/premarket_briefed.json` dedup)
+- **Config:** `PREMARKET_ENABLED=true`, `PREMARKET_CHANNEL_ID` (defaults to news channel), `PREMARKET_THRESHOLD_PCT=2.0`
+
+### 70. Macro Event Calendar Reminders
+
+- **Files:** `bot/macro.py` (`MacroCog`)
+- **Description:** Built-in calendar of FOMC decisions, CPI, NFP and PCE release dates (verified 2026-09-29 against federalreserve.gov / BLS / BEA official calendars; there is no 2026 US government shutdown — the 43-day Oct–Nov 2025 shutdown's effects must not be applied to 2026). Posts a preview **1 day before** and a reminder **on the morning of** each event to `#bigtreesignal_ai`. Dedup `data/macro_reminded.json` (auto-pruned after 7 days). Update the `EVENTS` list when BLS/BEA publish new dates
+- **Config:** `MACRO_ENABLED=true`, `MACRO_CHANNEL_ID` (defaults to news channel)
+
+### 71. Technical Snapshot (/技术面)
+
+- **Files:** `bot/technicals.py` (`TechnicalsCog`)
+- **Description:** Members run `/技术面` with a ticker; the bot fetches 1 year of daily bars and computes RSI(14), MACD(12,26,9), price position vs MA20/MA50/MA200, and latest volume vs 20-day average — objective indicator display only (neutral labels like overbought/oversold; golden/death cross is only labelled on the bar where the crossover freshly forms, otherwise shows DIF above/below DEA), no conclusions, no buy/sell advice. Reply is **ephemeral (visible only to the requester)** and always ends with a not-investment-advice disclaimer
+- **Command:** `/技术面 代码:NVDA`
+
+### 72. Quick Quote (/报价)
+
+- **Files:** `bot/technicals.py` (`TechnicalsCog`)
+- **Description:** Members run `/报价` with a ticker; returns last price, % change vs previous close, open/high/low/volume, plus pre/post-market price when available. Reply is **ephemeral (visible only to the requester)** and always ends with a not-investment-advice disclaimer
+- **Command:** `/报价 代码:NVDA`
+
+### 73. Corporate Announcement Monitor
+
+- **Files:** `bot/announcements.py` (hooked into the `NewsFeedCog` flash scan chain)
+- **Description:** Scans **all** Jin10 flashes on every poll (not limited by the important-only filter); when a watched ticker has a **buyback, secondary offering/dilution, or analyst rating change** (upgrade/downgrade/target-price change), posts a short alert to `#bigtreesignal_ai` with the flash excerpt. Tickers match as standalone tokens (`MU` won't hit `musk`, `COIN` won't hit `bitcoin`); central-bank reverse-repo ops don't count as "buybacks". Earnings-type flashes are handled by the earnings digest and skipped here to avoid duplicates. Dedup by flash ID (`data/announcements_posted.json`)
+- **Config:** `ANNOUNCE_ENABLED=true`, `ANNOUNCE_CHANNEL_ID` (defaults to news channel), reuses the `EARNINGS_TICKERS` watchlist
