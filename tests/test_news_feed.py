@@ -1,20 +1,24 @@
-"""Tests for bot.news_feed module — filtering, title extraction, embed building, persistence, backfill."""
+"""Tests for bot.news_feed module — filtering, title extraction, embed building, persistence, backfill, archive."""
 
 import asyncio
 import json
 import os
 import tempfile
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import discord
 import pytest
 
 from bot.news_feed import (
     NewsFeedCog,
-    _BACKFILL_MAX_PAGES,
+    _append_to_archive,
     _clean_html,
     _convert_beijing_to_toronto,
+    _load_archive_ids,
     _load_last_id,
+    _read_archive,
     _save_last_id,
     build_embed,
     build_text,
@@ -320,11 +324,21 @@ class TestBackfillFilterLogic:
         assert len(result) == 60  # filter_items itself doesn't cap; backfill method does
 
 
-class TestBackfillIntegration:
-    """Integration tests for _backfill_on_startup using mocked HTTP + Discord."""
+def _beijing_time(hours_ago: float = 1) -> str:
+    """Beijing-time string like the Jin10 API returns, N hours before now."""
+    return (
+        datetime.now(ZoneInfo("Asia/Shanghai")) - timedelta(hours=hours_ago)
+    ).strftime("%Y-%m-%d %H:%M:%S")
 
-    # Test items use 2026-08-15 timestamps; use a wide window so tests stay stable.
-    _BACKFILL_HOURS = 8760
+
+class TestBackfillFromArchive:
+    """Backfill reads history from the local archive, never the Jin10 API.
+
+    The flash endpoint ignores max_id pagination (verified 2026-09-29: every
+    page returns the same latest ~21 items), so API paging back cannot cover
+    an outage longer than ~1h. The poll loop archives every raw page; the
+    backfill consumes that archive.
+    """
 
     @pytest.fixture
     def cog(self):
@@ -333,7 +347,9 @@ class TestBackfillIntegration:
         mock_channel = AsyncMock()
         mock_channel.send = AsyncMock()
         bot.fetch_channel = AsyncMock(return_value=mock_channel)
-        with patch("bot.news_feed._load_last_id", return_value="20260815060000000001"):
+        with patch("bot.news_feed._load_last_id", return_value="20260815060000000001"), \
+             patch("bot.news_feed._load_archive_ids", return_value=set()), \
+             patch("bot.news_feed._save_last_id"):
             cog = NewsFeedCog(bot)
         return cog
 
@@ -341,171 +357,165 @@ class TestBackfillIntegration:
     def mock_channel(self, cog):
         return cog.bot.fetch_channel.return_value
 
-    def _make_page(self, id_prefix: str, count: int = 5, time_str: str = "2026-08-15 10:00:00"):
-        """Create a page of items for mock API response."""
-        items = [
-            _make_item(
-                item_id=f"{id_prefix}{i:06d}",
-                content=f"【快讯{i}】内容{i}",
-                time_str=time_str,
-            )
-            for i in range(count)
-        ]
-        return _make_api_response(items)
+    def _archive_item(self, item_id, hours_ago=1, **kwargs):
+        return _make_item(item_id=item_id, time_str=_beijing_time(hours_ago), **kwargs)
+
+    def _write_archive(self, path, items):
+        with open(path, "w", encoding="utf-8") as f:
+            for it in items:
+                f.write(json.dumps(it, ensure_ascii=False) + "\n")
+
+    async def _run_backfill(self, cog, archive_path, hours=24):
+        with patch("bot.news_feed.ARCHIVE_FILE", archive_path), \
+             patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+             patch("bot.news_feed.NEWS_BACKFILL_HOURS", hours):
+            await cog._backfill_on_startup()
 
     @pytest.mark.asyncio
-    async def test_backfill_posts_header_and_items(self, cog, mock_channel):
-        page = self._make_page("20260815100000", count=3, time_str="2026-08-15 10:00:00")
-        empty_page = _make_api_response([])
-
-        # First call returns items, second returns empty to stop pagination
-        responses = iter([page, empty_page])
-
-        async def _json_side_effect(content_type=None):
-            return next(responses)
-
-        mock_resp = AsyncMock()
-        mock_resp.status = 200
-        mock_resp.json = _json_side_effect
-
-        mock_session = AsyncMock()
-        mock_session.get = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_resp),
-            __aexit__=AsyncMock(return_value=False),
-        ))
-        mock_session.closed = False
-        cog._session = mock_session
-
-        with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS):
-            await cog._backfill_on_startup()
+    async def test_backfill_posts_header_and_items(self, cog, mock_channel, tmp_path):
+        archive = tmp_path / "archive.jsonl"
+        self._write_archive(str(archive), [
+            self._archive_item("20260815100000000003", hours_ago=1, content="【A】内容A"),
+            self._archive_item("20260815100000000002", hours_ago=2, content="【B】内容B"),
+            self._archive_item("20260815100000000001", hours_ago=3, content="【C】内容C"),
+        ])
+        await self._run_backfill(cog, str(archive))
 
         # 1 header embed + 3 item embeds = 4 calls
         assert mock_channel.send.call_count == 4
-        # First call is the header
         first_call_kwargs = mock_channel.send.call_args_list[0].kwargs
         header_embed = first_call_kwargs.get("embed")
         assert header_embed is not None
         assert "离线期间" in header_embed.title or "离线期间" in (header_embed.description or "")
+        # Items posted oldest-first
+        bodies = [c.kwargs.get("embed").description or "" for c in mock_channel.send.call_args_list[1:]]
+        assert "内容C" in bodies[0] and "内容B" in bodies[1] and "内容A" in bodies[2]
 
     @pytest.mark.asyncio
-    async def test_backfill_dedup_across_pages(self, cog, mock_channel):
-        """Regression: pagination overlap must not cause duplicate posts."""
-        # Page 1: items A, B, C (C is oldest, used as max_id for page 2)
-        # Page 2: items C, D (C overlaps with page 1) then stop
-        page1 = _make_api_response([
-            _make_item(item_id="20260815100000000003", content="【A】内容A", time_str="2026-08-15 10:00:03"),
-            _make_item(item_id="20260815100000000002", content="【B】内容B", time_str="2026-08-15 10:00:02"),
-            _make_item(item_id="20260815100000000001", content="【C】内容C", time_str="2026-08-15 10:00:01"),
+    async def test_backfill_never_hits_api(self, cog, mock_channel, tmp_path):
+        """Backfill must not touch the network at all (no session usage)."""
+        archive = tmp_path / "archive.jsonl"
+        self._write_archive(str(archive), [
+            self._archive_item("20260815100000000003", hours_ago=1),
         ])
-        page2 = _make_api_response([
-            _make_item(item_id="20260815100000000001", content="【C】内容C", time_str="2026-08-15 10:00:01"),  # overlap
-            _make_item(item_id="20260815090000000005", content="【D】内容D", time_str="2026-08-15 09:00:05"),
-        ])
-        empty_page = _make_api_response([])
-        responses = iter([page1, page2, empty_page])
-
-        async def _json_side_effect(content_type=None):
-            return next(responses)
-
-        mock_resp = AsyncMock()
-        mock_resp.status = 200
-        mock_resp.json = _json_side_effect
-
-        mock_session = AsyncMock()
-        mock_session.get = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_resp),
-            __aexit__=AsyncMock(return_value=False),
-        ))
-        mock_session.closed = False
-        cog._session = mock_session
-
-        with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS):
-            await cog._backfill_on_startup()
-
-        # 1 header + 4 unique items (A, B, C, D) = 5 calls — NOT 6
-        assert mock_channel.send.call_count == 5
+        cog._get_session = AsyncMock(side_effect=AssertionError("backfill must not call the API"))
+        await self._run_backfill(cog, str(archive))
+        # 1 header + 1 item — posted purely from the archive
+        assert mock_channel.send.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_backfill_no_missed_items(self, cog, mock_channel):
-        # Return items that are all older than last_id
-        items = [
-            _make_item(
-                item_id="20260815050000000001",
-                time_str="2026-08-15 05:00:00",
-            )
-        ]
-        page = _make_api_response(items)
+    async def test_backfill_dedups_archive_duplicates(self, cog, mock_channel, tmp_path):
+        """Duplicate lines for the same id in the archive must post once."""
+        archive = tmp_path / "archive.jsonl"
+        dup = self._archive_item("20260815100000000003", hours_ago=1, content="【A】内容A")
+        self._write_archive(str(archive), [dup, dup])
+        await self._run_backfill(cog, str(archive))
 
-        mock_resp = AsyncMock()
-        mock_resp.status = 200
-        mock_resp.json = AsyncMock(return_value=page)
+        # 1 header + 1 unique item = 2 calls — NOT 3
+        assert mock_channel.send.call_count == 2
 
-        mock_session = AsyncMock()
-        mock_session.get = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_resp),
-            __aexit__=AsyncMock(return_value=False),
-        ))
-        mock_session.closed = False
-        cog._session = mock_session
+    @pytest.mark.asyncio
+    async def test_backfill_time_window_filters_old_items(self, cog, mock_channel, tmp_path):
+        """Items older than NEWS_BACKFILL_HOURS are excluded from the archive read."""
+        archive = tmp_path / "archive.jsonl"
+        old = self._archive_item("20260815120000000009", hours_ago=30, content="【旧】超窗口")
+        fresh = self._archive_item("20260815100000000003", hours_ago=1, content="【新】窗口内")
+        self._write_archive(str(archive), [old, fresh])
+        with patch("bot.news_feed._save_last_id") as mock_save:
+            with patch("bot.news_feed.ARCHIVE_FILE", str(archive)), \
+                 patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+                 patch("bot.news_feed.NEWS_BACKFILL_HOURS", 24):
+                await cog._backfill_on_startup()
 
-        with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS):
-            await cog._backfill_on_startup()
+        # 1 header + only the fresh item
+        assert mock_channel.send.call_count == 2
+        bodies = [c.kwargs.get("embed").description or "" for c in mock_channel.send.call_args_list[1:]]
+        assert all("超窗口" not in b for b in bodies)
+        # Cursor advances only over in-window collected items
+        mock_save.assert_called_once_with("20260815100000000003")
+        assert cog._last_id == "20260815100000000003"
 
-        # No items should be posted
+    @pytest.mark.asyncio
+    async def test_backfill_skips_items_at_or_below_last_id(self, cog, mock_channel, tmp_path):
+        """No duplicate posts for items the cursor already passed."""
+        archive = tmp_path / "archive.jsonl"
+        self._write_archive(str(archive), [
+            self._archive_item("20260815060000000001", hours_ago=1, content="【旧】已发过"),
+            self._archive_item("20260815050000000001", hours_ago=2, content="【更旧】已发过"),
+        ])
+        await self._run_backfill(cog, str(archive))
+
         mock_channel.send.assert_not_called()
+        assert cog._last_id == "20260815060000000001"
 
     @pytest.mark.asyncio
-    async def test_backfill_updates_last_id(self, cog, mock_channel):
-        items = [
-            _make_item(item_id="20260815110000000005", time_str="2026-08-15 11:00:00"),
-            _make_item(item_id="20260815100000000003", time_str="2026-08-15 10:00:00"),
-        ]
-        page = _make_api_response(items)
+    async def test_backfill_empty_archive(self, cog, mock_channel, tmp_path):
+        """Missing archive file: no posts, no crash, cursor untouched."""
+        missing = str(tmp_path / "does-not-exist.jsonl")
+        await self._run_backfill(cog, missing)
 
-        mock_resp = AsyncMock()
-        mock_resp.status = 200
-        mock_resp.json = AsyncMock(return_value=page)
+        mock_channel.send.assert_not_called()
+        assert cog._last_id == "20260815060000000001"
 
-        mock_session = AsyncMock()
-        mock_session.get = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_resp),
-            __aexit__=AsyncMock(return_value=False),
-        ))
-        mock_session.closed = False
-        cog._session = mock_session
+    @pytest.mark.asyncio
+    async def test_backfill_updates_last_id(self, cog, mock_channel, tmp_path):
+        archive = tmp_path / "archive.jsonl"
+        self._write_archive(str(archive), [
+            self._archive_item("20260815110000000005", hours_ago=1),
+            self._archive_item("20260815100000000003", hours_ago=2),
+        ])
+        with patch("bot.news_feed._save_last_id") as mock_save:
+            with patch("bot.news_feed.ARCHIVE_FILE", str(archive)), \
+                 patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+                 patch("bot.news_feed.NEWS_BACKFILL_HOURS", 24):
+                await cog._backfill_on_startup()
 
-        with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS), \
-             patch("bot.news_feed._save_last_id") as mock_save:
-            await cog._backfill_on_startup()
-
-        # Should save the newest ID
+        # Should save the newest collected ID
         mock_save.assert_called_once_with("20260815110000000005")
         assert cog._last_id == "20260815110000000005"
 
     @pytest.mark.asyncio
-    async def test_backfill_api_error_handled(self, cog, mock_channel):
-        mock_resp = AsyncMock()
-        mock_resp.status = 500
-        mock_resp.json = AsyncMock(return_value={})
+    async def test_backfill_skips_unparseable_time(self, cog, mock_channel, tmp_path):
+        """Archive lines with garbage timestamps are skipped, not fatal."""
+        archive = tmp_path / "archive.jsonl"
+        bad = self._archive_item("20260815100000000004", hours_ago=1)
+        bad["time"] = "not-a-time"
+        good = self._archive_item("20260815100000000003", hours_ago=1, content="【好】内容")
+        self._write_archive(str(archive), [bad, good])
+        await self._run_backfill(cog, str(archive))
 
-        mock_session = AsyncMock()
-        mock_session.get = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_resp),
-            __aexit__=AsyncMock(return_value=False),
-        ))
-        mock_session.closed = False
-        cog._session = mock_session
+        assert mock_channel.send.call_count == 2  # header + good item only
 
-        with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS):
-            # Should not raise
-            await cog._backfill_on_startup()
+    @pytest.mark.asyncio
+    async def test_backfill_advances_last_id_for_non_important_only(self, cog, mock_channel, tmp_path):
+        """Non-important items collected during backfill still advance last_id."""
+        archive = tmp_path / "archive.jsonl"
+        self._write_archive(str(archive), [
+            self._archive_item("20260815110000000005", hours_ago=1, important=0),
+        ])
+        with patch("bot.news_feed._save_last_id") as mock_save, \
+             patch("bot.news_feed.NEWS_IMPORTANT_ONLY", True):
+            with patch("bot.news_feed.ARCHIVE_FILE", str(archive)), \
+                 patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+                 patch("bot.news_feed.NEWS_BACKFILL_HOURS", 24):
+                await cog._backfill_on_startup()
 
         mock_channel.send.assert_not_called()
+        mock_save.assert_called_once_with("20260815110000000005")
+        assert cog._last_id == "20260815110000000005"
+
+    @pytest.mark.asyncio
+    async def test_backfill_caps_at_50(self, cog, mock_channel, tmp_path):
+        archive = tmp_path / "archive.jsonl"
+        items = [
+            self._archive_item(f"2026081510{i:010d}", hours_ago=1, content=f"【{i}】内容")
+            for i in range(60)
+        ]
+        self._write_archive(str(archive), items)
+        await self._run_backfill(cog, str(archive))
+
+        # 1 header + 50 newest items = 51 calls
+        assert mock_channel.send.call_count == 51
 
     @pytest.mark.asyncio
     async def test_backfill_skipped_when_no_last_id(self):
@@ -515,47 +525,61 @@ class TestBackfillIntegration:
         # last_id is empty → backfill condition is False
         assert cog._last_id == ""
 
-    @pytest.mark.asyncio
-    async def test_backfill_advances_last_id_for_non_important_only(self, cog, mock_channel):
-        """Non-important items collected during backfill should still advance last_id."""
-        items = [
-            _make_item(item_id="20260815110000000005", important=0, time_str="2026-08-15 11:00:00"),
-        ]
-        page = _make_api_response(items)
 
-        mock_resp = AsyncMock()
-        mock_resp.status = 200
-        mock_resp.json = AsyncMock(return_value=page)
+class TestArchiveHelpers:
+    """Unit tests for the local rolling archive helpers."""
 
-        mock_session = AsyncMock()
-        mock_session.get = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_resp),
-            __aexit__=AsyncMock(return_value=False),
-        ))
-        mock_session.closed = False
-        cog._session = mock_session
+    def test_append_and_read_roundtrip(self, tmp_path):
+        path = str(tmp_path / "archive.jsonl")
+        items = [_make_item(item_id="20260815100000000001"),
+                 _make_item(item_id="20260815100000000002")]
+        with patch("bot.news_feed.ARCHIVE_FILE", path):
+            seen: set = set()
+            _append_to_archive(items, seen)
+            assert seen == {"20260815100000000001", "20260815100000000002"}
+            back = _read_archive()
+        assert [it["id"] for it in back] == ["20260815100000000001", "20260815100000000002"]
+        # Raw items preserved (not just ids)
+        assert back[0]["data"]["content"]
 
-        with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
-             patch("bot.news_feed.NEWS_BACKFILL_HOURS", self._BACKFILL_HOURS), \
-             patch("bot.news_feed.NEWS_IMPORTANT_ONLY", True), \
-             patch("bot.news_feed._save_last_id") as mock_save:
-            await cog._backfill_on_startup()
+    def test_append_dedups(self, tmp_path):
+        path = str(tmp_path / "archive.jsonl")
+        items = [_make_item(item_id="20260815100000000001")]
+        with patch("bot.news_feed.ARCHIVE_FILE", path):
+            seen: set = set()
+            _append_to_archive(items, seen)
+            _append_to_archive(items, seen)  # same page again
+            _append_to_archive([_make_item(item_id="")], seen)  # empty id skipped
+            back = _read_archive()
+        assert len(back) == 1
 
-        mock_channel.send.assert_not_called()
-        mock_save.assert_called_once_with("20260815110000000005")
-        assert cog._last_id == "20260815110000000005"
+    def test_load_archive_ids(self, tmp_path):
+        path = str(tmp_path / "archive.jsonl")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(_make_item(item_id="20260815100000000001")) + "\n")
+            f.write("garbage line\n")
+            f.write("\n")
+        with patch("bot.news_feed.ARCHIVE_FILE", path):
+            ids = _load_archive_ids()
+        assert ids == {"20260815100000000001"}
+
+    def test_read_archive_missing_file(self, tmp_path):
+        with patch("bot.news_feed.ARCHIVE_FILE", str(tmp_path / "nope.jsonl")):
+            assert _read_archive() == []
 
 
 class TestFetchAndPost:
     @pytest.mark.asyncio
-    async def test_does_not_advance_last_id_when_post_fails(self):
+    async def test_does_not_advance_last_id_when_post_fails(self, tmp_path):
         bot = MagicMock()
         bot.get_channel.return_value = None
         mock_channel = AsyncMock()
         mock_channel.send = AsyncMock(side_effect=discord.HTTPException(MagicMock(), "fail"))
         bot.fetch_channel = AsyncMock(return_value=mock_channel)
 
-        with patch("bot.news_feed._load_last_id", return_value="20260815060000000001"):
+        with patch("bot.news_feed._load_last_id", return_value="20260815060000000001"), \
+             patch("bot.news_feed._load_archive_ids", return_value=set()), \
+             patch("bot.news_feed._save_last_id"):
             cog = NewsFeedCog(bot)
 
         items = [_make_item(item_id="20260815110000000005")]
@@ -575,11 +599,100 @@ class TestFetchAndPost:
 
         with patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
              patch("bot.news_feed.NEWS_IMPORTANT_ONLY", True), \
-             patch("bot.news_feed._save_last_id") as mock_save:
+             patch("bot.news_feed._save_last_id") as mock_save, \
+             patch("bot.news_feed.ARCHIVE_FILE", str(tmp_path / "archive.jsonl")):
             await cog._fetch_and_post()
 
         mock_save.assert_not_called()
         assert cog._last_id == "20260815060000000001"
+
+
+class TestArchivePoll:
+    """The poll loop archives every raw page it fetches (backfill source)."""
+
+    @pytest.fixture
+    def cog(self):
+        bot = MagicMock()
+        bot.get_channel = MagicMock(return_value=None)
+        mock_channel = AsyncMock()
+        mock_channel.send = AsyncMock()
+        bot.fetch_channel = AsyncMock(return_value=mock_channel)
+        with patch("bot.news_feed._load_last_id", return_value="20260815060000000001"), \
+             patch("bot.news_feed._load_archive_ids", return_value=set()), \
+             patch("bot.news_feed._save_last_id"):
+            cog = NewsFeedCog(bot)
+        return cog
+
+    @pytest.fixture
+    def mock_channel(self, cog):
+        return cog.bot.fetch_channel.return_value
+
+    def _mock_session(self, cog, items):
+        payload = _make_api_response(items)
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value=payload)
+        mock_session = AsyncMock()
+        mock_session.get = MagicMock(return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=mock_resp),
+            __aexit__=AsyncMock(return_value=False),
+        ))
+        mock_session.closed = False
+        cog._session = mock_session
+
+    @pytest.mark.asyncio
+    async def test_poll_archives_raw_items(self, cog, mock_channel, tmp_path):
+        """Fetched raw items land in the archive, even ones never posted."""
+        archive = str(tmp_path / "archive.jsonl")
+        items = [
+            _make_item(item_id="20260815110000000005", content="【重要】内容5"),
+            _make_item(item_id="20260815110000000006", important=0, content="【普通】内容6"),
+        ]
+        self._mock_session(cog, items)
+        with patch("bot.news_feed.ARCHIVE_FILE", archive), \
+             patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+             patch("bot.news_feed.NEWS_IMPORTANT_ONLY", True):
+            await cog._fetch_and_post()
+
+        # Only the important item was posted...
+        assert mock_channel.send.call_count == 1
+        # ...but BOTH raw items were archived
+        with patch("bot.news_feed.ARCHIVE_FILE", archive):
+            back = _read_archive()
+        assert [it["id"] for it in back] == ["20260815110000000005", "20260815110000000006"]
+        assert cog._archived_ids == {"20260815110000000005", "20260815110000000006"}
+        # Raw dicts preserved
+        assert back[0]["data"]["content"] == "【重要】内容5"
+
+    @pytest.mark.asyncio
+    async def test_poll_archive_dedups_repeat_pages(self, cog, mock_channel, tmp_path):
+        """Fetching the same page twice must not duplicate archive lines."""
+        archive = str(tmp_path / "archive.jsonl")
+        items = [_make_item(item_id="20260815110000000005")]
+        with patch("bot.news_feed.ARCHIVE_FILE", archive), \
+             patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+             patch("bot.news_feed.NEWS_IMPORTANT_ONLY", True):
+            self._mock_session(cog, items)
+            await cog._fetch_and_post()
+            # Simulate a later poll returning the same page (API overlap)
+            self._mock_session(cog, items)
+            await cog._fetch_and_post()
+            back = _read_archive()
+        assert len(back) == 1
+
+    @pytest.mark.asyncio
+    async def test_poll_archives_when_nothing_new(self, cog, mock_channel, tmp_path):
+        """Items older than last_id are not posted, but still archived."""
+        archive = str(tmp_path / "archive.jsonl")
+        items = [_make_item(item_id="20260815050000000001", content="【旧】内容")]
+        self._mock_session(cog, items)
+        with patch("bot.news_feed.ARCHIVE_FILE", archive), \
+             patch("bot.news_feed.NEWS_CHANNEL_IDS", [123456]), \
+             patch("bot.news_feed.NEWS_IMPORTANT_ONLY", True):
+            await cog._fetch_and_post()
+            back = _read_archive()
+        mock_channel.send.assert_not_called()
+        assert [it["id"] for it in back] == ["20260815050000000001"]
 
 
 # ── Beijing to Toronto time conversion ───────────────────────────────────────

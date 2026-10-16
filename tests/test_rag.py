@@ -468,3 +468,93 @@ class TestOpenAIDegrade:
         assert answer == get_locale("no_answer")
         assert confidence == 1
         assert chunks == []
+
+
+class TestRelaxedOwnKnowledge:
+    """2026-09-28 user-approved rule: when the KB has no coverage,
+    - signal questions stay KB-only (fallback -> owner review),
+    - general questions may be answered from the model's own knowledge
+      with a disclaimer (confidence capped at 6, always owner-reviewed).
+    """
+
+    @pytest.mark.asyncio
+    async def test_empty_context_signal_query_stays_fallback(self):
+        from bot.rag import run_rag_pipeline
+
+        mock_client = AsyncMock()
+        mock_collection = MagicMock()
+        with patch("bot.rag.retrieve_context", new=AsyncMock(return_value=[])):
+            answer, confidence, chunks = await run_rag_pipeline(
+                "MU现在有买信号吗？", mock_collection, mock_client
+            )
+        assert chunks == []
+        assert confidence == 1
+        assert "不太确定" in answer  # fallback, not an own-knowledge analysis
+
+    @pytest.mark.asyncio
+    async def test_empty_context_general_query_uses_own_knowledge(self):
+        from bot.rag import OWN_KNOWLEDGE_DISCLAIMER, run_rag_pipeline
+
+        mock_client = AsyncMock()
+        mock_collection = MagicMock()
+        fake_llm = "MU是美光科技，存储芯片龙头。\nCONFIDENCE: 5"
+        with (
+            patch("bot.rag.retrieve_context", new=AsyncMock(return_value=[])),
+            patch("bot.rag._openai_chat_with_retry", new=AsyncMock(return_value=fake_llm)),
+        ):
+            answer, confidence, chunks = await run_rag_pipeline(
+                "分析一下MU", mock_collection, mock_client
+            )
+        assert chunks == []
+        assert "美光" in answer
+        assert "不太确定" not in answer
+        assert OWN_KNOWLEDGE_DISCLAIMER in answer  # code-enforced disclaimer
+        assert confidence == 5
+
+    @pytest.mark.asyncio
+    async def test_relaxed_prompt_does_not_leak_into_normal_generation(self):
+        """Normal (KB-backed) generation must not get the relaxed section."""
+        from bot.rag import RELAXED_KNOWLEDGE_PROMPT, generate_answer
+
+        captured = {}
+
+        async def fake_chat(client, model, messages):
+            captured["system"] = messages[0]["content"]
+            return "答案\nCONFIDENCE: 8"
+
+        mock_client = AsyncMock()
+        with patch("bot.rag._openai_chat_with_retry", new=fake_chat):
+            answer, _ = await generate_answer(
+                "分析一下MU", [{"text": "x", "distance": 0.3}], mock_client
+            )
+        assert RELAXED_KNOWLEDGE_PROMPT not in captured["system"]
+        assert answer == "答案"
+
+    @pytest.mark.asyncio
+    async def test_relaxed_answer_routes_to_owner_review(self):
+        """Own-knowledge answers (context_count=0) must go to owner review,
+        never auto-reply — this is the guard against hallucination."""
+        from bot.confidence import route_answer
+
+        routing = route_answer(
+            "MU是美光科技……以上分析基于公开信息，仅供参考，不构成投资建议。",
+            5,
+            context_count=0,
+            best_distance=1.0,
+            question="分析一下MU",
+        )
+        assert routing["action"] == "forward_to_owner"
+
+    def test_signal_fallback_routes_to_owner_review(self):
+        """Signal question with no KB coverage: fallback still goes to the
+        owner for approval (signal branch fires before the fallback branch)."""
+        from bot.confidence import route_answer
+
+        routing = route_answer(
+            "这个我不太确定，等频道主来回答",
+            1,
+            context_count=0,
+            best_distance=1.0,
+            question="MU现在有买信号吗？",
+        )
+        assert routing["action"] == "forward_to_owner"

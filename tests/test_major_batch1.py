@@ -89,6 +89,23 @@ def test_safety_routing_low_confidence_clarification():
     assert "clarification" in out["reason"] or out["action"] != "auto_reply"
 
 
+def test_safety_routing_fallback_never_rewritten_to_clarification():
+    """Regression: an honest "I don't know" fallback must not be replaced
+    with a clarifying question. 2026-09-28 incident: confidence-1 fallback
+    ("这个我不太确定，等频道主来回答") was rewritten into a nonsense
+    "时间框架还是风险承受?" follow-up and auto-posted."""
+    from bot.safety import apply_safety_routing
+    fallback = "这个我不太确定，等频道主来回答"
+    routing = {"action": "auto_reply", "answer": fallback,
+               "reason": "fallback answer — safe to post without review"}
+    out = apply_safety_routing(
+        "树哥这周末没视频?", routing, 1, channel_id=123)
+    assert out["action"] == "auto_reply"
+    assert out["answer"] == fallback, \
+        "fallback answer was rewritten into a clarification question"
+    assert "clarification" not in out["reason"]
+
+
 # ── 1c: 429 handling ─────────────────────────────────────────────────────
 
 def _rate_limit_error():

@@ -105,13 +105,15 @@ class TestIsPaidMember:
         from bot.timed_roles import is_paid_member
         assert is_paid_member(_member(1, [_role(1, "懒人🌴22")])) is True
         assert is_paid_member(_member(1, [_role(1, "懒人etf25🌲")])) is True
-        assert is_paid_member(_member(1, [_role(1, "懒人26Q1")])) is True
+        assert is_paid_member(_member(1, [_role(1, "懒人🌴23")])) is True
+        assert is_paid_member(_member(1, [_role(1, "懒人etf🌲24")])) is True
 
     def test_reward_and_plain_roles_not_paid(self):
         from bot.timed_roles import is_paid_member
         assert is_paid_member(_member(1, [_role(1, "懒人etf🌲")])) is False
         assert is_paid_member(_member(1, [_role(1, "懒人🌴")])) is False
         assert is_paid_member(_member(1, [_role(1, "新人体验15天")])) is False
+        assert is_paid_member(_member(1, [_role(1, "懒人26Q1")])) is False
         assert is_paid_member(_member(1, [])) is False
 
 
@@ -315,3 +317,129 @@ class TestMonthlySettlement:
             # second run is a no-op (already settled)
             await cog._maybe_monthly_settlement()
             assert grant_mock.await_count == 1
+
+
+class TestMissedJoinBackfill:
+    """on_ready/on_resumed sweep must grant the trial role to recent joiners
+    whose on_member_join was lost during a gateway outage."""
+
+    def _cog_with_members(self, members, role_name="新人体验15天"):
+        now = datetime.now(timezone.utc)
+        trial_role = _role(555, role_name)
+        guild = MagicMock()
+        guild.id = 999
+        guild.roles = [trial_role]
+
+        async def _aiter():
+            for m in members:
+                yield m
+
+        guild.fetch_members = MagicMock(return_value=_aiter())
+        bot = MagicMock()
+        bot.guilds = [guild]
+        from bot.acquisition_cog import AcquisitionCog
+        return AcquisitionCog(bot), trial_role
+
+    def _recent_member(self, user_id, roles=(), hours_ago=2, is_bot=False):
+        m = _member(user_id, roles)
+        m.bot = is_bot
+        m.joined_at = datetime.now(timezone.utc) - timedelta(hours=hours_ago)
+        return m
+
+    async def test_grants_every_missed_joiner_no_paid_exception(self, tmp_path):
+        # Rule (2026-09-28): every newcomer gets the trial role, paid or not.
+        paid_role = _role(556, "懒人🌴22")
+        cog, trial_role = self._cog_with_members([])
+        missed = self._recent_member(11)                                  # should get trial
+        already = self._recent_member(12, [trial_role])                    # already has it
+        paid = self._recent_member(13, [paid_role])                        # paid → also gets it
+        old = self._recent_member(14, hours_ago=48)                        # outside window
+        bot_member = self._recent_member(15, is_bot=True)                  # bot → skip
+
+        async def _aiter():
+            for m in (missed, already, paid, old, bot_member):
+                yield m
+
+        cog.bot.guilds[0].fetch_members = MagicMock(return_value=_aiter())
+        grants_file = tmp_path / "timed.json"
+        grants_file.write_text("[]", encoding="utf-8")
+        with patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.TRIAL_ROLE_NAME", "新人体验15天"), \
+             patch("bot.acquisition_cog.TRIAL_GRANT_DAYS", 15), \
+             patch("bot.acquisition_cog.grant_timed_role",
+                   AsyncMock(return_value=True)) as grant_mock:
+            await cog._backfill_missed_joins("ready")
+            assert grant_mock.await_count == 2
+            granted_ids = {c.args[1] for c in grant_mock.await_args_list}
+            assert granted_ids == {11, 13}
+            for c in grant_mock.await_args_list:
+                assert c.args[4] == 15 and c.args[5] == "trial-backfill"
+
+    async def test_active_grant_not_duplicated(self, tmp_path):
+        missed = self._recent_member(21)
+        cog, _ = self._cog_with_members([missed])
+        grants_file = tmp_path / "timed.json"
+        now = datetime.now(timezone.utc)
+        grants_file.write_text(json.dumps([{
+            "user_id": 21, "guild_id": 999, "role_id": 555, "reason": "trial",
+            "days": 15,
+            "granted_at": (now - timedelta(hours=3)).isoformat(),
+            "expires_at": (now + timedelta(days=14)).isoformat(),
+            "revoked": False,
+        }]), encoding="utf-8")
+        with patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.TRIAL_ROLE_NAME", "新人体验15天"), \
+             patch("bot.acquisition_cog.grant_timed_role",
+                   AsyncMock(return_value=True)) as grant_mock:
+            await cog._backfill_missed_joins("ready")
+            assert grant_mock.await_count == 0
+
+    async def test_cooldown_skips_immediate_rerun(self, tmp_path):
+        missed = self._recent_member(31)
+        cog, _ = self._cog_with_members([missed])
+        grants_file = tmp_path / "timed.json"
+        grants_file.write_text("[]", encoding="utf-8")
+        with patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.TRIAL_ROLE_NAME", "新人体验15天"), \
+             patch("bot.acquisition_cog.TRIAL_GRANT_DAYS", 15), \
+             patch("bot.acquisition_cog.grant_timed_role",
+                   AsyncMock(return_value=True)) as grant_mock:
+            await cog._backfill_missed_joins("ready")
+            assert grant_mock.await_count == 1
+            # immediate second sweep (e.g. rapid resume flapping) is skipped
+            await cog._backfill_missed_joins("resumed")
+            assert grant_mock.await_count == 1
+
+    async def test_on_resumed_triggers_backfill(self, tmp_path):
+        missed = self._recent_member(41)
+        cog, _ = self._cog_with_members([missed])
+        grants_file = tmp_path / "timed.json"
+        grants_file.write_text("[]", encoding="utf-8")
+        with patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.TRIAL_ROLE_NAME", "新人体验15天"), \
+             patch("bot.acquisition_cog.TRIAL_GRANT_DAYS", 15), \
+             patch("bot.acquisition_cog.grant_timed_role",
+                   AsyncMock(return_value=True)) as grant_mock:
+            await cog.on_resumed()
+            assert grant_mock.await_count == 1
+
+    async def test_grant_trial_access_no_paid_exception(self, tmp_path):
+        # Rule (2026-09-28): on_member_join grants trial to everyone, paid or not.
+        paid_role = _role(556, "懒人🌴22")
+        trial_role = _role(555, "新人体验15天")
+        member = self._recent_member(51, [paid_role])
+        guild = MagicMock()
+        guild.id = 999
+        guild.roles = [trial_role]
+        member.guild = guild
+        cog, _ = self._cog_with_members([])
+        grants_file = tmp_path / "timed.json"
+        grants_file.write_text("[]", encoding="utf-8")
+        with patch("bot.timed_roles.TIMED_ROLES_FILE", str(grants_file)), \
+             patch("bot.acquisition_cog.TRIAL_ROLE_NAME", "新人体验15天"), \
+             patch("bot.acquisition_cog.TRIAL_GRANT_DAYS", 15), \
+             patch("bot.acquisition_cog.grant_timed_role",
+                   AsyncMock(return_value=True)) as grant_mock:
+            await cog._grant_trial_access(member)
+            assert grant_mock.await_count == 1
+            assert grant_mock.await_args.args[1] == 51
