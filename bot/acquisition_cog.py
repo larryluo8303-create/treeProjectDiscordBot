@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import discord
@@ -54,17 +55,29 @@ _ET = ZoneInfo("America/New_York")
 # A new ETF invite reward is granted at most once per 30 days per inviter.
 _ETF_REWARD_COOLDOWN_SECONDS = 30 * 86400
 
+# Missed-join backfill (2026-09-28): Discord never resends GUILD_MEMBER_ADD for
+# joins that happened while the gateway was down, so after every (re)connect we
+# sweep members who joined recently and grant the trial role to anyone whose
+# on_member_join was lost in transit.
+_MISSED_JOIN_LOOKBACK_SECONDS = 24 * 3600
+_MISSED_JOIN_BACKFILL_COOLDOWN_SECONDS = 15 * 60
+
 
 class AcquisitionCog(commands.Cog):
     """Background drip sender + invite attribution + timed reward roles."""
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._last_backfill_at = 0.0
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
         self.bot.add_view(AcquisitionCtaView())
         await self._ensure_trial_access()
+        try:
+            await self._backfill_missed_joins("ready")
+        except Exception as exc:
+            logger.warning("missed-join backfill on ready failed: %s", exc)
         self._startup_permission_check()
         if INVITE_TRACKING_ENABLED:
             await self._refresh_invite_snapshot()
@@ -153,9 +166,7 @@ class AcquisitionCog(commands.Cog):
                 logger.info("Startup check guild %s: 增长所需权限完整", guild.id)
 
     async def _grant_trial_access(self, member: discord.Member) -> None:
-        """Give a new non-paid member the 15-day read-only trial role."""
-        if is_paid_member(member):
-            return
+        """Give every new member the 15-day read-only trial role."""
         guild = member.guild
         role = discord.utils.get(guild.roles, name=TRIAL_ROLE_NAME)
         if role is None:
@@ -165,6 +176,68 @@ class AcquisitionCog(commands.Cog):
         await grant_timed_role(
             self.bot, member.id, guild.id, role.id, TRIAL_GRANT_DAYS, "trial"
         )
+
+    async def _backfill_missed_joins(self, reason: str) -> None:
+        """Grant the trial role to recent joiners whose join event was lost.
+
+        Discord does not resend GUILD_MEMBER_ADD for joins that happened while
+        the gateway was down, so after every (re)connect we sweep members who
+        joined within the lookback window. Every newcomer gets the trial role,
+        no exceptions: members that already hold the trial role or have an
+        active grant are left alone (idempotent).
+        """
+        now = time.monotonic()
+        if now - self._last_backfill_at < _MISSED_JOIN_BACKFILL_COOLDOWN_SECONDS:
+            return
+        self._last_backfill_at = now
+        cutoff = datetime.now(timezone.utc) - timedelta(
+            seconds=_MISSED_JOIN_LOOKBACK_SECONDS
+        )
+        checked = granted = 0
+        for guild in self.bot.guilds:
+            role = discord.utils.get(guild.roles, name=TRIAL_ROLE_NAME)
+            if role is None:
+                role = await ensure_trial_role(guild)
+            if role is None:
+                continue
+            try:
+                members = [m async for m in guild.fetch_members(limit=None)]
+            except Exception as exc:
+                logger.warning(
+                    "missed-join backfill: fetch_members failed for guild %s: %s",
+                    guild.id,
+                    exc,
+                )
+                continue
+            for member in members:
+                if member.bot:
+                    continue
+                joined_at = member.joined_at
+                if joined_at is None or joined_at < cutoff:
+                    continue
+                checked += 1
+                if role in member.roles:
+                    continue
+                if has_active_grant(member.id, role.id):
+                    continue
+                ok = await grant_timed_role(
+                    self.bot,
+                    member.id,
+                    guild.id,
+                    role.id,
+                    TRIAL_GRANT_DAYS,
+                    "trial-backfill",
+                )
+                if ok:
+                    granted += 1
+        if checked or granted:
+            logger.info(
+                "missed-join backfill (%s): checked %d recent joiner(s), "
+                "granted trial to %d",
+                reason,
+                checked,
+                granted,
+            )
 
     # ── invite tracking ────────────────────────────────────────────────────
 
@@ -191,6 +264,13 @@ class AcquisitionCog(commands.Cog):
     async def on_invite_delete(self, invite: discord.Invite) -> None:
         if INVITE_TRACKING_ENABLED:
             await self._refresh_invite_snapshot()
+
+    @commands.Cog.listener()
+    async def on_resumed(self) -> None:
+        try:
+            await self._backfill_missed_joins("resumed")
+        except Exception as exc:
+            logger.warning("missed-join backfill on resume failed: %s", exc)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:

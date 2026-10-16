@@ -27,6 +27,8 @@ from bot.config import (
     NEWS_POLL_INTERVAL_SECONDS,
     OWNER_USER_ID,
 )
+from bot.earnings import maybe_handle_earnings_item
+from bot.announcements import maybe_handle_announcement_item
 from bot.utils import atomic_json_write, data_path
 
 logger = logging.getLogger(__name__)
@@ -55,8 +57,106 @@ _MULTI_NL_RE = re.compile(r"\n{3,}")
 # Consecutive API errors before alerting the owner
 _ERROR_ALERT_THRESHOLD = 10
 
-# Maximum pages to fetch during backfill (safety cap)
-_BACKFILL_MAX_PAGES = 50
+# Local rolling archive of raw Jin10 items (JSON lines). The flash endpoint
+# ignores max_id pagination (verified 2026-09-29: every page returns the same
+# latest ~21 items, ~1h of news), so backfill cannot page back through the API.
+# The poll loop appends every fetched page here; backfill reads from it.
+ARCHIVE_FILE = data_path(os.getenv("NEWS_ARCHIVE_FILE", "data/jin10_archive.jsonl"))
+# Archive window must cover NEWS_BACKFILL_HOURS with margin.
+_ARCHIVE_KEEP_HOURS = max(NEWS_BACKFILL_HOURS + 6, 30)
+# Prune the archive file once it grows past this size (~weeks of data).
+_ARCHIVE_PRUNE_BYTES = 2_000_000
+
+
+def _load_archive_ids() -> set[str]:
+    """IDs already in the archive (for dedup without re-reading the file)."""
+    ids: set[str] = set()
+    try:
+        with open(ARCHIVE_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    iid = json.loads(line).get("id", "")
+                except ValueError:
+                    continue
+                if iid:
+                    ids.add(iid)
+    except OSError:
+        pass
+    return ids
+
+
+def _append_to_archive(items: list[dict], seen_ids: set[str]) -> None:
+    """Append unseen raw items to the archive; prune when the file gets big."""
+    new_lines: list[str] = []
+    for it in items:
+        iid = it.get("id", "")
+        if not iid or iid in seen_ids:
+            continue
+        seen_ids.add(iid)
+        new_lines.append(json.dumps(it, ensure_ascii=False))
+    if not new_lines:
+        return
+    try:
+        with open(ARCHIVE_FILE, "a", encoding="utf-8") as f:
+            f.write("\n".join(new_lines) + "\n")
+    except OSError as exc:
+        logger.warning("Jin10 archive: append failed: %s", exc)
+        return
+    try:
+        if os.path.getsize(ARCHIVE_FILE) > _ARCHIVE_PRUNE_BYTES:
+            _prune_archive()
+    except OSError:
+        pass
+
+
+def _prune_archive() -> None:
+    """Drop archive entries older than the keep window."""
+    cutoff = datetime.now(_TZ_BEIJING).replace(tzinfo=None) - timedelta(
+        hours=_ARCHIVE_KEEP_HOURS
+    )
+    kept: list[str] = []
+    try:
+        with open(ARCHIVE_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    it = json.loads(line)
+                except ValueError:
+                    continue
+                try:
+                    t = datetime.strptime(it.get("time", ""), "%Y-%m-%d %H:%M:%S")
+                except (ValueError, TypeError):
+                    continue
+                if t >= cutoff:
+                    kept.append(line)
+        with open(ARCHIVE_FILE, "w", encoding="utf-8") as f:
+            f.write("\n".join(kept) + ("\n" if kept else ""))
+        logger.info("Jin10 archive: pruned to %d items", len(kept))
+    except OSError as exc:
+        logger.warning("Jin10 archive: prune failed: %s", exc)
+
+
+def _read_archive() -> list[dict]:
+    """Read all archived raw items (oldest first)."""
+    items: list[dict] = []
+    try:
+        with open(ARCHIVE_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    items.append(json.loads(line))
+                except ValueError:
+                    pass
+    except OSError:
+        pass
+    return items
 
 
 def _clean_html(text: str) -> str:
@@ -223,14 +323,18 @@ class NewsFeedCog(commands.Cog):
     # (skipped with a warning) instead of blocking the cursor forever.
     _MAX_ITEM_FAILURES = 3
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: commands.Bot, openai_client=None) -> None:
         self.bot = bot
+        self._openai_client = openai_client
         self._poll_task: asyncio.Task | None = None
         self._started: bool = False
         self._session: aiohttp.ClientSession | None = None
         self._last_id: str = _load_last_id()
         self._consecutive_errors: int = 0
         self._item_failures: dict[str, int] = {}
+        # IDs already in the local rolling archive (populated by the poll loop;
+        # backfill reads from it because the API ignores max_id pagination).
+        self._archived_ids: set[str] = _load_archive_ids()
         # Serializes _fetch_and_post and _backfill_on_startup: without this,
         # a reconnect backfill can run concurrently with the poll loop, both
         # advancing _last_id and posting the same items twice (or skipping).
@@ -310,6 +414,32 @@ class NewsFeedCog(commands.Cog):
             self._last_id = new_last
             _save_last_id(new_last)
 
+    async def _scan_earnings(self, items: list[dict]) -> None:
+        """Scan raw flash items for earnings releases of watched tickers.
+
+        Runs on ALL items (before the important-only filter) so an earnings
+        flash is never missed. Dedup is handled inside earnings module.
+        """
+        if self._openai_client is None:
+            return
+        for item in items:
+            try:
+                await maybe_handle_earnings_item(self.bot, item, self._openai_client)
+            except Exception as exc:
+                logger.warning("Earnings scan failed for item: %s", exc)
+
+    async def _scan_announcements(self, items: list[dict]) -> None:
+        """Scan raw flash items for corporate announcements of watched tickers.
+
+        Runs on ALL items (before the important-only filter). Dedup is handled
+        inside the announcements module.
+        """
+        for item in items:
+            try:
+                await maybe_handle_announcement_item(self.bot, item)
+            except Exception as exc:
+                logger.warning("Announcements scan failed for item: %s", exc)
+
     async def _fetch_and_post(self) -> None:
         """Fetch latest flash news from Jin10 and post new items to channels."""
         async with self._fetch_lock:
@@ -324,6 +454,14 @@ class NewsFeedCog(commands.Cog):
             payload = await resp.json(content_type=None)
 
         items = _extract_items(payload)
+
+        # Archive every raw page: the flash endpoint ignores max_id
+        # pagination, so the local archive is the backfill source.
+        _append_to_archive(items, self._archived_ids)
+
+        # Earnings digest: scan raw items before the important-only filter.
+        await self._scan_earnings(items)
+        await self._scan_announcements(items)
 
         new_items = filter_items(items, self._last_id, NEWS_IMPORTANT_ONLY)
         all_ids = [it.get("id", "") for it in items if it.get("id")]
@@ -407,74 +545,50 @@ class NewsFeedCog(commands.Cog):
             await self._backfill_on_startup_locked()
 
     async def _backfill_on_startup_locked(self) -> None:
-        """Body of _backfill_on_startup; caller must hold _fetch_lock."""
+        """Body of _backfill_on_startup; caller must hold _fetch_lock.
+
+        Reads history from the local rolling archive instead of paging the
+        Jin10 API: the flash endpoint ignores the max_id pagination param
+        (verified 2026-09-29), so API backfill silently misses anything older
+        than the latest page (~1h). The poll loop appends every fetched page
+        to the archive via _append_to_archive.
+        """
         cutoff = datetime.now(timezone.utc) - timedelta(hours=NEWS_BACKFILL_HOURS)
         cutoff_beijing = cutoff.astimezone(_TZ_BEIJING).replace(tzinfo=None)
 
-        session = await self._get_session()
+        archived = _read_archive()
         all_missed: list[dict] = []
         seen_ids: set[str] = set()
-        current_max_id: str | None = None  # start from latest
-
-        for _page in range(_BACKFILL_MAX_PAGES):
-            params = dict(JIN10_PARAMS)
-            if current_max_id:
-                params["max_id"] = current_max_id
-
-            async with session.get(JIN10_API_URL, params=params) as resp:
-                if resp.status != 200:
-                    logger.warning("Jin10 backfill: API returned status %d", resp.status)
-                    break
-                payload = await resp.json(content_type=None)
-
-            items = _extract_items(payload)
-            if not items:
-                break
-
-            reached_old = False
-            for item in items:
-                item_id = item.get("id", "")
-
-                # Dedup: skip items already collected (pagination overlap)
-                if item_id in seen_ids:
-                    continue
-
-                item_time_str = item.get("time", "")
-                # Parse item time (Beijing time: "2026-08-15 10:00:00")
-                try:
-                    item_time = datetime.strptime(item_time_str, "%Y-%m-%d %H:%M:%S")
-                except (ValueError, TypeError):
-                    continue
-
-                # Stop if we've gone beyond the lookback window
-                if item_time < cutoff_beijing:
-                    reached_old = True
-                    break
-
-                # Only collect items newer than our last seen ID
-                if self._last_id and item_id <= self._last_id:
-                    reached_old = True
-                    break
-
-                seen_ids.add(item_id)
-                all_missed.append(item)
-
-            if reached_old:
-                break
-
-            # Use the oldest item's ID for pagination
-            oldest_id = items[-1].get("id", "")
-            if not oldest_id or oldest_id == current_max_id:
-                break
-            current_max_id = oldest_id
+        for item in archived:
+            item_id = item.get("id", "")
+            if not item_id or item_id in seen_ids:
+                continue
+            # Dedup: skip items already seen (archive may hold duplicates)
+            if self._last_id and item_id <= self._last_id:
+                continue
+            try:
+                item_time = datetime.strptime(
+                    item.get("time", ""), "%Y-%m-%d %H:%M:%S"
+                )
+            except (ValueError, TypeError):
+                continue
+            # Only items inside the lookback window
+            if item_time < cutoff_beijing:
+                continue
+            seen_ids.add(item_id)
+            all_missed.append(item)
 
         # Filter: important only, skip ads/type1/empty
-        logger.info("Jin10 backfill: collected %d raw items, last_id=%s", len(all_missed), self._last_id)
+        logger.info("Jin10 backfill: collected %d raw items from local archive, last_id=%s", len(all_missed), self._last_id)
         if all_missed:
             ids = [it.get("id", "") for it in all_missed]
             logger.info("Jin10 backfill: collected IDs: %s", ids[:10])
         backfill_items = filter_items(all_missed, self._last_id, important_only=NEWS_IMPORTANT_ONLY)
         all_collected_ids = [it.get("id", "") for it in all_missed if it.get("id")]
+
+        # Earnings digest: also scan backfilled raw items (startup/reconnect).
+        await self._scan_earnings(all_missed)
+        await self._scan_announcements(all_missed)
 
         if not backfill_items:
             if all_collected_ids:

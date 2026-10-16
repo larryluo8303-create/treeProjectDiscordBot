@@ -26,10 +26,12 @@ logger = logging.getLogger(__name__)
 
 TIMED_ROLES_FILE = data_path(os.getenv("TIMED_ROLES_FILE", "data/timed_roles.json"))
 
-# Paid cohort roles look like 懒人🌴22 / 懒人etf25🌲 / 懒人26Q1 — the name
-# starts with 懒人 and contains a digit. Reward roles (懒人etf🌲 / 懒人🌴)
-# carry no digit, so they never match.
-_PAID_COHORT_RE = re.compile(r"^懒人.*\d")
+# Paid cohort roles look like 懒人🌴22 / 懒人etf25🌲 — the name starts with
+# 懒人 and contains exactly one contiguous run of digits (the batch number).
+# Reward roles (懒人etf🌲 / 懒人🌴) carry no digit, and non-paid groups whose
+# names merely contain digits mixed with letters (e.g. 懒人26Q1) must NOT
+# match, so the digit run is the only numeric part allowed.
+_PAID_COHORT_RE = re.compile(r"^懒人[^\d]*\d+[^\d]*$")
 
 # A failed revoke (usually missing MANAGE_ROLES) is retried at most once a day
 # to avoid warning-spam every loop.

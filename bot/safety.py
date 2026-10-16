@@ -11,6 +11,7 @@ would be forced to owner review in a channel could be posted directly via
 import logging
 
 from bot.clarification import build_clarification_reply, needs_clarification
+from bot.confidence import is_fallback_answer
 from bot.config import (
     CLARIFICATION_CONFIDENCE_MAX,
     FEATURE_CLARIFICATION_CANARY_CHANNEL_IDS,
@@ -56,9 +57,13 @@ def apply_safety_routing(
 
     # Clarification follow-up: ask one clarifying question for low-confidence
     # auto replies instead of sending an ambiguous answer directly.
+    # Never rewrite an honest "I don't know" fallback — replacing it with a
+    # clarifying question produces nonsense (e.g. asking about 时间框架 when
+    # the user asked about the weekend video). 2026-09-28 regression fix.
     if (
         routing["action"] == "auto_reply"
         and not image_urls
+        and not is_fallback_answer(routing["answer"])
         and is_feature_enabled_for_channel(
             FEATURE_CLARIFICATION_FOLLOWUP,
             FEATURE_CLARIFICATION_CANARY_CHANNEL_IDS,

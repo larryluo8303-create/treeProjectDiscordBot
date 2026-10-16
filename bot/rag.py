@@ -11,6 +11,7 @@ import chromadb
 import openai
 
 from bot.cache import embedding_cache
+from bot.confidence import is_signal_query
 from bot.utils import data_path as _data_path
 from bot.config import (
     DEFAULT_STYLE_GUIDELINES,
@@ -164,6 +165,19 @@ async def retrieve_context(
 
 
 # ── Generation ───────────────────────────────────────────────────────────────
+
+# Disclaimer appended to answers generated from the model's own knowledge
+# (no KB coverage). 2026-09-28: user-approved relaxed rule — general questions
+# may be answered from own knowledge, but signal questions must stay KB-only.
+OWN_KNOWLEDGE_DISCLAIMER = "以上分析基于公开信息，仅供参考，不构成投资建议。"
+
+RELAXED_KNOWLEDGE_PROMPT = """【知识库为空 - 放宽规则】
+本次 <retrieved_posts> 为空，知识库中没有可用的相关内容。此时允许你用自己的知识做分析，但必须遵守以下规则（优先级高于上面的第 1、9 条）：
+1. 仅适用于一般性问题。如果用户问的是频道主专有信号、买卖点、进出场相关问题（买/卖/信号/买点/入场等），不要自己发挥，仍回复"这个我不太确定，等频道主来回答"并给 1-3 分。
+2. 回答必须包含这句声明："以上分析基于公开信息，仅供参考，不构成投资建议。"
+3. 点位脱敏规则仍然有效：不得在回答中提及任何具体价格数字、点位区间或目标价。
+4. 置信度打分：没有知识库支撑的自主分析，最高只能给 6 分（4-6 分档），不得打 7 分以上。如实打分，不要漂亮化。
+5. 不确定的地方如实说"不确定"，不要编造具体事实、数据或新闻。"""
 
 
 def _build_context_block(context_chunks: list[dict]) -> str:
@@ -507,8 +521,14 @@ async def generate_answer(
     context_chunks: list[dict],
     openai_client: openai.AsyncOpenAI,
     conversation_history: str = "",
+    allow_own_knowledge: bool = False,
 ) -> tuple[str, int]:
     """Generate an answer using retrieved context.
+
+    When ``allow_own_knowledge`` is True (no KB coverage for a general
+    question), the model may analyze from its own knowledge with a
+    disclaimer instead of refusing. Signal questions must never use this
+    path — they stay KB-only and fall back to owner review.
 
     Returns
     -------
@@ -517,6 +537,8 @@ async def generate_answer(
     """
     style_guidelines = _load_style_guidelines()
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(style_guidelines=style_guidelines)
+    if allow_own_knowledge:
+        system_prompt += "\n\n" + RELAXED_KNOWLEDGE_PROMPT
 
     # Inject negative samples (rejected answers) into the system prompt
     negative_guidance = _build_negative_guidance()
@@ -550,6 +572,11 @@ async def generate_answer(
     answer, redactions = _redact_price_levels(answer)
     if redactions:
         logger.info("Redacted %d price-level mention(s) from answer", redactions)
+    if allow_own_knowledge and OWN_KNOWLEDGE_DISCLAIMER not in answer:
+        # Belt and suspenders: the prompt requires the disclaimer, but enforce
+        # it in code so a non-compliant model output can't go out without it.
+        answer = answer.rstrip() + "\n\n" + OWN_KNOWLEDGE_DISCLAIMER
+        logger.info("Appended own-knowledge disclaimer to answer")
     logger.info("Generated answer (confidence=%d, len=%d chars)", confidence, len(answer))
     return answer, confidence
 
@@ -578,11 +605,21 @@ async def run_rag_pipeline(
         return get_locale("no_answer"), 1, []
 
     if not context_chunks:
-        return (
-            "这个我不太确定，等频道主来回答",
-            1,
-            [],
+        # No KB coverage. Signal questions stay strict: only the owner's
+        # historical posts may answer them, otherwise fall back and let the
+        # owner review/approve. General questions may use the model's own
+        # knowledge under the relaxed rule (2026-09-28, user-approved).
+        if is_signal_query(question):
+            return (
+                "这个我不太确定，等频道主来回答",
+                1,
+                [],
+            )
+        answer, confidence = await generate_answer(
+            question, [], openai_client, conversation_history,
+            allow_own_knowledge=True,
         )
+        return answer, confidence, []
 
     answer, confidence = await generate_answer(
         question, context_chunks, openai_client, conversation_history

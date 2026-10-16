@@ -34,6 +34,12 @@ from bot.health import HealthCog
 from bot.ingestion_scheduler import IngestionSchedulerCog
 from bot.listener import MessageListener
 from bot.news_feed import NewsFeedCog
+from bot.earnings import EarningsCalendarCog
+from bot.macro import MacroCog
+from bot.movers import MoversCog
+from bot.portfolio import PortfolioCog
+from bot.premarket import PremarketCog
+from bot.technicals import TechnicalsCog
 from bot.owner_alerts import OwnerAlertCog
 from bot.promo_monitor import PromoMonitorCog
 from bot.scheduler import SchedulerCog
@@ -41,6 +47,14 @@ from bot.webhook import WebhookServer
 from bot.weekly_summary import WeeklySummaryCog
 from bot.youtube_monitor import YouTubeMonitorCog
 from bot.acquisition_cog import AcquisitionCog
+
+# 个股订阅 Cog（2026-10-10 新增）：实现放在 ~/workspace/bot-ops/subscription_cog.py，
+# 不在 repo 内；导入失败时降级（不注册），不影响 bot 启动。
+sys.path.append(os.path.expanduser("~/workspace/bot-ops"))
+try:
+    from subscription_cog import SubscriptionCog
+except ImportError:
+    SubscriptionCog = None
 
 logger = logging.getLogger(__name__)
 
@@ -165,13 +179,21 @@ async def main() -> None:
     await bot.add_cog(OwnerAlertCog(bot))
     await bot.add_cog(IngestionSchedulerCog(bot))
     await bot.add_cog(DigestCog(bot))
-    await bot.add_cog(NewsFeedCog(bot))
+    await bot.add_cog(NewsFeedCog(bot, openai_client))
+    await bot.add_cog(EarningsCalendarCog(bot))
+    await bot.add_cog(MoversCog(bot))
+    await bot.add_cog(PortfolioCog(bot, openai_client))
+    await bot.add_cog(PremarketCog(bot))
+    await bot.add_cog(MacroCog(bot))
+    await bot.add_cog(TechnicalsCog(bot, openai_client))
     await bot.add_cog(YouTubeMonitorCog(bot, openai_client))
     await bot.add_cog(AcquisitionCog(bot))
     await bot.add_cog(PromoMonitorCog(bot))
     await bot.add_cog(WeeklySummaryCog(bot, openai_client))
     await bot.add_cog(DailySummaryCog(bot, openai_client))
     await bot.add_cog(AutoModCog(bot))
+    if SubscriptionCog is not None:
+        await bot.add_cog(SubscriptionCog(bot))
 
     # ── Webhook server (optional) ────────────────────────────────────────
     webhook_server = None

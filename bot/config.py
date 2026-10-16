@@ -323,6 +323,44 @@ NEWS_IMPORTANT_ONLY: bool = os.getenv("NEWS_IMPORTANT_ONLY", "true").lower() in 
 NEWS_BACKFILL_HOURS: int = int(os.getenv("NEWS_BACKFILL_HOURS", "24"))
 
 # ---------------------------------------------------------------------------
+# Earnings flash digest — structured Chinese digest of earnings releases for
+# watched tickers, posted to a dedicated channel (wired into NewsFeedCog)
+# ---------------------------------------------------------------------------
+EARNINGS_ENABLED: bool = os.getenv("EARNINGS_ENABLED", "false").lower() in ("1", "true", "yes")
+EARNINGS_CHANNEL_ID: int = int(os.getenv("EARNINGS_CHANNEL_ID", "0"))
+EARNINGS_TICKERS: list[str] = [
+    t.strip().upper() for t in os.getenv("EARNINGS_TICKERS", "").split(",") if t.strip()
+]
+
+# ---------------------------------------------------------------------------
+# Movers — unusual intraday movement alerts for watched tickers
+# ---------------------------------------------------------------------------
+MOVERS_ENABLED: bool = os.getenv("MOVERS_ENABLED", "false").lower() in ("1", "true", "yes")
+MOVERS_CHANNEL_ID: int = int(os.getenv("MOVERS_CHANNEL_ID", "0"))
+MOVERS_THRESHOLD_PCT: float = float(os.getenv("MOVERS_THRESHOLD_PCT", "3.0"))
+MOVERS_ESCALATE_PCT: float = float(os.getenv("MOVERS_ESCALATE_PCT", "5.0"))
+MOVERS_POLL_MINUTES: int = int(os.getenv("MOVERS_POLL_MINUTES", "15"))
+
+# ---------------------------------------------------------------------------
+# Pre-market briefing — daily 08:30 ET market overview
+# ---------------------------------------------------------------------------
+PREMARKET_ENABLED: bool = os.getenv("PREMARKET_ENABLED", "false").lower() in ("1", "true", "yes")
+PREMARKET_CHANNEL_ID: int = int(os.getenv("PREMARKET_CHANNEL_ID", "0"))
+PREMARKET_THRESHOLD_PCT: float = float(os.getenv("PREMARKET_THRESHOLD_PCT", "2.0"))
+
+# ---------------------------------------------------------------------------
+# Macro calendar — FOMC / CPI / NFP / PCE reminders
+# ---------------------------------------------------------------------------
+MACRO_ENABLED: bool = os.getenv("MACRO_ENABLED", "false").lower() in ("1", "true", "yes")
+MACRO_CHANNEL_ID: int = int(os.getenv("MACRO_CHANNEL_ID", "0"))
+
+# ---------------------------------------------------------------------------
+# Corporate announcements — buybacks / offerings / rating changes
+# ---------------------------------------------------------------------------
+ANNOUNCE_ENABLED: bool = os.getenv("ANNOUNCE_ENABLED", "false").lower() in ("1", "true", "yes")
+ANNOUNCE_CHANNEL_ID: int = int(os.getenv("ANNOUNCE_CHANNEL_ID", "0"))
+
+# ---------------------------------------------------------------------------
 # Weekly Summary — GPT-powered summary of owner messages posted on Saturday
 # ---------------------------------------------------------------------------
 WEEKLY_SUMMARY_ENABLED: bool = os.getenv("WEEKLY_SUMMARY_ENABLED", "false").lower() in ("1", "true", "yes")
