@@ -260,9 +260,12 @@ class TestOpenAIChatWithRetry:
         assert mock_client.chat.completions.create.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_returns_none_on_double_failure(self):
+    async def test_raises_on_double_failure(self):
+        """Fail-closed (86a78e1): double timeout raises OpenAIUnavailableError,
+        not a silent None — callers must handle it."""
         import openai
-        from bot.rag import _openai_chat_with_retry
+        import pytest
+        from bot.rag import OpenAIUnavailableError, _openai_chat_with_retry
 
         mock_client = AsyncMock()
         mock_client.chat.completions.create.side_effect = [
@@ -270,11 +273,11 @@ class TestOpenAIChatWithRetry:
             openai.APITimeoutError(request=MagicMock()),
         ]
 
-        result = await _openai_chat_with_retry(
-            mock_client, model="gpt-4o-mini",
-            messages=[{"role": "user", "content": "hi"}],
-        )
-        assert result is None
+        with pytest.raises(OpenAIUnavailableError):
+            await _openai_chat_with_retry(
+                mock_client, model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "hi"}],
+            )
 
     @pytest.mark.asyncio
     async def test_null_content_returns_empty_string(self):
@@ -323,7 +326,8 @@ class TestOpenAIRetrySlaRecording:
     @pytest.mark.asyncio
     async def test_double_failure_counts_as_one_error(self):
         import openai
-        from bot.rag import _openai_chat_with_retry
+        import pytest
+        from bot.rag import OpenAIUnavailableError, _openai_chat_with_retry
         from bot.reliability import openai_call_count, openai_error_rate, reset_openai_calls
 
         reset_openai_calls()
@@ -333,11 +337,11 @@ class TestOpenAIRetrySlaRecording:
             openai.APITimeoutError(request=MagicMock()),
         ]
 
-        result = await _openai_chat_with_retry(
-            mock_client, model="gpt-4o-mini",
-            messages=[{"role": "user", "content": "hi"}],
-        )
-        assert result is None
+        with pytest.raises(OpenAIUnavailableError):
+            await _openai_chat_with_retry(
+                mock_client, model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "hi"}],
+            )
         assert openai_call_count() == 1
         assert openai_error_rate() == 1.0
 

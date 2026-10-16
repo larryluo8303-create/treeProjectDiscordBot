@@ -1582,16 +1582,20 @@ class BotCommands(commands.Cog):
             author = str(msg.author.display_name)
             text_parts.append(f"{author}: {msg.content[:300]}")
         conversation_text = "\n".join(text_parts)
-        from bot.rag import _openai_chat_with_retry
-        summary = await _openai_chat_with_retry(
-            self.openai_client,
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "你是一个社群讨论摘要助手。请用简洁的中文总结以下讨论的要点，列出关键观点。不超过500字。"},
-                {"role": "user", "content": f"请总结以下讨论：\n\n{conversation_text}"},
-            ],
-            max_tokens=600,
-        )
+        from bot.rag import OpenAIUnavailableError, _openai_chat_with_retry
+        try:
+            summary = await _openai_chat_with_retry(
+                self.openai_client,
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "你是一个社群讨论摘要助手。请用简洁的中文总结以下讨论的要点，列出关键观点。不超过500字。"},
+                    {"role": "user", "content": f"请总结以下讨论：\n\n{conversation_text}"},
+                ],
+                max_tokens=600,
+            )
+        except OpenAIUnavailableError:
+            # Fail-closed: treat like a failed generation, not a crash.
+            summary = None
         if not summary:
             await interaction.followup.send("摘要生成失败。", ephemeral=True)
             return
