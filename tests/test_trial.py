@@ -6,6 +6,9 @@ Pure logic + unittest.mock only — no network, no real Discord calls.
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
+import asyncio
+import inspect
+
 import discord
 import pytest
 
@@ -496,7 +499,7 @@ async def test_tvdone_records_tv_and_dms_user(monkeypatch, tmp_path):
     ctx.guild = guild
     ctx.reply = AsyncMock()
 
-    await cog.tvdone.callback(cog, ctx, member, "mytvuser123")
+    await cog.tvdone.callback(cog, ctx, member, tv_username="mytvuser123")
 
     member.send.assert_awaited()  # 开通确认 DM
     confirm = member.send.await_args.args[0]
@@ -521,8 +524,8 @@ async def test_tvdone_second_time_reports_already_recorded(monkeypatch, tmp_path
     ctx.guild = guild
     ctx.reply = AsyncMock()
 
-    await cog.tvdone.callback(cog, ctx, member, "tvuser779")
-    await cog.tvdone.callback(cog, ctx, member, "tvuser779")  # 第二次
+    await cog.tvdone.callback(cog, ctx, member, tv_username="tvuser779")
+    await cog.tvdone.callback(cog, ctx, member, tv_username="tvuser779")  # 第二次
 
     assert "已标记过" in ctx.reply.await_args.args[0]
     assert load_trial30_state()["claimed"]["779"]["tv_username"] == "tvuser779"
@@ -538,7 +541,7 @@ async def test_tvdone_fallback_grants_for_missing_record(monkeypatch, tmp_path):
     ctx.guild = guild
     ctx.reply = AsyncMock()
 
-    await cog.tvdone.callback(cog, ctx, member, "tvuser782")
+    await cog.tvdone.callback(cog, ctx, member, tv_username="tvuser782")
 
     member.add_roles.assert_awaited_once()
     rec = load_trial30_state()["claimed"]["782"]
@@ -555,7 +558,7 @@ async def test_tvdone_requires_username(monkeypatch, tmp_path):
     ctx.guild = guild
     ctx.reply = AsyncMock()
 
-    await cog.tvdone.callback(cog, ctx, member, "   ")
+    await cog.tvdone.callback(cog, ctx, member, tv_username="   ")
 
     assert "用法" in ctx.reply.await_args.args[0]
     member.add_roles.assert_not_called()
@@ -585,7 +588,7 @@ async def test_tvdone_disabled_is_silent(monkeypatch, tmp_path):
     ctx.guild = guild
     ctx.reply = AsyncMock()
 
-    await cog.tvdone.callback(cog, ctx, member, "tvuser781")
+    await cog.tvdone.callback(cog, ctx, member, tv_username="tvuser781")
 
     ctx.reply.assert_not_called()
     member.add_roles.assert_not_called()
@@ -788,3 +791,105 @@ async def test_expiry_skips_opted_out_dm_but_still_revokes(monkeypatch, tmp_path
     member.remove_roles.assert_awaited_once()
     bot.fetch_user.assert_not_called()  # 退订用户不发到期 DM
     assert load_trial30_state()["claimed"]["556"]["expired_done"] is True
+
+
+# ── 回归测试：并发/幂等与 tvdone 修复 ────────────────────────────────────
+
+async def test_concurrent_grants_grant_only_once(monkeypatch, tmp_path):
+    # 快速连点 ✅：两个并发 _grant_trial 只有一个真正发组，
+    # 另一个排队后看到已发放记录返回 claimed；started_at 不被重置。
+    cog, bot = _enable_cog(monkeypatch, tmp_path)
+    member = _make_member()
+    guild, trial_role = _make_guild_with_trial_role()
+
+    results = await asyncio.gather(
+        cog._grant_trial(member, guild, via="button"),
+        cog._grant_trial(member, guild, via="button"),
+    )
+    assert results.count((True, "ok")) == 1
+    assert results.count((False, "claimed")) == 1
+    assert member.add_roles.await_count == 1
+    rec = load_trial30_state()["claimed"]["123"]
+    assert rec["role_granted"] is True
+    assert rec["granted_via"] == "button"
+
+
+async def test_concurrent_grant_and_promo_no_lost_update(monkeypatch, tmp_path):
+    # 发放与 promo 写入并发：后落盘的一方重读合并，不丢对方的字段。
+    cog, bot = _enable_cog(monkeypatch, tmp_path)
+    user = MagicMock(spec=discord.User)
+    user.send = AsyncMock()
+    bot.fetch_user = AsyncMock(return_value=user)
+    member = _make_member(id=910)
+    guild, _ = _make_guild_with_trial_role()
+
+    await asyncio.gather(
+        cog._grant_trial(member, guild, via="command"),
+        cog._maybe_send_promo(member, source="reaction"),
+    )
+    rec = load_trial30_state()["claimed"]["910"]
+    assert rec["role_granted"] is True
+    assert rec["promo_dm_sent"] is True
+
+
+def test_tvdone_username_is_keyword_only():
+    # TV 用户名含空格不被截断：keyword-only 参数让解析器整行捕获。
+    sig = inspect.signature(trial_cog.TrialCog.tvdone.callback)
+    param = sig.parameters["tv_username"]
+    assert param.kind is inspect.Parameter.KEYWORD_ONLY
+
+
+async def test_tvdone_username_with_spaces_kept_verbatim(monkeypatch, tmp_path):
+    cog, bot = _enable_cog(monkeypatch, tmp_path)
+    member = _make_member(id=783)
+    guild, _ = _make_guild_with_trial_role()
+    await cog._grant_trial(member, guild)
+    ctx = MagicMock()
+    ctx.author = _make_member(id=1)
+    ctx.guild = guild
+    ctx.reply = AsyncMock()
+
+    await cog.tvdone.callback(cog, ctx, member, tv_username="John Doe")
+
+    rec = load_trial30_state()["claimed"]["783"]
+    assert rec["tv_username"] == "John Doe"  # 不再是截断后的 "John"
+    assert rec["tv_granted"] is True
+
+
+async def test_tvdone_member_not_found_replies_clearly(monkeypatch, tmp_path):
+    # @成员 解析失败（输错/已退群）：之前被静默吞掉，现在给清晰提示。
+    import discord.ext.commands as commands_mod
+
+    cog, bot = _enable_cog(monkeypatch, tmp_path)
+    ctx = MagicMock()
+    ctx.reply = AsyncMock()
+
+    await cog.tvdone_error(ctx, commands_mod.MemberNotFound("nope"))
+
+    ctx.reply.assert_awaited_once()
+    reply = ctx.reply.await_args.args[0]
+    assert "找不到该成员" in reply and "!tvdone" in reply
+
+
+async def test_tvdone_check_failure_replies_clearly(monkeypatch, tmp_path):
+    import discord.ext.commands as commands_mod
+
+    cog, bot = _enable_cog(monkeypatch, tmp_path)
+    ctx = MagicMock()
+    ctx.reply = AsyncMock()
+
+    await cog.tvdone_error(ctx, commands_mod.CheckFailure("no perm"))
+
+    ctx.reply.assert_awaited_once()
+    assert "管理员权限" in ctx.reply.await_args.args[0]
+
+
+async def test_grant_records_via_source(monkeypatch, tmp_path):
+    cog, bot = _enable_cog(monkeypatch, tmp_path)
+    member = _make_member(id=911)
+    guild, _ = _make_guild_with_trial_role()
+
+    ok, _ = await cog._grant_trial(member, guild, via="command")
+
+    assert ok is True
+    assert load_trial30_state()["claimed"]["911"]["granted_via"] == "command"

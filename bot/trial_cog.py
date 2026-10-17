@@ -21,6 +21,7 @@ warning，绝不抛错。
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -350,6 +351,10 @@ class TrialCog(commands.Cog):
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        # 串行化 trial30.json 的所有读写：✅ 连点 / drip 循环 / 到期循环 /
+        # promo 触发并发时，避免"先读-后写"丢失更新（lost update）或重复发放。
+        # bot 为单进程，asyncio.Lock 足以保证互斥。
+        self._state_lock = asyncio.Lock()
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -381,9 +386,14 @@ class TrialCog(commands.Cog):
     # ── v3：点击/!试用 即时发放（共用 _grant_trial） ──────────────────────
 
     async def _grant_trial(
-        self, member: discord.Member, guild: discord.Guild
+        self, member: discord.Member, guild: discord.Guild, via: str = "unknown"
     ) -> tuple[bool, str]:
         """v3 核心：资格检查通过 → 立即发放「信号体验」组并开始计时。
+
+        全程持有 ``self._state_lock``：把"检查资格→发组→落盘"做成原子操作。
+        用户快速连点 ✅/``!试用`` 时，第二个请求会排队等待，看到已发放记录
+        后返回 ``claimed``——不会重复发组、不会重置 ``started_at``、不会
+        覆盖并发写入的状态。
 
         返回 (成功, 原因码)：ok / disabled / campaign_ended / paid /
         claimed / account_too_new / role_failed。
@@ -392,50 +402,53 @@ class TrialCog(commands.Cog):
             return False, "disabled"
         if not campaign_active():
             return False, "campaign_ended"
-        state = load_trial30_state()
-        uid = str(member.id)
-        if uid in state["claimed"] and state["claimed"][uid].get("role_granted"):
-            return False, "claimed"
-        ok, reason = check_trial_eligibility(
-            has_paid_role=self._has_paid_role(member),
-            already_claimed=False,
-            account_created_at=getattr(member, "created_at", None),
-        )
-        if not ok:
-            return False, reason
-        role = await _ensure_role(guild, TRIAL30_ROLE_NAME)
-        if role is None:
-            return False, "role_failed"
-        try:
-            if role not in member.roles:
-                await member.add_roles(
-                    role, reason=f"trial30 grant ({TRIAL30_DAYS}d)"
-                )
-        except discord.Forbidden:
-            logger.warning(
-                "trial30: missing MANAGE_ROLES — cannot grant %r to %s",
-                TRIAL30_ROLE_NAME, uid,
+        async with self._state_lock:
+            state = load_trial30_state()
+            uid = str(member.id)
+            if uid in state["claimed"] and state["claimed"][uid].get("role_granted"):
+                return False, "claimed"
+            ok, reason = check_trial_eligibility(
+                has_paid_role=self._has_paid_role(member),
+                already_claimed=False,
+                account_created_at=getattr(member, "created_at", None),
             )
-            return False, "role_failed"
-        except Exception as exc:
-            logger.warning("trial30: grant trial role to %s failed: %s", uid, exc)
-            return False, "role_failed"
-        now = datetime.now(timezone.utc)
-        prev = state["claimed"].get(uid, {})
-        state["claimed"][uid] = {
-            "started_at": now.isoformat(),
-            "expires_at": (now + timedelta(days=TRIAL30_DAYS)).isoformat(),
-            "role_granted": True,
-            "tv_username": None,
-            "tv_granted": False,
-            "drip_sent": [],
-            "promo_dm_sent": True,
-            "granted_via": prev.get("granted_via", "unknown"),
-            "guild_id": guild.id,
-        }
-        save_trial30_state(state)
-        logger.info("trial30: granted %dd trial to %s", TRIAL30_DAYS, uid)
-        return True, "ok"
+            if not ok:
+                return False, reason
+            role = await _ensure_role(guild, TRIAL30_ROLE_NAME)
+            if role is None:
+                return False, "role_failed"
+            try:
+                if role not in member.roles:
+                    await member.add_roles(
+                        role, reason=f"trial30 grant ({TRIAL30_DAYS}d)"
+                    )
+            except discord.Forbidden:
+                logger.warning(
+                    "trial30: missing MANAGE_ROLES — cannot grant %r to %s",
+                    TRIAL30_ROLE_NAME, uid,
+                )
+                return False, "role_failed"
+            except Exception as exc:
+                logger.warning("trial30: grant trial role to %s failed: %s", uid, exc)
+                return False, "role_failed"
+            now = datetime.now(timezone.utc)
+            prev = state["claimed"].get(uid, {})
+            state["claimed"][uid] = {
+                "started_at": now.isoformat(),
+                "expires_at": (now + timedelta(days=TRIAL30_DAYS)).isoformat(),
+                "role_granted": True,
+                "tv_username": None,
+                "tv_granted": False,
+                "drip_sent": [],
+                "promo_dm_sent": True,
+                "granted_via": prev.get("granted_via") or via,
+                "guild_id": guild.id,
+            }
+            save_trial30_state(state)
+            logger.info(
+                "trial30: granted %dd trial to %s (via=%s)", TRIAL30_DAYS, uid, via
+            )
+            return True, "ok"
 
     @commands.command(name="试用")
     async def claim_trial(self, ctx: commands.Context) -> None:
@@ -446,7 +459,7 @@ class TrialCog(commands.Cog):
         if ctx.guild is None or not isinstance(member, discord.Member):
             await ctx.reply("请在群里发送 `!试用` 领取 🙂")
             return
-        ok, reason = await self._grant_trial(member, ctx.guild)
+        ok, reason = await self._grant_trial(member, ctx.guild, via="command")
         if not ok:
             if reason == "campaign_ended":
                 await ctx.reply(TRIAL30_CAMPAIGN_ENDED, mention_author=False)
@@ -525,7 +538,7 @@ class TrialCog(commands.Cog):
             await interaction.response.defer(ephemeral=True)
         except Exception:
             pass
-        ok, reason = await self._grant_trial(member, guild)
+        ok, reason = await self._grant_trial(member, guild, via="button")
         followup = interaction.followup
         if not ok:
             msg = {
@@ -559,9 +572,14 @@ class TrialCog(commands.Cog):
         self,
         ctx: commands.Context,
         member: discord.Member | None = None,
+        *,
         tv_username: str = "",
     ) -> None:
-        """群主在 TradingView 手动开通后执行：记录 TV 用户名并 DM 用户确认。"""
+        """群主在 TradingView 手动开通后执行：记录 TV 用户名并 DM 用户确认。
+
+        ``tv_username`` 为 keyword-only 参数：整行剩余部分整体捕获，
+        TV 用户名含空格也不会被静默截断。
+        """
         if not TRIAL30_ENABLED:
             return  # 安全开关关闭时静默跳过
         tv_username = (tv_username or "").strip()
@@ -579,24 +597,30 @@ class TrialCog(commands.Cog):
         rec = state["claimed"].get(uid)
         if rec is None or not rec.get("role_granted"):
             # 兜底：该用户还没走报名流程，顺手补发身份组并开始计时
-            ok, reason = await self._grant_trial(member, ctx.guild)
+            ok, reason = await self._grant_trial(member, ctx.guild, via="tvdone")
             if not ok and reason != "claimed":
                 await ctx.reply(
                     "开通失败（资格不通过或发组失败），请检查后再试。",
                     mention_author=False,
                 )
                 return
-            rec = load_trial30_state()["claimed"].get(uid, {})
-        if rec.get("tv_granted"):
+        # 加锁后重读再写：tv_granted 检查与落盘原子化，避免两位管理员
+        # 同时 !tvdone 同一用户时重复记录；也不会覆盖并发的 drip/报名写入。
+        async with self._state_lock:
+            state = load_trial30_state()
+            rec = state["claimed"].get(uid, {})
+            already_tv = rec.get("tv_username") if rec.get("tv_granted") else None
+            if already_tv is None:
+                rec["tv_username"] = tv_username
+                rec["tv_granted"] = True
+                state["claimed"][uid] = rec
+                save_trial30_state(state)
+        if already_tv is not None:
             await ctx.reply(
-                f"{member.mention} 的 TV 权限已标记过（`{rec.get('tv_username')}`）。",
+                f"{member.mention} 的 TV 权限已标记过（`{already_tv}`）。",
                 mention_author=False,
             )
             return
-        rec["tv_username"] = tv_username
-        rec["tv_granted"] = True
-        state["claimed"][uid] = rec
-        save_trial30_state(state)
         logger.info("trial30: tvdone recorded tv=%s for %s", tv_username, uid)
         try:
             await member.send(TRIAL30_TVDONE_CONFIRM)
@@ -609,6 +633,26 @@ class TrialCog(commands.Cog):
             "用户已收到开通通知。",
             mention_author=False,
         )
+
+    @tvdone.error
+    async def tvdone_error(
+        self, ctx: commands.Context, error: commands.CommandError
+    ) -> None:
+        """!tvdone 参数错误的清晰提示。
+
+        bot 全局没有 on_command_error：@成员 解析失败（输错/成员已退群）
+        默认会被静默吞掉，用户得不到任何反馈。
+        """
+        if isinstance(error, commands.MemberNotFound):
+            await ctx.reply(
+                "找不到该成员：请检查 @ 是否正确（成员可能已退群）。\n"
+                "用法：`!tvdone @成员 <TradingView用户名>`",
+                mention_author=False,
+            )
+        elif isinstance(error, commands.CheckFailure):
+            await ctx.reply("`!tvdone` 需要管理员权限。", mention_author=False)
+        else:
+            logger.warning("trial30: tvdone unexpected error: %r", error)
 
     def _member_has_trial_role(self, member: discord.Member) -> bool:
         """成员是否已持有「免费试用30天」组。"""
@@ -632,30 +676,51 @@ class TrialCog(commands.Cog):
     # ── 到期回收 ────────────────────────────────────────────────────────
 
     async def _process_expiries(self) -> None:
-        state = load_trial30_state()
-        now = datetime.now(timezone.utc)
-        opt_out = set(state.get("opt_out", []))
-        changed = False
-        for uid, rec in state["claimed"].items():
-            if rec.get("expired_done"):
-                continue
-            exp = _parse_ts(rec.get("expires_at"))
-            if not exp or exp > now:
-                continue
-            await self._expire_one(uid, rec, can_dm=uid not in opt_out)
-            changed = True
-        if changed:
+        # 两阶段：先加锁收集到期名单（纯读盘），再逐个做网络 I/O，
+        # 最后加锁重读合并落标记。锁不跨网络调用，避免长持有阻塞报名；
+        # 重读合并避免 I/O 期间的并发写入（如新报名）被覆盖。
+        async with self._state_lock:
+            state = load_trial30_state()
+            now = datetime.now(timezone.utc)
+            opt_out = set(state.get("opt_out", []))
+            todo: list[tuple[str, int | None, bool]] = []
+            for uid, rec in state["claimed"].items():
+                if rec.get("expired_done"):
+                    continue
+                exp = _parse_ts(rec.get("expires_at"))
+                if not exp or exp > now:
+                    continue
+                todo.append((uid, rec.get("guild_id"), uid not in opt_out))
+        for uid, guild_id, can_dm in todo:
+            try:
+                await self._expire_one(uid, guild_id=guild_id, can_dm=can_dm)
+            except Exception as exc:  # 单条失败不影响其他人
+                logger.warning("trial30: expire %s failed: %s", uid, exc)
+        if not todo:
+            return
+        async with self._state_lock:
+            state = load_trial30_state()
+            for uid, _, _ in todo:
+                rec = state["claimed"].get(uid)
+                if rec is None or rec.get("expired_done"):
+                    continue
+                rec["expired_done"] = True
+                # Day30 drip 即到期通知：记入 drip_sent，避免 drip 循环重复发送。
+                drip_sent = rec.setdefault("drip_sent", [])
+                if 30 not in drip_sent:
+                    drip_sent.append(30)
             save_trial30_state(state)
 
-    async def _expire_one(self, uid: str, rec: dict, can_dm: bool) -> None:
+    async def _expire_one(
+        self, uid: str, guild_id: int | None = None, can_dm: bool = True
+    ) -> None:
+        """收回单个用户的试用组 + 挂过期标记 + 发 Day30 到期 DM。
+
+        纯 Discord I/O，不碰 state 文件；expired_done/drip_sent 标记由
+        _process_expiries 统一落盘。
+        """
         user_id = int(uid)
-        rec["expired_done"] = True
-        # Day30 drip 即到期通知：记入 drip_sent，避免 drip 循环重复发送。
-        drip_sent = rec.setdefault("drip_sent", [])
-        if 30 not in drip_sent:
-            drip_sent.append(30)
         guild: discord.Guild | None = None
-        guild_id = rec.get("guild_id")
         if guild_id:
             guild = self.bot.get_guild(int(guild_id))
         if guild is None:
@@ -702,33 +767,58 @@ class TrialCog(commands.Cog):
     # ── 转化 drip ───────────────────────────────────────────────────────
 
     async def _process_drips(self) -> None:
-        state = load_trial30_state()
-        now = datetime.now(timezone.utc)
-        changed = False
-        for uid, rec in state["claimed"].items():
-            if rec.get("expired_done"):
-                continue
-            if uid in set(state.get("opt_out", [])):
-                continue
-            started = _parse_ts(rec.get("started_at"))
-            if not started:
-                continue
-            for day in due_drips(
-                started, now, rec.get("drip_sent"), drip_days=_DRIP_LOOP_DAYS
-            ):
-                sent = await _dm_user(self.bot, int(uid), TRIAL30_DRIP[day])
-                # 无论 DM 是否成功都记 sent：避免用户关闭私信时每小时空转重试。
-                rec.setdefault("drip_sent", []).append(day)
-                changed = True
-                if sent:
-                    logger.info("trial30: drip day %d sent to %s", day, uid)
-                else:
-                    logger.info(
-                        "trial30: drip day %d not delivered to %s (DM closed/failed), "
-                        "marked sent to avoid retry spam",
-                        day, uid,
+        # 两阶段：先加锁收集到期 drip（纯读盘），再逐个发 DM，
+        # 最后加锁重读合并落 sent 标记。锁不跨网络调用，重读合并避免
+        # 发 DM 期间的并发写入（如新报名/STOP）被覆盖。
+        async with self._state_lock:
+            state = load_trial30_state()
+            now = datetime.now(timezone.utc)
+            opt_out = set(state.get("opt_out", []))
+            todo: list[tuple[str, int]] = []
+            for uid, rec in state["claimed"].items():
+                if rec.get("expired_done"):
+                    continue
+                if uid in opt_out:
+                    continue
+                started = _parse_ts(rec.get("started_at"))
+                if not started:
+                    continue
+                todo.extend(
+                    (uid, day)
+                    for day in due_drips(
+                        started, now, rec.get("drip_sent"), drip_days=_DRIP_LOOP_DAYS
                     )
-        if changed:
+                )
+        attempted: list[tuple[str, int]] = []
+        for uid, day in todo:
+            try:
+                sent = await _dm_user(self.bot, int(uid), TRIAL30_DRIP[day])
+            except Exception as exc:  # _dm_user 内部已吞掉异常，这里是双保险
+                logger.warning(
+                    "trial30: drip day %d to %s raised: %s", day, uid, exc
+                )
+                sent = False
+            # 无论 DM 是否成功都记 sent：避免用户关闭私信时每小时空转重试。
+            attempted.append((uid, day))
+            if sent:
+                logger.info("trial30: drip day %d sent to %s", day, uid)
+            else:
+                logger.info(
+                    "trial30: drip day %d not delivered to %s (DM closed/failed), "
+                    "marked sent to avoid retry spam",
+                    day, uid,
+                )
+        if not attempted:
+            return
+        async with self._state_lock:
+            state = load_trial30_state()
+            for uid, day in attempted:
+                rec = state["claimed"].get(uid)
+                if rec is None:
+                    continue
+                drip_sent = rec.setdefault("drip_sent", [])
+                if day not in drip_sent:
+                    drip_sent.append(day)
             save_trial30_state(state)
 
     # ── 行为触发：promo DM ──────────────────────────────────────────────
@@ -746,44 +836,49 @@ class TrialCog(commands.Cog):
         return view
 
     async def _maybe_send_promo(self, member: discord.Member, source: str) -> None:
-        """符合试用资格且未领过、未发过 promo、未退订 → 发一次带 ✅ 按钮的 promo DM。"""
+        """符合试用资格且未领过、未发过 promo、未退订 → 发一次带 ✅ 按钮的 promo DM。
+
+        检查→发送→落盘全程加锁：join/首条消息/reaction 三个触发器并发时，
+        同一用户只会收到一次 promo DM。
+        """
         if not TRIAL30_ENABLED:
             return
         if not campaign_active():
             return  # 活动过期后不再发新 promo
         if member.bot:
             return
-        state = load_trial30_state()
-        uid = str(member.id)
-        ok, reason = promo_gate(
-            uid,
-            has_paid_role=self._has_paid_role(member),
-            already_claimed=uid in state["claimed"],
-            account_created_at=getattr(member, "created_at", None),
-            state=state,
-        )
-        if not ok:
-            return
-        text = TRIAL30_PROMO_TEMPLATE.format(name=member.display_name)
-        user = self.bot.get_user(member.id)
-        if user is None:
-            try:
-                user = await self.bot.fetch_user(member.id)
-            except Exception as exc:
-                logger.info("trial30: fetch_user %s failed: %s", member.id, exc)
+        async with self._state_lock:
+            state = load_trial30_state()
+            uid = str(member.id)
+            ok, reason = promo_gate(
+                uid,
+                has_paid_role=self._has_paid_role(member),
+                already_claimed=uid in state["claimed"],
+                account_created_at=getattr(member, "created_at", None),
+                state=state,
+            )
+            if not ok:
                 return
-        try:
-            await user.send(text, view=self._trial_join_view())
-            sent = True
-        except discord.Forbidden:
-            sent = False  # 用户关闭私信，静默跳过
-        except Exception as exc:
-            logger.warning("trial30: promo DM to %s failed: %s", member.id, exc)
-            sent = False
-        if sent:
-            state["claimed"].setdefault(uid, {})["promo_dm_sent"] = True
-            save_trial30_state(state)
-            logger.info("trial30: promo DM sent to %s (source=%s)", uid, source)
+            text = TRIAL30_PROMO_TEMPLATE.format(name=member.display_name)
+            user = self.bot.get_user(member.id)
+            if user is None:
+                try:
+                    user = await self.bot.fetch_user(member.id)
+                except Exception as exc:
+                    logger.info("trial30: fetch_user %s failed: %s", member.id, exc)
+                    return
+            try:
+                await user.send(text, view=self._trial_join_view())
+                sent = True
+            except discord.Forbidden:
+                sent = False  # 用户关闭私信，静默跳过
+            except Exception as exc:
+                logger.warning("trial30: promo DM to %s failed: %s", member.id, exc)
+                sent = False
+            if sent:
+                state["claimed"].setdefault(uid, {})["promo_dm_sent"] = True
+                save_trial30_state(state)
+                logger.info("trial30: promo DM sent to %s (source=%s)", uid, source)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
@@ -838,14 +933,15 @@ class TrialCog(commands.Cog):
 
     async def _handle_stop(self, message: discord.Message) -> None:
         uid = str(message.author.id)
-        state = load_trial30_state()
-        opt_out = set(state.get("opt_out", []))
-        if uid not in opt_out:
-            opt_out.add(uid)
-            state["opt_out"] = sorted(opt_out)
-            save_trial30_state(state)
-            _sync_opt_out_to_broadcast(uid)
-            logger.info("trial30: user %s opted out (STOP)", uid)
+        async with self._state_lock:
+            state = load_trial30_state()
+            opt_out = set(state.get("opt_out", []))
+            if uid not in opt_out:
+                opt_out.add(uid)
+                state["opt_out"] = sorted(opt_out)
+                save_trial30_state(state)
+                _sync_opt_out_to_broadcast(uid)
+                logger.info("trial30: user %s opted out (STOP)", uid)
         try:
             await message.author.send("已退订，不再打扰 🙏")
         except discord.Forbidden:
