@@ -67,6 +67,8 @@ TRIAL30_PROMO_TEMPLATE = (
     "bigTreeSignal ETF 信号（TradingView invite-only 指标）+ 会员频道完整内容，"
     "**免费体验 30 天**。\n"
     "\n"
+    "📺 信号使用教程：https://www.youtube.com/watch?v=uykQwiDW55k\n"
+    "\n"
     "想参加？点击下面的 ✅ 按钮，自动为你开通。\n"
     "\n"
     "说明：每人终身只能参加一次，现有付费会员已自动排除。\n"
@@ -130,7 +132,9 @@ TRIAL30_GRANTED_CONFIRM = (
     "② 你的 TradingView 用户名\n"
     "邀请链接：\n"
     f"{TRIAL30_INVITE_LINK}\n"
-    "群主审核后为你开通 📈"
+    "群主审核后为你开通 📈\n"
+    "\n"
+    "📺 信号使用教程：https://www.youtube.com/watch?v=uykQwiDW55k"
 )
 
 # !tvdone 执行后发给用户的确认 DM。
@@ -138,6 +142,7 @@ TRIAL30_TVDONE_CONFIRM = (
     "✅ **TradingView 权限已开通！**\n\n"
     "群主已在 TradingView 上为你开通 bigTreeSignal ETF version 指标权限，"
     "刷新页面即可使用 📈\n"
+    "📺 信号使用教程：https://www.youtube.com/watch?v=uykQwiDW55k\n"
     "你的「信号体验」试用继续有效，到期后自动结束。"
 )
 
