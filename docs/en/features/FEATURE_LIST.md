@@ -647,3 +647,10 @@ All settings are configured via the `.env` file; see `.env.example` for a full s
 - **Description:** One-month free signal trial campaign. Members run `!试用` in the server or click the ✅ button in the promo DM → the bot checks eligibility (non-paying member, once per lifetime, Discord account age ≥ 30 days) → immediately grants the "信号体验" role (read-only on 7 member channels, valid through 2026-12-31) → 30-day timer starts. The bot then DMs the user to DM the owner with a share screenshot + TradingView username; the owner manually grants the ETF indicator permission on TradingView and marks it with `!tvdone @user <TV_username>`. Six conversion drips (Day 1/7/14/21/25/30) nurture toward paid conversion; on day 30 the role is auto-revoked and an "体验过期" (trial-expired) marker is applied. Kill switch `TRIAL30_ENABLED` (default false)
 - **Config:** `TRIAL30_ENABLED=true`, `TRIAL_CAMPAIGN_END=2026-12-31`, `TRIAL30_INVITE_LINK`
 - **Commands:** `!试用` (members), `!tvdone @user TV_username` (admins)
+
+### 76. bigTreeSignal Credit Ledger
+
+- **Files:** `bot/credit.py` (pure ledger logic), `bot/credit_cog.py` (commands), `bot-ops/import_credits.py` (bulk import script)
+- **Description:** Subscriptions are collected manually (PayPal/Alipay/WeChat Pay), so promo credit needs a dispute-proof ledger. Keyed by Discord ID (optionally linked to a TradingView ID); every grant/redemption is journaled (timestamp, amount, reason, operator) with balances to 2 decimals. Admin commands: `!grant_credit @member amount reason` (issues credit, DMs the user), `!use_credit @member amount reason` (redeems toward renewal; fails cleanly on insufficient balance), `!link_tv @member TV_username` (links a TradingView ID); self-service: `/my_credit` (ephemeral, shows balance + TV link + last 5 entries). After a promo the owner supplies an ID list (CSV: discord_id,tv_username,amount,reason) and `import_credits.py --dry-run` previews the bulk import
+- **Config:** none (`CREDIT_STATE_FILE` env override exists for tests only)
+- **Commands:** `!grant_credit` / `!use_credit` / `!link_tv` (admins), `/my_credit` (all members)

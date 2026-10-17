@@ -648,3 +648,10 @@
 - **说明：** 为期一个月的免费信号体验活动。用户在群里发 `!试用` 或点击推广 DM 中的 ✅ 按钮 → Bot 查资格（非付费会员、终身一次、Discord 账号注册 ≥30 天）→ 立即发放「信号体验」身份组（7 个会员频道只读，2026-12-31 前有效）→ 30 天计时启动。随后 Bot DM 引导用户私信群主发送分享截图 + TradingView 用户名，群主在 TradingView 手动开通 ETF 指标权限后执行 `!tvdone @用户 <TV用户名>` 标记。六次转化 drip（Day1/7/14/21/25/30）自动推进转付费；30 天到期自动收回身份组并挂「体验过期」标记。安全开关 `TRIAL30_ENABLED`（默认 false）
 - **配置：** `TRIAL30_ENABLED=true`, `TRIAL_CAMPAIGN_END=2026-12-31`, `TRIAL30_INVITE_LINK`
 - **命令：** `!试用`（用户）、`!tvdone @用户 TV用户名`（管理员）
+
+### 76. bigTreeSignal Credit 台账（Credit Ledger）
+
+- **文件：** `bot/credit.py`（纯 ledger 逻辑）、`bot/credit_cog.py`（命令）、`bot-ops/import_credits.py`（批量导入脚本）
+- **说明：** 订阅为手动收款（PayPal/支付宝/微信），促销返的 credit 需要一个不会扯皮的账本。以 Discord ID 为主键（可绑定 TradingView ID），每笔发放/抵扣都记账（时间、金额、原因、操作人），余额 2 位小数。管理员命令：`!grant_credit @成员 金额 原因`（发放，自动 DM 通知用户）、`!use_credit @成员 金额 原因`（续费抵扣，余额不足报错不扣款）、`!link_tv @成员 TV用户名`（绑定 TV）；用户自查：`/my_credit`（ephemeral 仅自己可见，显示余额 + TV 绑定 + 最近 5 笔）。促销结束后 owner 提供 ID 名单（discord_id,tv_username,amount,reason CSV），`import_credits.py --dry-run` 预览后批量导入
+- **配置：** 无（`CREDIT_STATE_FILE` 环境变量可覆盖存储路径，仅测试用）
+- **命令：** `!grant_credit` / `!use_credit` / `!link_tv`（管理员）、`/my_credit`（所有用户）
