@@ -153,7 +153,7 @@ TRIAL30_CAMPAIGN_ENDED = (
 )
 
 _ELIGIBILITY_FAIL_TEXT = {
-    "paid": "你已是付费会员，无需领取试用 🙏",
+    "paid": "你已是付费会员，无需领取试用 🙏\n\n🎉 11月黑五促销：原价9折 + 10% credit返还，现在不需要做什么，到时我会通知你！",
     "claimed": "每人终身只能领取一次免费试用，你已经领过了。",
     "account_too_new": (
         f"Discord 账号注册满 {TRIAL30_MIN_ACCOUNT_AGE_DAYS} 天后才能领取免费试用。"
