@@ -87,7 +87,7 @@ TRIAL30_DRIP: dict[int, str] = {
     1: (
         "🌲 **免费试用第 1 天**\n"
         "欢迎体验 bigTreeSignal 信号！\n"
-        "想要 TradingView 上的 ETF 指标？私信群主 @bigtreesignal，发送：\n"
+        "想要 TradingView 上的 ETF 指标？在群里点击群主 @bigtreesignal 的头像私信他，发送：\n"
         "① 你把邀请链接分享到其他群 / 社交媒体的截图\n"
         "② 你的 TradingView 用户名\n"
         "群主审核后为你开通 📈\n"
@@ -128,7 +128,7 @@ TRIAL30_DRIP: dict[int, str] = {
 TRIAL30_GRANTED_CONFIRM = (
     "✅ 已为你开通「信号体验」30 天！会员频道已可见。\n"
     "\n"
-    "想要 TradingView 上的 ETF 指标权限？私信群主 @bigtreesignal，发送：\n"
+    "想要 TradingView 上的 ETF 指标权限？在群里点击群主 @bigtreesignal 的头像私信他，发送：\n"
     "① 你把邀请链接分享到其他群 / 社交媒体的截图\n"
     "② 你的 TradingView 用户名\n"
     "邀请链接：\n"
