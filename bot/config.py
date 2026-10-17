@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from dotenv import load_dotenv
 
@@ -187,6 +188,43 @@ INVITE_ETF_MIN_COUNT: int = int(os.getenv("INVITE_ETF_MIN_COUNT", "5"))
 INVITE_FULL_REWARD_ROLE_ID: int = int(os.getenv("INVITE_FULL_REWARD_ROLE_ID", "1445447888439349319"))
 INVITE_TOPN_COUNT: int = int(os.getenv("INVITE_TOPN_COUNT", "5"))
 INVITE_REWARD_DAYS: int = int(os.getenv("INVITE_REWARD_DAYS", "30"))
+# 推广大使阶梯奖励：带来 N 人 -> 免费会员。
+# role 取值 "etf"（懒人etf🌲）或 "full"（懒人🌴），映射到上面的奖励身份组。
+# 可用环境变量 AMBASSADOR_TIERS 覆盖（JSON 数组，如
+# '[{"invites":10,"days":30,"role":"etf"}]'）。
+_AMBASSADOR_TIERS_DEFAULT: list[dict] = [
+    {"invites": 10, "days": 30, "role": "etf"},    # 带来10人 -> ETF版信号 1个月
+    {"invites": 30, "days": 90, "role": "etf"},    # 带来30人 -> ETF版信号 3个月
+    {"invites": 100, "days": 365, "role": "full"},  # 带来100人 -> 个股版信号 1年
+]
+
+
+def _parse_ambassador_tiers(raw: str) -> list[dict]:
+    """Parse AMBASSADOR_TIERS JSON env override; fall back to the default."""
+    if raw:
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, ValueError):
+            parsed = None
+        if isinstance(parsed, list):
+            tiers: list[dict] = []
+            for item in parsed:
+                try:
+                    invites = int(item["invites"])
+                    days = int(item["days"])
+                    role = str(item["role"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if invites > 0 and days > 0 and role in ("etf", "full"):
+                    tiers.append({"invites": invites, "days": days, "role": role})
+            if tiers:
+                return sorted(tiers, key=lambda t: t["invites"])
+    return [dict(t) for t in _AMBASSADOR_TIERS_DEFAULT]
+
+
+AMBASSADOR_TIERS: list[dict] = _parse_ambassador_tiers(os.getenv("AMBASSADOR_TIERS", ""))
+# 同一档位两次发放之间的冷却（天），防止刷同一批人重复领。
+AMBASSADOR_COOLDOWN_DAYS: int = int(os.getenv("AMBASSADOR_COOLDOWN_DAYS", "30"))
 
 # ---------------------------------------------------------------------------
 # 15-day read-only trial for new members

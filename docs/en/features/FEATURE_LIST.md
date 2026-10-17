@@ -633,3 +633,17 @@ All settings are configured via the `.env` file; see `.env.example` for a full s
 - **Files:** `bot/announcements.py` (hooked into the `NewsFeedCog` flash scan chain)
 - **Description:** Scans **all** Jin10 flashes on every poll (not limited by the important-only filter); when a watched ticker has a **buyback, secondary offering/dilution, or analyst rating change** (upgrade/downgrade/target-price change), posts a short alert to `#bigtreesignal_ai` with the flash excerpt. Tickers match as standalone tokens (`MU` won't hit `musk`, `COIN` won't hit `bitcoin`); central-bank reverse-repo ops don't count as "buybacks". Earnings-type flashes are handled by the earnings digest and skipped here to avoid duplicates. Dedup by flash ID (`data/announcements_posted.json`)
 - **Config:** `ANNOUNCE_ENABLED=true`, `ANNOUNCE_CHANNEL_ID` (defaults to news channel), reuses the `EARNINGS_TICKERS` watchlist
+
+### 74. ⭐ DM Broadcast Outreach 【Feature Highlight】
+
+- **Files:** `bot-ops/dm_broadcast.py` (standalone script, does not depend on the live bot), `bot/trial_cog.py` (button interactions)
+- **Description:** Server announcements (even @everyone) only reach a few dozen members in practice. This is the standard playbook for "getting one promo message to every member": the bot DMs every member individually with a ✅ button — one click to join. Four-layer reach: ① batched DMs (primary; throttled 8–12s per message, max 400/day, ~5,000 members in ~10 days, 429 backoff per Retry-After); ② behavior-triggered DMs (on join / first message / first reaction, highest open rate); ③ server announcement as backup (covers members with DMs closed); ④ ambassador word-of-mouth. Compliance guardrails: every DM carries an opt-out (reply STOP to unsubscribe permanently), max 1 broadcast + 1 triggered DM per topic per user. Resumable state file, idempotent; DM-closed members are exported to a separate list for announcement follow-up. See `docs/zh/growth/DM_OUTREACH_PLAN.md`
+- **Config:** the standalone script reads the token from `~/workspace/user/files/env.txt`; `--dry-run` previews without sending
+- **Usage:** `python3 bot-ops/dm_broadcast.py --dry-run` to preview → `python3 bot-ops/dm_broadcast.py` for the real batched send
+
+### 75. One-Month Free Trial (信号体验 / Trial30)
+
+- **Files:** `bot/trial_cog.py`, `bot/trial_config.py`
+- **Description:** One-month free signal trial campaign. Members run `!试用` in the server or click the ✅ button in the promo DM → the bot checks eligibility (non-paying member, once per lifetime, Discord account age ≥ 30 days) → immediately grants the "信号体验" role (read-only on 7 member channels, valid through 2026-12-31) → 30-day timer starts. The bot then DMs the user to DM the owner with a share screenshot + TradingView username; the owner manually grants the ETF indicator permission on TradingView and marks it with `!tvdone @user <TV_username>`. Six conversion drips (Day 1/7/14/21/25/30) nurture toward paid conversion; on day 30 the role is auto-revoked and an "体验过期" (trial-expired) marker is applied. Kill switch `TRIAL30_ENABLED` (default false)
+- **Config:** `TRIAL30_ENABLED=true`, `TRIAL_CAMPAIGN_END=2026-12-31`, `TRIAL30_INVITE_LINK`
+- **Commands:** `!试用` (members), `!tvdone @user TV_username` (admins)

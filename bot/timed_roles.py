@@ -132,8 +132,12 @@ async def grant_timed_role(
     role_id: int,
     days: int,
     reason: str,
+    meta: dict | None = None,
 ) -> bool:
     """Assign *role_id* to the user and record the grant.
+
+    *meta* is an optional JSON-serializable dict stored alongside the grant
+    record (e.g. {"count_at_grant": 12} for ambassador tiers).
 
     Returns True when the role was assigned (or already present) and the
     grant was recorded. Returns False — without raising — when the guild,
@@ -181,8 +185,41 @@ async def grant_timed_role(
         "granted_at": now.isoformat(),
         "expires_at": (now + timedelta(days=days)).isoformat(),
         "revoked": False,
+        "meta": dict(meta) if meta else {},
     })
     _save_grants(grants)
+    return True
+
+
+def supersede_grants(user_id: int, role_id: int, note: str = "superseded") -> int:
+    """Mark all open grants for (user, role) as revoked *in the record only*.
+
+    The Discord role itself is left untouched. Used when a longer/higher
+    grant replaces an earlier one (e.g. an ambassador tier upgrade) so the
+    revoke loop does not remove the role at the old grant's expiry.
+    Returns the number of grants superseded.
+    """
+    grants = _load_grants()
+    now = _utcnow()
+    n = 0
+    for g in grants:
+        if (
+            int(g.get("user_id") or 0) == user_id
+            and int(g.get("role_id") or 0) == role_id
+            and not g.get("revoked")
+            and not g.get("cancelled")
+        ):
+            g["revoked"] = True
+            g["revoked_at"] = now.isoformat()
+            g["revoke_note"] = note
+            n += 1
+    if n:
+        _save_grants(grants)
+        logger.info(
+            "timed_roles: superseded %d grant(s) for user %s role %s (%s)",
+            n, user_id, role_id, note,
+        )
+    return n
     return True
 
 

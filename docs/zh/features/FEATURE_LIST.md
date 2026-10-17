@@ -634,3 +634,17 @@
 - **文件：** `bot/announcements.py`（挂在 `NewsFeedCog` 快讯扫描链上）
 - **说明：** 金十快讯轮询时扫描**全部**快讯（不受 important 过滤限制），匹配到关注公司的**股票回购、增发/配股/融资、分析师评级变化**（上调/下调评级、目标价调整）即发短提醒到 `#bigtreesignal_ai`，附快讯原文摘要。财报类快讯由财报速读处理，此处自动跳过避免重复。股票代码按独立词匹配（`MU` 不会命中 `musk`，`COIN` 不会命中 `bitcoin`）；央行逆回购操作不计入"股票回购"。按快讯 ID 去重（`data/announcements_posted.json`）
 - **配置：** `ANNOUNCE_ENABLED=true`, `ANNOUNCE_CHANNEL_ID`（默认用新闻频道），沿用 `EARNINGS_TICKERS` 关注列表
+
+### 74. ⭐ 私信 DM 群发触达（DM Broadcast）【本期重点】
+
+- **文件：** `bot-ops/dm_broadcast.py`（独立脚本，不依赖线上 Bot）、`bot/trial_cog.py`（按钮交互）
+- **说明：** 群公告（含 @everyone）实测只能触达几十人，本功能是"让一条推广消息触达每一个成员"的标准打法：Bot 给全员逐个发推广私信，附 ✅ 按钮，点击即参与。四层触达：①分批 DM（主力，节流 8–12 秒/条、每天上限 400 条，约 10 天发完 5000 人，429 按 Retry-After 退避）；②行为触发 DM（新加入/首条发言/首次 reaction 时各发一次，打开率最高）；③群公告备份（覆盖关闭私信的人）；④推广大使人传人。合规红线：每条 DM 带退订（回复 STOP 永久退订）、同一主题每人最多 1 次群发 + 1 次触发。状态文件断点续跑、幂等，DM 关闭名单单独输出走公告补。详见 `docs/zh/growth/DM_OUTREACH_PLAN.md`
+- **配置：** 独立脚本读 `~/workspace/user/files/env.txt` 的 Token；`--dry-run` 预览不真发
+- **使用：** `python3 bot-ops/dm_broadcast.py --dry-run` 预览 → `python3 bot-ops/dm_broadcast.py` 正式分批发送
+
+### 75. 免费试用一个月（信号体验 / Trial30）
+
+- **文件：** `bot/trial_cog.py`, `bot/trial_config.py`
+- **说明：** 为期一个月的免费信号体验活动。用户在群里发 `!试用` 或点击推广 DM 中的 ✅ 按钮 → Bot 查资格（非付费会员、终身一次、Discord 账号注册 ≥30 天）→ 立即发放「信号体验」身份组（7 个会员频道只读，2026-12-31 前有效）→ 30 天计时启动。随后 Bot DM 引导用户私信群主发送分享截图 + TradingView 用户名，群主在 TradingView 手动开通 ETF 指标权限后执行 `!tvdone @用户 <TV用户名>` 标记。六次转化 drip（Day1/7/14/21/25/30）自动推进转付费；30 天到期自动收回身份组并挂「体验过期」标记。安全开关 `TRIAL30_ENABLED`（默认 false）
+- **配置：** `TRIAL30_ENABLED=true`, `TRIAL_CAMPAIGN_END=2026-12-31`, `TRIAL30_INVITE_LINK`
+- **命令：** `!试用`（用户）、`!tvdone @用户 TV用户名`（管理员）

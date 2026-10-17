@@ -12,6 +12,11 @@ from discord.ext import commands, tasks
 
 from bot.acquisition import (
     AcquisitionCtaView,
+    ambassador_due_tiers,
+    ambassador_role_id,
+    ambassador_role_label,
+    ambassador_role_name,
+    ambassador_tier_reason,
     cancel_drip_for_user,
     diff_invite_attribution,
     due_drip_jobs,
@@ -25,6 +30,7 @@ from bot.acquisition import (
     save_invite_code_snapshot,
     send_drip_job,
     snapshot_invite_codes,
+    verified_invite_count,
 )
 from bot.config import (
     INVITE_ETF_MIN_COUNT,
@@ -46,6 +52,7 @@ from bot.timed_roles import (
     is_paid_member,
     last_grant,
     revoke_due_timed_roles,
+    supersede_grants,
 )
 
 logger = logging.getLogger(__name__)
@@ -306,6 +313,7 @@ class AcquisitionCog(commands.Cog):
             member.id, code, inviter_id, count,
         )
         await self._maybe_grant_invite_etf_reward(member.guild, inviter_id, count)
+        await self._maybe_grant_ambassador_rewards(member.guild, inviter_id)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
@@ -368,6 +376,87 @@ class AcquisitionCog(commands.Cog):
             logger.info("Invite reward DM blocked for user %s", inviter_id)
         except Exception as exc:
             logger.warning("Invite reward DM failed for %s: %s", inviter_id, exc)
+
+    # ── ambassador tiered rewards ────────────────────────────────────────
+
+    async def _maybe_grant_ambassador_rewards(
+        self, guild: discord.Guild, inviter_id: int
+    ) -> None:
+        """Grant ambassador tiers whose marginal verified-invite count qualifies.
+
+        Verified count excludes joiners who already left the guild (anti-fraud).
+        A higher tier for the same role supersedes earlier grants so the revoke
+        loop never yanks the role at an old grant's expiry.
+        """
+        try:
+            verified = await verified_invite_count(guild, inviter_id)
+        except Exception as exc:
+            logger.warning("ambassador: verified count failed for %s: %s", inviter_id, exc)
+            return
+        due = ambassador_due_tiers(inviter_id, verified)
+        for tier in due:
+            role_id = ambassador_role_id(tier)
+            if not role_id:
+                continue
+            reason = ambassador_tier_reason(tier)
+            # A longer/higher grant wins: retire older records of the same role
+            # (record-only; the role itself stays on the user).
+            supersede_grants(inviter_id, role_id, note=f"superseded by {reason}")
+            ok = await grant_timed_role(
+                self.bot,
+                inviter_id,
+                guild.id,
+                role_id,
+                int(tier["days"]),
+                reason,
+                meta={"count_at_grant": verified},
+            )
+            if not ok:
+                continue
+            logger.info(
+                "ambassador: granted tier %s (%dd, role %s) to %s (verified=%d)",
+                tier["invites"], tier["days"], role_id, inviter_id, verified,
+            )
+            await self._dm_ambassador_reward(inviter_id, tier, verified)
+
+    async def _dm_ambassador_reward(
+        self, inviter_id: int, tier: dict, verified: int
+    ) -> None:
+        from bot.acquisition import (
+            ambassador_progress,
+            next_ambassador_tier_gap,
+        )
+
+        role_label = ambassador_role_label(tier)
+        role_name = ambassador_role_name(tier)
+        gap = next_ambassador_tier_gap(inviter_id, verified)
+        if gap and gap[1] > 0:
+            next_line = f"\n\n继续加油：下一档 **{gap[0]} 人**，还差 **{gap[1]}** 人。"
+        elif gap and gap[1] == 0:
+            next_line = "\n\n🎊 你已达成最高档，继续保持！"
+        else:
+            next_line = ""
+        embed = discord.Embed(
+            title="🏆 推广大使奖励到账！",
+            description=(
+                f"你累计成功邀请 **{verified}** 位朋友（已核验仍在群内），"
+                f"达成推广大使 **{tier['invites']} 人**档，"
+                f"获得 **{role_label}**（{role_name}）**{tier['days']} 天**！{next_line}"
+            ),
+            color=discord.Color.gold(),
+        )
+        user = self.bot.get_user(inviter_id)
+        if user is None:
+            try:
+                user = await self.bot.fetch_user(inviter_id)
+            except Exception:
+                return
+        try:
+            await user.send(embed=embed)
+        except discord.Forbidden:
+            logger.info("ambassador reward DM blocked for user %s", inviter_id)
+        except Exception as exc:
+            logger.warning("ambassador reward DM failed for %s: %s", inviter_id, exc)
 
     # ── monthly TopN settlement ────────────────────────────────────────────
 

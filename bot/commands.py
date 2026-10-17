@@ -220,7 +220,13 @@ class PromotionCommands(commands.Cog):
 
     @app_commands.command(name="my_invites", description="我的邀请数据与奖励进度")
     async def my_invites_cmd(self, interaction: discord.Interaction) -> None:
-        from bot.acquisition import invite_count_for, invite_rank_for
+        from bot.acquisition import (
+            ambassador_progress,
+            invite_count_for,
+            invite_rank_for,
+            next_ambassador_tier_gap,
+            verified_invite_count,
+        )
         from bot.config import INVITE_ETF_MIN_COUNT, INVITE_ETF_REWARD_ROLE_ID, INVITE_TRACKING_ENABLED
         from bot.timed_roles import has_active_grant
 
@@ -237,12 +243,37 @@ class PromotionCommands(commands.Cog):
         else:
             reward_line = f"✅ 已达成邀请条件（累计 {count} 人），奖励按规则发放中"
         rank_line = f"近 30 天排名：第 **{rank}** 名（{recent} 人）" if rank else "近 30 天暂未上榜"
+        # 推广大使进度（核验后人数：已退群的不计入）
+        try:
+            verified = await verified_invite_count(interaction.guild, interaction.user.id) \
+                if interaction.guild else count
+        except Exception:
+            verified = count
+        amb_lines: list[str] = []
+        for prog in ambassador_progress(interaction.user.id, verified):
+            if prog["last_granted_at"]:
+                taken = f"上次领取 {prog['last_granted_at'][:10]}"
+            else:
+                taken = "尚未领取"
+            shown = max(0, prog["marginal"])
+            flag = "✅" if prog["due_now"] else "·"
+            amb_lines.append(
+                f"{flag} {prog['invites']}人 → {prog['role_label']}{prog['days']}天"
+                f"：进度 {shown}/{prog['invites']}（{taken}）"
+            )
+        gap = next_ambassador_tier_gap(interaction.user.id, verified)
+        if gap and gap[1] > 0:
+            amb_lines.append(f"距离下一档（{gap[0]}人）还差 **{gap[1]}** 人")
+        elif gap and gap[1] == 0:
+            amb_lines.append("🎊 已达成最高档！")
+        amb_block = "\n".join(amb_lines) if amb_lines else "推广大使奖励未配置。"
         embed = discord.Embed(
             title="📨 我的邀请",
             description=(
-                f"累计成功邀请：**{count}** 人\n"
+                f"累计成功邀请：**{count}** 人（核验在群：**{verified}** 人）\n"
                 f"{rank_line}\n"
                 f"{reward_line}\n\n"
+                f"🏆 **推广大使**\n{amb_block}\n\n"
                 "用 `/invite` 获取你的专属邀请链接。"
             ),
             color=discord.Color.blue(),

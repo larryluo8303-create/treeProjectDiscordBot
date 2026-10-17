@@ -47,6 +47,7 @@ from bot.webhook import WebhookServer
 from bot.weekly_summary import WeeklySummaryCog
 from bot.youtube_monitor import YouTubeMonitorCog
 from bot.acquisition_cog import AcquisitionCog
+from bot.trial_cog import TrialCog
 
 # 个股订阅 Cog（2026-10-10 新增）：实现放在 ~/workspace/bot-ops/subscription_cog.py，
 # 不在 repo 内；导入失败时降级（不注册），不影响 bot 启动。
@@ -188,6 +189,7 @@ async def main() -> None:
     await bot.add_cog(TechnicalsCog(bot, openai_client))
     await bot.add_cog(YouTubeMonitorCog(bot, openai_client))
     await bot.add_cog(AcquisitionCog(bot))
+    await bot.add_cog(TrialCog(bot))
     await bot.add_cog(PromoMonitorCog(bot))
     await bot.add_cog(WeeklySummaryCog(bot, openai_client))
     await bot.add_cog(DailySummaryCog(bot, openai_client))

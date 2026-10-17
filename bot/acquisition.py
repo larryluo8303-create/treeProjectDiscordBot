@@ -17,6 +17,8 @@ from bot.config import (
     FREE_TRIAL_URL,
     INTENT_LEAD_ROLE_ID,
     INTENT_NOTIFY_OWNER,
+    INVITE_ETF_REWARD_ROLE_ID,
+    INVITE_FULL_REWARD_ROLE_ID,
     INVITE_REWARD_ROLE_ID,
     INVITE_REWARD_THRESHOLD,
     ONBOARD_DAY1_DELAY_SECONDS,
@@ -568,3 +570,151 @@ def mark_month_settled(month_key: str) -> None:
     if month_key not in data["settled_months"]:
         data["settled_months"].append(month_key)
         _save_settlement(data)
+
+
+# ── Ambassador tiered rewards ──────────────────────────────────────────────
+# 推广大使：按累计（核验后）邀请数发放阶梯奖励，每档独立记录上次发放时的
+# 邀请数；只有新增了至少一档阈值的人数、且距上次发放同档超过冷却期，才再发。
+
+_AMBASSADOR_ROLE_IDS = {
+    "etf": lambda: INVITE_ETF_REWARD_ROLE_ID,    # 懒人etf🌲
+    "full": lambda: INVITE_FULL_REWARD_ROLE_ID,  # 懒人🌴
+}
+_AMBASSADOR_ROLE_NAMES = {"etf": "懒人etf🌲", "full": "懒人🌴"}
+_AMBASSADOR_ROLE_LABELS = {"etf": "ETF 版会员", "full": "full 版会员"}
+
+
+def ambassador_role_id(tier: dict) -> int:
+    """Resolve a tier's role key ('etf'/'full') to the Discord role id."""
+    resolver = _AMBASSADOR_ROLE_IDS.get(str(tier.get("role")))
+    return int(resolver()) if resolver else 0
+
+
+def ambassador_tier_reason(tier: dict) -> str:
+    return f"ambassador_{int(tier['invites'])}"
+
+
+def ambassador_role_label(tier: dict) -> str:
+    """Display label for a tier's reward role, e.g. 'ETF 版会员'."""
+    return _AMBASSADOR_ROLE_LABELS.get(str(tier.get("role")), "")
+
+
+def ambassador_role_name(tier: dict) -> str:
+    """Discord role name for a tier's reward role, e.g. '懒人etf🌲'."""
+    return _AMBASSADOR_ROLE_NAMES.get(str(tier.get("role")), "")
+
+
+def _ambassador_tiers() -> list[dict]:
+    # Imported lazily so tests can patch bot.config.AMBASSADOR_TIERS and have
+    # the change take effect here.
+    from bot.config import AMBASSADOR_TIERS, AMBASSADOR_COOLDOWN_DAYS
+    return AMBASSADOR_TIERS, AMBASSADOR_COOLDOWN_DAYS
+
+
+def ambassador_due_tiers(
+    user_id: int,
+    verified_count: int,
+    now: datetime | None = None,
+) -> list[dict]:
+    """Tiers eligible for a grant right now.
+
+    A tier is due when the *marginal* invite count since that tier's last
+    grant reaches the tier threshold, and the per-tier cooldown has elapsed.
+    """
+    from bot.timed_roles import _parse_ts, last_grant
+
+    tiers, cooldown_days = _ambassador_tiers()
+    now = now or datetime.now(timezone.utc)
+    due: list[dict] = []
+    for tier in tiers:
+        role_id = ambassador_role_id(tier)
+        if not role_id:
+            continue
+        reason = ambassador_tier_reason(tier)
+        last = last_grant(int(user_id), role_id, reason=reason)
+        count_at_last = 0
+        if last:
+            granted_at = _parse_ts(last.get("granted_at"))
+            if granted_at and (now - granted_at).total_seconds() < cooldown_days * 86400:
+                continue  # 冷却期内：不重复发
+            count_at_last = int((last.get("meta") or {}).get("count_at_grant") or 0)
+        if verified_count - count_at_last >= int(tier["invites"]):
+            due.append(tier)
+    return due
+
+
+def ambassador_progress(user_id: int, verified_count: int) -> list[dict]:
+    """Per-tier progress for /my_invites display.
+
+    Each entry: tier dict fields + role_id, last_granted_at (ISO str or None),
+    count_at_last, marginal (verified - count_at_last), due_now (bool).
+    """
+    from bot.timed_roles import last_grant
+
+    tiers, _ = _ambassador_tiers()
+    due = ambassador_due_tiers(int(user_id), verified_count, None)
+    due_reasons = {ambassador_tier_reason(t) for t in due}
+    out: list[dict] = []
+    for tier in tiers:
+        role_id = ambassador_role_id(tier)
+        last = last_grant(int(user_id), role_id, reason=ambassador_tier_reason(tier))
+        count_at_last = int((last.get("meta") or {}).get("count_at_grant") or 0) if last else 0
+        marginal = verified_count - count_at_last
+        out.append({
+            "invites": int(tier["invites"]),
+            "days": int(tier["days"]),
+            "role": str(tier["role"]),
+            "role_id": role_id,
+            "role_name": _AMBASSADOR_ROLE_NAMES.get(str(tier["role"]), ""),
+            "role_label": _AMBASSADOR_ROLE_LABELS.get(str(tier["role"]), ""),
+            "last_granted_at": (last.get("granted_at") or "") if last else "",
+            "count_at_last": count_at_last,
+            "marginal": marginal,
+            "due_now": ambassador_tier_reason(tier) in due_reasons,
+        })
+    return out
+
+
+def next_ambassador_tier_gap(user_id: int, verified_count: int) -> tuple[int, int] | None:
+    """(threshold, missing) for the nearest tier not yet reached; None if all due/met."""
+    tiers, _ = _ambassador_tiers()
+    due_thresholds = {int(t["invites"]) for t in ambassador_due_tiers(user_id, verified_count)}
+    for tier in sorted(tiers, key=lambda t: int(t["invites"])):
+        threshold = int(tier["invites"])
+        if threshold in due_thresholds:
+            return threshold, 0
+        # Marginal progress against this tier's own last-grant baseline.
+        from bot.timed_roles import last_grant
+        last = last_grant(int(user_id), ambassador_role_id(tier), reason=ambassador_tier_reason(tier))
+        count_at_last = int((last.get("meta") or {}).get("count_at_grant") or 0) if last else 0
+        if verified_count - count_at_last < threshold:
+            return threshold, threshold - (verified_count - count_at_last)
+    return None
+
+
+async def verified_invite_count(guild: discord.Guild, inviter_id: int) -> int:
+    """防刷：只统计受邀人**仍在服务器内**的邀请数。
+
+    invites.json 的 counts 累计了所有 join 事件（含已退群的）；这里逐个
+    核验 joiner 是否仍是成员，已退群的不计入。
+    """
+    data = _load_invites()
+    n = 0
+    for attr in data.get("attributions", []):
+        try:
+            if int(attr.get("inviter_id") or 0) != int(inviter_id):
+                continue
+            joiner_id = int(attr.get("joiner_id") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not joiner_id:
+            continue
+        member = guild.get_member(joiner_id)
+        if member is None:
+            try:
+                member = await guild.fetch_member(joiner_id)
+            except Exception:
+                member = None
+        if member is not None:
+            n += 1
+    return n
