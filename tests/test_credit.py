@@ -429,6 +429,101 @@ async def test_my_credit_ephemeral(credit_file):
     assert "black friday" in text and "renewal" in text
 
 
+# ── 退化账户合并（bug 修复回归） ─────────────────────────────────────────
+
+def test_link_tv_merges_fallback_account(credit_file):
+    """import 建的退化账户（TV 未知），后来知道 TV 后绑定：余额/流水迁入 TV 账户。"""
+    grant(None, 99.00, reason="loyalty-3yr", by="import_script", discord_id=777)
+    bound = link_tv(777, "Real_TV")
+    assert bound == "Real_TV"
+    assert resolve_by_discord(777) == "real_tv"
+    assert get_balance("real_tv") == 99.00
+    assert get_balance("discord:777") == 0.0  # 退化账户已删除
+    txns = recent_txns("real_tv", 5)
+    assert len(txns) == 1 and txns[0]["reason"] == "loyalty-3yr"
+
+
+def test_grant_merges_fallback_account(credit_file):
+    """grant 带 discord_id 撞上退化账户：自动合并，不抛错。"""
+    grant(None, 50.00, by="import_script", discord_id=777)
+    bal = grant("Real_TV", 10.00, reason="black friday", by=999, discord_id=777)
+    assert bal == 60.00
+    assert resolve_by_discord(777) == "real_tv"
+
+
+def test_relink_discord_merges_fallback_account(credit_file):
+    grant(None, 25.00, by="import_script", discord_id=777)
+    grant("real_tv", 5.00, by=999)  # TV 账户先存在
+    bound = relink_discord("real_tv", 777)
+    assert bound == "real_tv"
+    assert get_balance("real_tv") == 30.00
+    assert resolve_by_discord(777) == "real_tv"
+
+
+def test_genuine_conflict_still_raises(credit_file):
+    """真冲突（discord 已绑定另一个 TV）仍然拒绝，不静默合并。"""
+    link_tv(111, "aaa")
+    grant("bbb", 5.00, by=1, discord_id=222)
+    with pytest.raises(ValueError):
+        link_tv(111, "bbb")  # 111 已绑定 aaa
+    with pytest.raises(ValueError):
+        relink_discord("bbb", 111)  # 111 已绑定 aaa
+    with pytest.raises(ValueError):
+        grant("ccc", 5.00, by=1, discord_id=111)  # grant 换绑冲突也拒绝
+    assert resolve_by_discord(111) == "aaa"
+    assert get_balance("aaa") == 0.0 and get_balance("bbb") == 5.00
+
+
+def test_merged_txns_keep_chronological_order(credit_file):
+    grant("real_tv", 10.00, reason="first", by=1)
+    grant(None, 20.00, reason="second", by=1, discord_id=777)
+    link_tv(777, "real_tv")
+    txns = recent_txns("real_tv", 10)
+    assert [t["reason"] for t in txns] == ["second", "first"]
+
+
+# ── 规范化 ────────────────────────────────────────────────────────────────
+
+def test_tv_key_nfc_normalization(credit_file):
+    """同一视觉用户名（NFC vs NFD）必须映射到同一主键。"""
+    import unicodedata
+    nfc = unicodedata.normalize("NFC", "café_trader")
+    nfd = unicodedata.normalize("NFD", "café_trader")
+    assert nfc != nfd  # 前提：两种形式确实不同
+    grant(nfc, 10.00, by=1)
+    grant(nfd, 5.00, by=1)
+    assert get_balance("café_trader") == 15.00
+
+
+def test_use_unknown_tv_leaves_no_phantom_account(credit_file):
+    """use() 在未知 TV 上抛 InsufficientCredit，且不落盘幽灵空账户。"""
+    with pytest.raises(InsufficientCredit):
+        use("Nobody_Here", 5, by=1)
+    assert get_account_info("nobody_here") is None
+    assert resolve_by_discord(999999) is None
+
+
+def test_concurrent_grants_no_lost_update(credit_file):
+    """多线程并发 grant：锁保证不丢账。"""
+    import threading
+    errors = []
+
+    def worker():
+        try:
+            for _ in range(10):
+                grant("concurrent_tv", 1.00, by=1)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker) for _ in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors
+    assert get_balance("concurrent_tv") == 50.00
+
+
 @pytest.mark.asyncio
 async def test_my_credit_unlinked_prompts_binding(credit_file):
     cog = _cog()

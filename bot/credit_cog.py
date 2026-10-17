@@ -58,6 +58,17 @@ def _parse_amount(raw: str) -> float | None:
     return amount if amount > 0 else None
 
 
+def _account_label(info: dict, key: str) -> str:
+    """账户展示名：有 TV 显示 TV 名；退化账户（discord:<id>）显示 Discord ID
+    并注明未绑定 TV，避免 DM 里出现 "TradingView：`discord:777`" 这种迷惑文案。"""
+    tv = (info or {}).get("tv_username")
+    if tv:
+        return tv
+    if key.startswith("discord:"):
+        return f"Discord:{key.split(':', 1)[1]}（未绑定 TV）"
+    return key
+
+
 def _fmt_ts(ts: float) -> str:
     try:
         return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
@@ -132,7 +143,7 @@ class CreditCog(commands.Cog):
             await ctx.reply(f"发放失败：{exc}", mention_author=False)
             return
         info = get_account_info(key) or {}
-        tv = info.get("tv_username") or key
+        tv = _account_label(info, key)
         reason_txt = f"（{reason}）" if reason else ""
         await self._safe_dm(
             member,
@@ -180,8 +191,9 @@ class CreditCog(commands.Cog):
         try:
             balance = use(key, amount, reason=reason, by=ctx.author.id)
         except InsufficientCredit as exc:
+            label = _account_label(get_account_info(key), key)
             await ctx.reply(
-                f"❌ 余额不足：`{key}` 当前余额 **${exc.balance:.2f}**，"
+                f"❌ 余额不足：`{label}` 当前余额 **${exc.balance:.2f}**，"
                 f"要抵扣 **${exc.requested:.2f}**。未扣款。",
                 mention_author=False,
             )
@@ -190,7 +202,7 @@ class CreditCog(commands.Cog):
             await ctx.reply(f"抵扣失败：{exc}", mention_author=False)
             return
         info = get_account_info(key) or {}
-        tv = info.get("tv_username") or key
+        tv = _account_label(info, key)
         reason_txt = f"（{reason}）" if reason else ""
         await self._safe_dm(
             member,
@@ -268,7 +280,7 @@ class CreditCog(commands.Cog):
             return
         info = get_account_info(key) or {}
         balance = info.get("balance", 0.0)
-        tv = info.get("tv_username") or key
+        tv = _account_label(info, key)
         txns = recent_txns(key, 5)
         lines = [
             f"💰 当前余额：**${balance:.2f}** USD",
