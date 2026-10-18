@@ -128,7 +128,7 @@ TRIAL30_DRIP: dict[int, str] = {
 TRIAL30_GRANTED_CONFIRM = (
     "✅ 已为你开通「信号体验」30 天！\n"
     "\n"
-    "📺 会员频道：在 Discord 左侧频道列表往下拉，找到「会员专区」分类，\n"
+    "📺 会员频道：在 Discord 左侧找到 bigtreesignal 专区分类，\n"
     "里面的频道现在你都能看了。\n"
     "\n"
     "📈 TradingView 信号（ETF 指标）开通三步：\n"
