@@ -124,16 +124,18 @@ TRIAL30_DRIP: dict[int, str] = {
     ),
 }
 
-# 报名/!试用 通过后的开通确认 DM（v3：点击即开通，终稿用户已审）。
+# 报名/!试用 通过后的开通确认 DM（v3：点击即开通，2026-10-18 用户审过：加频道位置指引）。
 TRIAL30_GRANTED_CONFIRM = (
-    "✅ 已为你开通「信号体验」30 天！会员频道已可见。\n"
+    "✅ 已为你开通「信号体验」30 天！\n"
     "\n"
-    "想要 TradingView 上的 ETF 指标权限？在群里点击群主 @bigtreesignal 的头像私信他，发送：\n"
-    "① 你把邀请链接分享到其他群 / 社交媒体的截图\n"
-    "② 你的 TradingView 用户名\n"
-    "邀请链接：\n"
+    "📺 会员频道：在 Discord 左侧频道列表往下拉，找到「会员专区」分类，\n"
+    "里面的频道现在你都能看了。\n"
+    "\n"
+    "📈 TradingView 信号（ETF 指标）开通三步：\n"
+    "① 把邀请链接分享到其他群 / 社交媒体，截图\n"
     f"{TRIAL30_INVITE_LINK}\n"
-    "群主审核后为你开通 📈\n"
+    "② 在群里点击群主 @bigtreesignal 的头像私信他，发送：截图 + 你的 TradingView 用户名\n"
+    "③ 群主审核后手动为你开通\n"
     "\n"
     "📺 信号使用教程：https://www.youtube.com/watch?v=uykQwiDW55k"
 )
