@@ -233,6 +233,9 @@ class PromotionCommands(commands.Cog):
         if not INVITE_TRACKING_ENABLED:
             await interaction.response.send_message("邀请功能未开启。", ephemeral=True)
             return
+        # 核验在群人数要逐个查成员（缓存未命中时走 API），可能超过 3 秒：
+        # 先 defer 占住交互，再用 followup 回复，避免 10062 Unknown interaction。
+        await interaction.response.defer(ephemeral=True)
         count = invite_count_for(interaction.user.id)
         rank, recent = invite_rank_for(interaction.user.id)
         grant = has_active_grant(interaction.user.id, INVITE_ETF_REWARD_ROLE_ID)
@@ -278,7 +281,7 @@ class PromotionCommands(commands.Cog):
             ),
             color=discord.Color.blue(),
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     # ── /schedule_promo ──────────────────────────────────────────────────────
 
