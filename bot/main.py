@@ -158,7 +158,9 @@ async def main() -> None:
         logger.info("Logged in as %s (ID: %s)", bot.user, bot.user.id)
         logger.info("Serving %d guild(s)", len(bot.guilds))
         # Sync slash commands with Discord.
-        # Guild sync is immediate; global sync alone can take up to ~1 hour to appear.
+        # Guild-only sync: immediate effect, and avoids every command showing
+        # twice in the client (guild copy + global copy). Do NOT add a global
+        # sync() here.
         try:
             for guild in bot.guilds:
                 bot.tree.copy_global_to(guild=guild)
@@ -167,8 +169,6 @@ async def main() -> None:
                     "Synced %d slash command(s) to guild %s (%s)",
                     len(guild_synced), guild.id, guild.name,
                 )
-            synced = await bot.tree.sync()
-            logger.info("Synced %d global slash command(s)", len(synced))
         except Exception as exc:
             logger.warning("Failed to sync slash commands: %s", exc)
 
