@@ -235,6 +235,36 @@ class TestAmbassadorTiers:
         gap = next_ambassador_tier_gap(10, 17)
         assert gap == (10, 3)  # marginal 7 of 10 -> 3 missing
 
+    def test_gap_skips_tier_claimed_within_cooldown(self, tmp_path, monkeypatch):
+        """刚领过 10 人档（冷却期内）："下一档"应是 30 人档，而非从 0 重攒 10 人档。"""
+        _ambassador_patches(tmp_path, monkeypatch)
+        from bot.acquisition import next_ambassador_tier_gap
+        _write_grant(tmp_path, 10, 111, "ambassador_10", days_ago=0, count_at_grant=15)
+        gap = next_ambassador_tier_gap(10, 15)
+        assert gap == (30, 15)  # 30 人档进度 15/30，还差 15 人
+
+    def test_gap_none_when_all_tiers_in_cooldown(self, tmp_path, monkeypatch):
+        """所有档位都在冷却期内：无下一档可追，返回 None。"""
+        _ambassador_patches(tmp_path, monkeypatch)
+        from bot.acquisition import next_ambassador_tier_gap
+        _write_grant(tmp_path, 10, 111, "ambassador_10", days_ago=0, count_at_grant=15)
+        import json
+        from datetime import datetime, timedelta, timezone
+        granted = datetime.now(timezone.utc)
+        grants = json.loads((tmp_path / "timed_roles.json").read_text(encoding="utf-8"))
+        grants += [
+            {"user_id": 10, "guild_id": 1, "role_id": 111, "reason": "ambassador_30",
+             "days": 90, "granted_at": granted.isoformat(),
+             "expires_at": (granted + timedelta(days=90)).isoformat(),
+             "revoked": False, "meta": {"count_at_grant": 30}},
+            {"user_id": 10, "guild_id": 1, "role_id": 222, "reason": "ambassador_100",
+             "days": 365, "granted_at": granted.isoformat(),
+             "expires_at": (granted + timedelta(days=365)).isoformat(),
+             "revoked": False, "meta": {"count_at_grant": 100}},
+        ]
+        (tmp_path / "timed_roles.json").write_text(json.dumps(grants), encoding="utf-8")
+        assert next_ambassador_tier_gap(10, 100) is None
+
     def test_env_override_parsing(self, monkeypatch):
         from bot.config import _parse_ambassador_tiers
         tiers = _parse_ambassador_tiers('[{"invites":5,"days":7,"role":"etf"}]')

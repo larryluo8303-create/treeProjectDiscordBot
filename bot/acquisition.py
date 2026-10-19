@@ -676,19 +676,34 @@ def ambassador_progress(user_id: int, verified_count: int) -> list[dict]:
 
 
 def next_ambassador_tier_gap(user_id: int, verified_count: int) -> tuple[int, int] | None:
-    """(threshold, missing) for the nearest tier not yet reached; None if all due/met."""
-    tiers, _ = _ambassador_tiers()
+    """(threshold, missing) for the nearest tier the user can still work toward.
+
+    A tier granted within its cooldown window is skipped: right after claiming
+    the 10-person tier, "next tier" means the 30-person tier, not re-earning
+    the 10-person one from a reset 0. Tiers past cooldown keep their marginal
+    re-earn progress. Returns None when every tier was claimed and is still
+    in cooldown.
+    """
+    from bot.timed_roles import _parse_ts, last_grant
+
+    tiers, cooldown_days = _ambassador_tiers()
     due_thresholds = {int(t["invites"]) for t in ambassador_due_tiers(user_id, verified_count)}
+    now = datetime.now(timezone.utc)
     for tier in sorted(tiers, key=lambda t: int(t["invites"])):
         threshold = int(tier["invites"])
+        last = last_grant(int(user_id), ambassador_role_id(tier), reason=ambassador_tier_reason(tier))
+        if last:
+            granted_at = _parse_ts(last.get("granted_at"))
+            if granted_at and (now - granted_at).total_seconds() < cooldown_days * 86400:
+                continue  # 冷却期内：已领取的档位不是"下一档"，看更高的档
+            count_at_last = int((last.get("meta") or {}).get("count_at_grant") or 0)
+        else:
+            count_at_last = 0
+        marginal = verified_count - count_at_last
         if threshold in due_thresholds:
             return threshold, 0
-        # Marginal progress against this tier's own last-grant baseline.
-        from bot.timed_roles import last_grant
-        last = last_grant(int(user_id), ambassador_role_id(tier), reason=ambassador_tier_reason(tier))
-        count_at_last = int((last.get("meta") or {}).get("count_at_grant") or 0) if last else 0
-        if verified_count - count_at_last < threshold:
-            return threshold, threshold - (verified_count - count_at_last)
+        if marginal < threshold:
+            return threshold, threshold - marginal
     return None
 
 
