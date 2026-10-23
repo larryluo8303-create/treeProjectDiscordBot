@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import time
 
 import discord
@@ -15,6 +16,17 @@ logger = logging.getLogger(__name__)
 
 # Discord modal TextInput paragraph hard cap.
 MODAL_TEXT_MAX = 4000
+
+# Persistent component IDs for the owner review buttons. Fixed custom_ids
+# + timeout=None + bot.add_view() at startup keep the buttons working
+# across bot restarts: Discord re-delivers the interaction to the
+# registered template view, which rebuilds its state from the review
+# queue (see ReviewView._resolve). Before this, the view lived only in
+# the memory of the process that sent the DM (1h timeout), so any
+# restart silently killed every pending Approve / Edit / Reject button.
+REVIEW_APPROVE_CUSTOM_ID = "review:approve"
+REVIEW_EDIT_CUSTOM_ID = "review:edit"
+REVIEW_REJECT_CUSTOM_ID = "review:reject"
 
 # ── Negative sample storage ──────────────────────────────────────────────────
 
@@ -134,24 +146,107 @@ class EditAnswerModal(discord.ui.Modal, title="Edit draft answer"):
             pass
 
 
+def _find_review_item(message_id: int):
+    """Look up a review-queue item by original message id (any status)."""
+    try:
+        from bot.review_queue import review_queue
+        for item in review_queue.get_all(limit=100000):
+            if item.message_id == message_id:
+                return item
+    except Exception as exc:
+        logger.debug("Review queue lookup failed for %s: %s", message_id, exc)
+    return None
+
+
+def _original_message_id_from_dm(dm_message) -> int | None:
+    """Extract the original message id from a review DM's Link field."""
+    try:
+        for embed in (dm_message.embeds or []):
+            for field in embed.fields:
+                if field.name == "Link" and field.value:
+                    match = re.search(r"(\d{17,20})\)?$", field.value.strip())
+                    if match:
+                        return int(match.group(1))
+    except Exception:
+        pass
+    return None
+
+
 class ReviewView(discord.ui.View):
-    """Discord UI view with Approve / Edit / Reject buttons."""
+    """Discord UI view with Approve / Edit / Reject buttons.
+
+    Persistent: fixed custom_ids and no timeout. Per-message instances
+    carry their state in memory; a stateless template instance
+    registered via bot.add_view() at startup catches interactions for
+    DMs sent by a previous bot process (e.g. after a restart) and
+    rebuilds state from the review queue.
+    """
 
     def __init__(
         self,
-        original_message: discord.Message,
+        original_message: discord.Message | None,
         draft_answer: str,
         bot: discord.Client,
         collection=None,
         openai_client=None,
     ):
-        super().__init__(timeout=3600)  # 1 hour
+        super().__init__(timeout=None)
         self.original_message = original_message
         self.draft_answer = draft_answer
         self.bot = bot
         self.collection = collection
         self.openai_client = openai_client
         self.handled = False
+
+    @property
+    def _is_template(self) -> bool:
+        return self.original_message is None
+
+    async def _resolve(self, interaction: discord.Interaction) -> "ReviewView | None":
+        """Return a stateful view for this interaction.
+
+        Per-message instances return themselves. The startup template
+        instance rebuilds state from the review queue (keyed by the
+        original message id embedded in the DM's Link field). Returns
+        None after replying when the draft can no longer be acted on.
+        """
+        if not self._is_template:
+            return self
+        original_id = _original_message_id_from_dm(interaction.message)
+        if original_id is None:
+            await interaction.response.send_message(
+                "无法定位这条草稿的原始消息，按钮已失效。", ephemeral=True
+            )
+            return None
+        item = _find_review_item(original_id)
+        if item is None:
+            await interaction.response.send_message(
+                "这条草稿已不在待审队列里（可能已过期）。", ephemeral=True
+            )
+            return None
+        if item.status != "pending":
+            await interaction.response.send_message("Already handled.", ephemeral=True)
+            return None
+        try:
+            channel = self.bot.get_channel(item.channel_id)
+            if channel is None:
+                channel = await self.bot.fetch_channel(item.channel_id)
+            original = await channel.fetch_message(item.message_id)
+        except Exception as exc:
+            logger.error(
+                "Failed to rebuild review state for message %s: %s", original_id, exc
+            )
+            await interaction.response.send_message(
+                "原始消息已无法读取（可能已被删除）。", ephemeral=True
+            )
+            return None
+        return ReviewView(
+            original,
+            item.draft_answer,
+            self.bot,
+            collection=self.collection,
+            openai_client=self.openai_client,
+        )
 
     async def _learn_qa(self, answer: str) -> None:
         """Store the question + approved/edited answer as a Q&A pair in ChromaDB."""
@@ -202,8 +297,13 @@ class ReviewView(discord.ui.View):
         except Exception as exc:
             logger.error("Failed to auto-learn from review: %s", exc)
 
-    @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, emoji="✅")
+    @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, emoji="✅", custom_id=REVIEW_APPROVE_CUSTOM_ID)
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = await self._resolve(interaction)
+        if view is not None:
+            await view._do_approve(interaction)
+
+    async def _do_approve(self, interaction: discord.Interaction):
         if self.handled:
             await interaction.response.send_message("Already handled.", ephemeral=True)
             return
@@ -237,8 +337,13 @@ class ReviewView(discord.ui.View):
             return
         self.stop()
 
-    @discord.ui.button(label="Edit", style=discord.ButtonStyle.blurple, emoji="✏️")
+    @discord.ui.button(label="Edit", style=discord.ButtonStyle.blurple, emoji="✏️", custom_id=REVIEW_EDIT_CUSTOM_ID)
     async def edit(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = await self._resolve(interaction)
+        if view is not None:
+            await view._do_edit(interaction)
+
+    async def _do_edit(self, interaction: discord.Interaction):
         if self.handled:
             await interaction.response.send_message("Already handled.", ephemeral=True)
             return
@@ -246,8 +351,13 @@ class ReviewView(discord.ui.View):
         # instead of retyping the whole answer. `handled` flips on submit.
         await interaction.response.send_modal(EditAnswerModal(self))
 
-    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red, emoji="❌")
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red, emoji="❌", custom_id=REVIEW_REJECT_CUSTOM_ID)
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        view = await self._resolve(interaction)
+        if view is not None:
+            await view._do_reject(interaction)
+
+    async def _do_reject(self, interaction: discord.Interaction):
         if self.handled:
             await interaction.response.send_message("Already handled.", ephemeral=True)
             return

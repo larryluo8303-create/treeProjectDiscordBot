@@ -199,6 +199,13 @@ async def main() -> None:
     if SubscriptionCog is not None:
         await bot.add_cog(SubscriptionCog(bot))
 
+    # Persistent owner-review buttons (Approve / Edit / Reject in review
+    # DMs): one stateless template view registered for the process
+    # lifetime, so button clicks still work after a bot restart — the
+    # view rebuilds its state from the review queue. See bot/review.py.
+    from bot.review import ReviewView
+    bot.add_view(ReviewView(None, "", bot, collection=collection, openai_client=openai_client))
+
     # ── Webhook server (optional) ────────────────────────────────────────
     webhook_server = None
     if WEBHOOK_ENABLED:
