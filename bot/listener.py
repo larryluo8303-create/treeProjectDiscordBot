@@ -234,6 +234,39 @@ class MessageListener(commands.Cog):
         re.IGNORECASE,
     )
 
+    # Non-question idioms that happen to contain question substrings.
+    # They are stripped before _QUESTION_PATTERNS is applied so casual
+    # chatter is not mistaken for a question (2026-11-01, LynnZ false
+    # triggers in the ETF channel):
+    #   "还有和ai没什么关系🤣" — the 什么 in 没什么 is a negation idiom
+    #       ("nothing to do with"), not the question word "what".
+    #   "朋友们 有没有种要发财的感觉 LOL …" — rhetorical 有没有…感觉
+    #       addressed to fellow members, not a question to the bot.
+    # Negative lookbehind: "有没有什么…" is a genuine question (the
+    # 有没有 question frame + 什么) and must NOT be stripped — only a
+    # standalone 没什么/没有什么 ("nothing / not much") is an idiom.
+    _NEGATION_IDIOM_RE = re.compile(
+        r"(?<!有)(沒有什麼|没有什么|沒什麼|没什么|沒有啥|没有啥|沒啥|没啥)"
+    )
+    _RHETORICAL_FEELING_RE = re.compile(
+        r"(有没有|有沒有)(种|種|一种|一種|一股)?[^，。！!？?、\n]{0,16}(感觉|感覺)"
+    )
+
+    @staticmethod
+    def _question_gate_text(text: str) -> str:
+        """Return *text* with non-question idioms removed for gating.
+
+        Only the idiom itself is removed — any other genuine question
+        marker in the message (吗 / 请问 / a second clause …) still counts.
+        The rhetorical 有没有…感觉 pattern is stripped only when the
+        message carries no explicit ?/？: an explicit question mark
+        always stays a question.
+        """
+        cleaned = MessageListener._NEGATION_IDIOM_RE.sub("", text)
+        if "?" not in text and "？" not in text:
+            cleaned = MessageListener._RHETORICAL_FEELING_RE.sub("", cleaned)
+        return cleaned
+
     @staticmethod
     def _is_thread(channel: discord.abc.Messageable) -> bool:
         """Return True if *channel* is a Thread."""
@@ -344,8 +377,9 @@ class MessageListener(commands.Cog):
             return True
         if RESPOND_MODE == "mention_only":
             return False
-        # Question / help-request heuristic
-        if text and self._QUESTION_PATTERNS.search(text):
+        # Question / help-request heuristic (on idiom-stripped text, so
+        # chatter like "没什么关系" / "有没有种…感觉" doesn't false-trigger)
+        if text and self._QUESTION_PATTERNS.search(self._question_gate_text(text)):
             return True
         return False
 
@@ -753,7 +787,7 @@ class MessageListener(commands.Cog):
             return True
         if RESPOND_MODE == "mention_only":
             return False
-        return bool(self._QUESTION_PATTERNS.search(text))
+        return bool(self._QUESTION_PATTERNS.search(self._question_gate_text(text)))
 
     async def _transcribe_voice_attachment(
         self,

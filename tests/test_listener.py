@@ -92,6 +92,63 @@ class TestQuestionPatterns:
         assert MessageListener._QUESTION_PATTERNS.search("持有几个月？")
 
 
+class TestQuestionGateIdioms:
+    # 2026-11-01: LynnZ chatter false-triggered the question gate twice in
+    # the ETF channel and got auto-replies. The gate must strip non-question
+    # idioms that merely contain question substrings.
+    def _gate(self, text):
+        return MessageListener._question_gate_text(text)
+
+    def _matches(self, text):
+        return MessageListener._QUESTION_PATTERNS.search(self._gate(text))
+
+    def test_negation_idiom_not_question(self):
+        assert not self._matches("还有和ai没什么关系🤣")
+
+    def test_negation_idiom_traditional(self):
+        assert not self._matches("還有和ai沒什麼關係")
+
+    def test_rhetorical_feeling_not_question(self):
+        assert not self._matches("朋友们 有没有种要发财的感觉 LOL 明年真有周线的话")
+
+    def test_rhetorical_feeling_variant(self):
+        assert not self._matches("有没有一种要起飞的感觉")
+
+    def test_genuine_you_mei_you_question_still_matches(self):
+        assert self._matches("有没有什么推荐的ETF")
+
+    def test_genuine_signal_question_still_matches(self):
+        assert self._matches("SPY有没有周线信号")
+
+    def test_real_shenme_question_still_matches(self):
+        assert self._matches("这个和AI有什么关系")
+
+    def test_idiom_plus_real_question_still_matches(self):
+        assert self._matches("没什么问题，就是想问SPY现在能买吗")
+
+    def test_explicit_question_mark_still_matches(self):
+        assert self._matches("有没有种要发财的感觉？")
+
+    def _warranted(self, content):
+        listener = MessageListener.__new__(MessageListener)
+        listener.bot = MagicMock()
+        listener.bot.user = MagicMock()
+        listener.bot.user.id = 999
+        msg = MagicMock()
+        msg.mentions = []
+        msg.reference = None
+        msg.content = content
+        with patch("bot.listener.RESPOND_MODE", "questions"):
+            return listener._is_response_warranted(msg, False)
+
+    def test_warranted_lynnz_chatter_skipped(self):
+        assert self._warranted("还有和ai没什么关系🤣") is False
+        assert self._warranted("朋友们 有没有种要发财的感觉 LOL 明年真有周线的话") is False
+
+    def test_warranted_real_question_kept(self):
+        assert self._warranted("请问SPY有没有周线信号") is True
+
+
 class TestNoReplyPatterns:
     # 2026-10-15: explicit "don't answer" must suppress reply even on
     # @mention / reply-to-bot fast paths
