@@ -994,7 +994,16 @@ class BotCommands(commands.Cog):
             latency_ms=_elapsed_ms,
         )
 
-        if routing["action"] == "auto_reply":
+        if routing["action"] == "skip":
+            # 2026-11-04 user rule: don't post the "不太确定" fallback
+            # publicly.  /ask is an explicit invocation, so the asker still
+            # gets a private (ephemeral) note — nothing goes to the channel
+            # and nothing is forwarded to the owner.
+            await interaction.followup.send(
+                "这个问题我暂时没有足够把握，就先不作答了。",
+                ephemeral=True,
+            )
+        elif routing["action"] == "auto_reply":
             embed = discord.Embed(
                 description=routing["answer"][:4096],
                 color=discord.Color.green() if confidence >= 7 else discord.Color.orange(),

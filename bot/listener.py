@@ -1310,6 +1310,17 @@ class MessageListener(commands.Cog):
             "response_time_ms": elapsed_ms,
         }))
 
+        if routing["action"] == "skip":
+            # 2026-11-04 user rule: when the bot isn't sure, don't answer
+            # at all — no "这个我不太确定，等频道主来回答" in the channel,
+            # no owner notification, just log and move on.
+            logger.info(
+                "跳过: 不确定回答，不发群 (question=%r, reason=%s)",
+                (user_text or "")[:80],
+                routing["reason"],
+            )
+            return
+
         if routing["action"] == "auto_reply":
             reply_text = routing["answer"]
 

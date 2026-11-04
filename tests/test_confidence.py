@@ -162,8 +162,9 @@ class TestRouteAnswerSignalQuery:
         )
         assert result["action"] == "auto_reply"
 
-    def test_fallback_answer_auto_replies(self):
-        """Fallback 'I don't know' answers are safe to auto-post, even below threshold."""
+    def test_fallback_answer_skips_silently(self):
+        """2026-11-04 user rule: fallback 'I don't know' answers must NOT be
+        posted in the channel — the bot simply doesn't answer."""
         result = route_answer(
             answer="不太确定，等频道主来回答",
             confidence=2,
@@ -172,5 +173,18 @@ class TestRouteAnswerSignalQuery:
             best_distance=0.4,
             question="SPY怎么看",
         )
-        assert result["action"] == "auto_reply"
+        assert result["action"] == "skip"
         assert "fallback" in result["reason"]
+
+    def test_fallback_answer_skips_even_with_good_context(self):
+        """Even with good context / high confidence, a fallback answer is
+        still a non-answer and must be skipped, not posted."""
+        result = route_answer(
+            answer="这个我不太确定，等频道主来回答",
+            confidence=8,
+            threshold=7,
+            context_count=8,
+            best_distance=0.2,
+            question="我刚买了特斯拉车，要不要退掉？",
+        )
+        assert result["action"] == "skip"

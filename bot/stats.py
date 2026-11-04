@@ -37,7 +37,7 @@ class QueryRecord:
     question: str
     channel_id: int
     confidence: int
-    action: str  # "auto_reply" or "forward"
+    action: str  # "auto_reply", "forward_to_owner" or "skip"
     latency_ms: int
     timestamp: float = field(default_factory=time.time)
 
@@ -81,6 +81,10 @@ class BotStats:
 
         if action == "auto_reply":
             self.auto_replies += 1
+        elif action == "skip":
+            # Silently skipped (bot wasn't sure) — neither a reply nor a
+            # forward to the owner.
+            pass
         else:
             self.forwards += 1
 

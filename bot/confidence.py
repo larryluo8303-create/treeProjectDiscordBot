@@ -103,11 +103,15 @@ def route_answer(
     if is_signal_query(question):
         action = "forward_to_owner"
         reason = "signal/entry-timing question — owner must confirm chart"
-    # The "I don't know, wait for the owner" fallback is safe to post directly —
-    # it's the same thing the owner would say, so skip review.
+    # The "I don't know, wait for the owner" fallback must NOT be posted —
+    # 2026-11-04 user rule: if the bot isn't sure, it should simply not
+    # answer at all instead of replying "这个我不太确定，等频道主来回答"
+    # in the channel.  Route to the silent "skip" action: no channel
+    # message, no owner review DM.  (Signal questions never reach this
+    # branch — the signal check above already forwards them to the owner.)
     elif is_fallback_answer(answer):
-        action = "auto_reply"
-        reason = "fallback answer — safe to post without review"
+        action = "skip"
+        reason = "fallback answer — not sure, skip silently without replying"
     # Force low confidence if no relevant context was found
     elif context_count == 0:
         action = "forward_to_owner"
@@ -122,6 +126,8 @@ def route_answer(
 
     if action == "auto_reply":
         logger.info("Routing: AUTO_REPLY (confidence=%d)", confidence)
+    elif action == "skip":
+        logger.info("Routing: SKIP — %s (confidence=%d)", reason, confidence)
     else:
         logger.info("Routing: FORWARD_TO_OWNER — %s (confidence=%d)", reason, confidence)
 
