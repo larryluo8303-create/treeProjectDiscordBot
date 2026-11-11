@@ -112,6 +112,7 @@ class DailySummaryCog(commands.Cog):
     # ── /daily_summary manual trigger ────────────────────────────────────
 
     @app_commands.command(name="daily_summary", description="[Owner] 立即生成并推送今日总结")
+    @app_commands.default_permissions(administrator=True)
     async def daily_summary_cmd(self, interaction: discord.Interaction) -> None:
         if interaction.user.id != OWNER_USER_ID:
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)

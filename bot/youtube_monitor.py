@@ -514,6 +514,7 @@ class YouTubeMonitorCog(commands.Cog):
         name="resend_summary",
         description="[Owner] 补发 YouTube 视频摘要到指定频道",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         video_url="YouTube 视频链接（留空则使用最近一次检测到的视频）",
         title="视频标题（留空则自动获取）",

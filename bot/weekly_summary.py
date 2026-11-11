@@ -226,6 +226,7 @@ class WeeklySummaryCog(commands.Cog):
     # ── /weekly_summary manual trigger ─────────────────────────────────
 
     @app_commands.command(name="weekly_summary", description="[Owner] 立即生成并推送本周总结")
+    @app_commands.default_permissions(administrator=True)
     async def weekly_summary_cmd(self, interaction: discord.Interaction) -> None:
         if interaction.user.id != OWNER_USER_ID:
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)

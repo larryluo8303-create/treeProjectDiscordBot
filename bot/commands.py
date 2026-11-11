@@ -289,6 +289,7 @@ class PromotionCommands(commands.Cog):
         name="schedule_promo",
         description="[Owner] 排程促销帖（到时间自动发送）",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         title="促销标题",
         description="促销详细描述",
@@ -368,6 +369,7 @@ class PromotionCommands(commands.Cog):
         name="list_promos",
         description="[Owner] 列出所有排程的促销",
     )
+    @app_commands.default_permissions(administrator=True)
     async def list_promos_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -396,6 +398,7 @@ class PromotionCommands(commands.Cog):
         name="cancel_promo",
         description="[Owner] 取消一个排程的促销",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(promo_id="促销 ID")
     async def cancel_promo_cmd(
         self,
@@ -421,6 +424,7 @@ class PromotionCommands(commands.Cog):
         name="post_promo",
         description="[Owner] 立即发送促销帖（不排程）",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         title="促销标题",
         description="促销详细描述",
@@ -529,6 +533,7 @@ class PromotionCommands(commands.Cog):
         name="dm_role",
         description="[Owner] 向自愿通知身份组发送促销私信（不发频道）",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         role="白名单里的通知身份组",
         title="促销标题",
@@ -596,6 +601,7 @@ class PromotionCommands(commands.Cog):
         name="promo_notify_panel",
         description="[Owner] 在频道发布活动私信订阅面板",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(channel="发送到的频道（可选，默认当前频道）")
     async def promo_notify_panel_cmd(
         self,
@@ -699,6 +705,7 @@ class PromotionCommands(commands.Cog):
         name="schedule_trial",
         description="[Owner] 排程免费信号回顾帖",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         title="标题（如：今日免费信号回顾）",
         content="回顾内容",
@@ -761,6 +768,7 @@ class PromotionCommands(commands.Cog):
         name="schedule_lesson",
         description="[Owner] 排程教学内容推送（支持重复）",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         title="教学标题",
         content="教学内容",
@@ -824,6 +832,7 @@ class PromotionCommands(commands.Cog):
         name="list_lessons",
         description="[Owner] 列出所有排程的教学帖",
     )
+    @app_commands.default_permissions(administrator=True)
     async def list_lessons_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -854,6 +863,7 @@ class PromotionCommands(commands.Cog):
         name="cancel_lesson",
         description="[Owner] 取消一个排程的教学帖",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(lesson_id="教学帖 ID")
     async def cancel_lesson_cmd(
         self,
@@ -1056,6 +1066,7 @@ class BotCommands(commands.Cog):
     # ── /status ──────────────────────────────────────────────────────────
 
     @app_commands.command(name="status", description="[开发] 查看机器人状态")
+    @app_commands.default_permissions(administrator=True)
     async def status_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -1086,6 +1097,7 @@ class BotCommands(commands.Cog):
     # ── /stats ───────────────────────────────────────────────────────────
 
     @app_commands.command(name="stats", description="[开发] 查看查询统计")
+    @app_commands.default_permissions(administrator=True)
     async def stats_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -1116,6 +1128,7 @@ class BotCommands(commands.Cog):
     # ── /funnel ──────────────────────────────────────────────────────────
 
     @app_commands.command(name="funnel", description="[Owner] 查看获客转化漏斗")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(days="统计天数（默认7）")
     async def funnel_cmd(self, interaction: discord.Interaction, days: int = 7) -> None:
         if not _is_owner(interaction):
@@ -1153,6 +1166,7 @@ class BotCommands(commands.Cog):
     # ── /search_kb ────────────────────────────────────────────────────────
 
     @app_commands.command(name="search_kb", description="[Owner] 搜索知识库文档")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(query="搜索关键词", top_k="返回数量 (1-10, 默认5)")
     async def search_kb_cmd(
         self,
@@ -1233,6 +1247,7 @@ class BotCommands(commands.Cog):
         name="generate_faq",
         description="[Owner] 根据高频问题自动生成FAQ",
     )
+    @app_commands.default_permissions(administrator=True)
     async def generate_faq_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -1267,6 +1282,7 @@ class BotCommands(commands.Cog):
         name="schedule_reminder",
         description="[Owner] 排程提醒消息（如市场开盘提醒）",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         title="提醒标题",
         message="提醒内容",
@@ -1319,6 +1335,7 @@ class BotCommands(commands.Cog):
     # ── /list_reminders ──────────────────────────────────────────────────
 
     @app_commands.command(name="list_reminders", description="[Owner] 列出所有排程的提醒")
+    @app_commands.default_permissions(administrator=True)
     async def list_reminders_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -1337,6 +1354,7 @@ class BotCommands(commands.Cog):
     # ── /cancel_reminder ─────────────────────────────────────────────────
 
     @app_commands.command(name="cancel_reminder", description="[Owner] 取消一个排程的提醒")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(reminder_id="提醒 ID")
     async def cancel_reminder_cmd(self, interaction: discord.Interaction, reminder_id: str) -> None:
         if not _is_owner(interaction):
@@ -1351,6 +1369,7 @@ class BotCommands(commands.Cog):
     # ── /add_alert ───────────────────────────────────────────────────────
 
     @app_commands.command(name="add_alert", description="[Owner] 添加关键词监控（出现时DM通知）")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(keyword="要监控的关键词")
     async def add_alert_cmd(self, interaction: discord.Interaction, keyword: str) -> None:
         if not _is_owner(interaction):
@@ -1365,6 +1384,7 @@ class BotCommands(commands.Cog):
     # ── /remove_alert ────────────────────────────────────────────────────
 
     @app_commands.command(name="remove_alert", description="[Owner] 移除关键词监控")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(keyword="要移除的关键词")
     async def remove_alert_cmd(self, interaction: discord.Interaction, keyword: str) -> None:
         if not _is_owner(interaction):
@@ -1379,6 +1399,7 @@ class BotCommands(commands.Cog):
     # ── /list_alerts ─────────────────────────────────────────────────────
 
     @app_commands.command(name="list_alerts", description="[Owner] 列出所有监控关键词")
+    @app_commands.default_permissions(administrator=True)
     async def list_alerts_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -1396,6 +1417,7 @@ class BotCommands(commands.Cog):
     # ── /kb_report ───────────────────────────────────────────────────────
 
     @app_commands.command(name="kb_report", description="[Owner] 知识库质量报告")
+    @app_commands.default_permissions(administrator=True)
     async def kb_report_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -1438,6 +1460,7 @@ class BotCommands(commands.Cog):
     # ── /kb_snapshots ────────────────────────────────────────────────────
 
     @app_commands.command(name="kb_snapshots", description="[Owner] 查看知识库快照")
+    @app_commands.default_permissions(administrator=True)
     async def kb_snapshots_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -1459,6 +1482,7 @@ class BotCommands(commands.Cog):
     # ── /kb_snapshot ─────────────────────────────────────────────────────
 
     @app_commands.command(name="kb_snapshot", description="[Owner] 立即创建知识库快照")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(description="快照描述（可选）")
     async def kb_snapshot_cmd(self, interaction: discord.Interaction, description: str = "") -> None:
         if not _is_owner(interaction):
@@ -1489,6 +1513,7 @@ class BotCommands(commands.Cog):
     # ── /kb_rollback ─────────────────────────────────────────────────────
 
     @app_commands.command(name="kb_rollback", description="[Owner] 回滚知识库到指定快照")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(snapshot_id="快照 ID（用 /kb_snapshots 查看）")
     async def kb_rollback_cmd(self, interaction: discord.Interaction, snapshot_id: str) -> None:
         if not _is_owner(interaction):
@@ -1514,6 +1539,7 @@ class BotCommands(commands.Cog):
     # ── /leaderboard ─────────────────────────────────────────────────────
 
     @app_commands.command(name="leaderboard", description="[Owner] 查看活跃度排行榜")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(days="统计天数 (默认30)")
     async def leaderboard_cmd(self, interaction: discord.Interaction, days: int = 30) -> None:
         if not _is_owner(interaction):
@@ -1543,6 +1569,7 @@ class BotCommands(commands.Cog):
     # ── /ab_results ──────────────────────────────────────────────────────
 
     @app_commands.command(name="ab_results", description="[Owner] 查看A/B测试结果")
+    @app_commands.default_permissions(administrator=True)
     async def ab_results_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
@@ -1567,6 +1594,7 @@ class BotCommands(commands.Cog):
     # ── /export_conversations ────────────────────────────────────────────
 
     @app_commands.command(name="export_conversations", description="[Owner] 导出对话记录")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         format="导出格式",
         days="导出天数 (默认30)",
@@ -1605,6 +1633,7 @@ class BotCommands(commands.Cog):
     # ── /pin_summary ─────────────────────────────────────────────────────
 
     @app_commands.command(name="pin_summary", description="[Owner] 总结最近的讨论并钉到频道")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(count="要总结的消息数量 (默认20)")
     async def pin_summary_cmd(self, interaction: discord.Interaction, count: int = 20) -> None:
         if not _is_owner(interaction):
@@ -1661,6 +1690,7 @@ class BotCommands(commands.Cog):
         name="views",
         description="[Owner] 总结我最近的观点看法并发送到本频道",
     )
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(hours="回溯小时数（1–168，默认 24）")
     async def views_cmd(
         self,
@@ -1753,6 +1783,7 @@ class BotCommands(commands.Cog):
     # ── /satisfaction ────────────────────────────────────────────────────
 
     @app_commands.command(name="satisfaction", description="[Owner] 查看用户满意度统计")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(days="统计天数 (默认30)")
     async def satisfaction_cmd(self, interaction: discord.Interaction, days: int = 30) -> None:
         if not _is_owner(interaction):
@@ -1779,6 +1810,7 @@ class BotCommands(commands.Cog):
     # ── /add_ban_word ─────────────────────────────────────────────────────
 
     @app_commands.command(name="add_ban_word", description="[Owner] 添加禁止词到自动审核列表")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(word="要禁止的词语或短语")
     async def add_ban_word_cmd(self, interaction: discord.Interaction, word: str) -> None:
         if not _is_owner(interaction):
@@ -1795,6 +1827,7 @@ class BotCommands(commands.Cog):
     # ── /remove_ban_word ──────────────────────────────────────────────────
 
     @app_commands.command(name="remove_ban_word", description="[Owner] 从自动审核列表移除禁止词")
+    @app_commands.default_permissions(administrator=True)
     @app_commands.describe(word="要移除的禁止词")
     async def remove_ban_word_cmd(self, interaction: discord.Interaction, word: str) -> None:
         if not _is_owner(interaction):
@@ -1810,6 +1843,7 @@ class BotCommands(commands.Cog):
     # ── /list_ban_words ───────────────────────────────────────────────────
 
     @app_commands.command(name="list_ban_words", description="[Owner] 查看所有禁止词")
+    @app_commands.default_permissions(administrator=True)
     async def list_ban_words_cmd(self, interaction: discord.Interaction) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message("只有频道主可以使用此命令。", ephemeral=True)
