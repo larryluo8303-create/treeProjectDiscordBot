@@ -197,7 +197,10 @@ class TechnicalsCog(commands.Cog):
         meta = data["meta"]
         closes = data["closes"]
         price = meta.get("regularMarketPrice") or closes[-1]
-        prev = meta.get("chartPreviousClose") or closes[-2]
+        # Yesterday's close = second-to-last daily bar. Do NOT use
+        # meta["chartPreviousClose"]: with range=1y it is the close before
+        # the 1-year window starts (~1 year ago), not the previous session.
+        prev = closes[-2] if len(closes) >= 2 else meta.get("chartPreviousClose")
         pct = (price - prev) / prev * 100 if prev else 0
         cn = _CN_NAMES.get(ticker, "")
         arrow = "🔺" if pct > 0 else "🔻" if pct < 0 else "➖"
