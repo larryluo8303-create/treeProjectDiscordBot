@@ -139,7 +139,7 @@ class PromotionCommands(commands.Cog):
     @app_commands.command(name="invite", description="生成你的专属邀请链接（邀请好友加入社群）")
     async def invite_cmd(self, interaction: discord.Interaction) -> None:
         from bot.acquisition import invite_count_for
-        from bot.config import INVITE_ETF_MIN_COUNT, INVITE_TRACKING_ENABLED
+        from bot.config import INVITE_ETF_MIN_COUNT, INVITE_TOPN_COUNT, INVITE_TRACKING_ENABLED
 
         if not INVITE_TRACKING_ENABLED:
             await interaction.response.send_message("邀请功能未开启。", ephemeral=True)
